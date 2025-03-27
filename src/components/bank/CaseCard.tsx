@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { MortgageCase } from '@/types';
-import { Bank, Landmark, Calendar, FileSymlink, Users } from 'lucide-react';
+import { BuildingBank, Landmark, Calendar, FileSymlink, Users } from 'lucide-react';
 
 interface CaseCardProps {
   mortgageCase: MortgageCase;
@@ -34,7 +34,7 @@ const CaseCard: React.FC<CaseCardProps> = ({
       case 'refinance':
         return <FileSymlink className="h-4 w-4 mr-1.5" />;
       case 'equity':
-        return <Bank className="h-4 w-4 mr-1.5" />;
+        return <BuildingBank className="h-4 w-4 mr-1.5" />;
       default:
         return <Users className="h-4 w-4 mr-1.5" />;
     }
