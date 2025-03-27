@@ -13,13 +13,13 @@ const Register = () => {
               <span className="text-white font-bold text-xl">MB</span>
             </div>
           </Link>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 rtl:text-right">
-            יצירת חשבון חדש
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Create a new account
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            או{' '}
+            Or{' '}
             <Link to="/login" className="font-medium text-primary hover:underline">
-              התחבר לחשבון קיים
+              log in to an existing account
             </Link>
           </p>
         </div>

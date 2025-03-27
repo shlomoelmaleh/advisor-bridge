@@ -14,9 +14,9 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Add Hebrew language support
-document.documentElement.dir = 'rtl';
-document.documentElement.lang = 'he';
+// Set English language and LTR direction
+document.documentElement.dir = 'ltr';
+document.documentElement.lang = 'en';
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

@@ -14,12 +14,12 @@ const Login = () => {
             </div>
           </Link>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            התחברות לחשבון שלך
+            Log in to your account
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            או{' '}
+            Or{' '}
             <Link to="/register" className="font-medium text-primary hover:underline">
-              צור חשבון חדש
+              create a new account
             </Link>
           </p>
         </div>

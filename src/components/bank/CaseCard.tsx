@@ -20,7 +20,7 @@ const CaseCard: React.FC<CaseCardProps> = ({
 }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('he-IL', {
+    return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -44,10 +44,10 @@ const CaseCard: React.FC<CaseCardProps> = ({
     e.preventDefault();
     onInterestToggle();
     
-    toast(isInterested ? 'העניין הוסר' : 'העניין נרשם', {
+    toast(isInterested ? 'Interest removed' : 'Interest recorded', {
       description: isInterested 
-        ? 'לא תקבל יותר עדכונים על תיק זה' 
-        : 'תקבל התראות על כל עדכון בתיק זה',
+        ? 'You will no longer receive updates about this case' 
+        : 'You will now receive notifications about any updates to this case',
       icon: isInterested ? '🔔' : '✅'
     });
   };
@@ -67,47 +67,45 @@ const CaseCard: React.FC<CaseCardProps> = ({
           <div>
             <h3 className="text-xl font-semibold">₪{mortgageCase.loanAmount.toLocaleString()}</h3>
             <div className="flex items-center mt-1 text-muted-foreground text-sm">
-              <Calendar className="h-4 w-4 ml-1.5" />
-              <span>הוגש {formatDate(mortgageCase.createdAt)}</span>
+              <Calendar className="h-4 w-4 mr-1.5" />
+              <span>Submitted {formatDate(mortgageCase.createdAt)}</span>
             </div>
           </div>
           <Badge className="capitalize flex items-center">
             {getDealTypeIcon()}
-            {mortgageCase.dealType === 'purchase' ? 'רכישה' : 
-             mortgageCase.dealType === 'refinance' ? 'מחזור' : 
-             mortgageCase.dealType === 'equity' ? 'הון עצמי' : mortgageCase.dealType}
+            {mortgageCase.dealType}
           </Badge>
         </div>
         
         <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2">
           <div>
-            <p className="text-xs text-muted-foreground">מימון</p>
+            <p className="text-xs text-muted-foreground">Financing</p>
             <p className="font-medium">{mortgageCase.financingPercentage}%</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">יחס חוב להכנסה</p>
+            <p className="text-xs text-muted-foreground">Debt-to-income ratio</p>
             <p className="font-medium">{calculateDebtToIncomeRatio()}%</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">הכנסה שנתית</p>
+            <p className="text-xs text-muted-foreground">Annual Income</p>
             <p className="font-medium">₪{mortgageCase.borrowerIncome.toLocaleString()}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">התחייבויות חודשיות</p>
+            <p className="text-xs text-muted-foreground">Monthly Obligations</p>
             <p className="font-medium">₪{mortgageCase.borrowerObligations.toLocaleString()}</p>
           </div>
         </div>
         
         {mortgageCase.notes && (
           <div className="mt-4">
-            <p className="text-xs text-muted-foreground">הערות</p>
+            <p className="text-xs text-muted-foreground">Notes</p>
             <p className="text-sm mt-1">{mortgageCase.notes}</p>
           </div>
         )}
         
         <div className="mt-6 flex items-center justify-between">
           <Link to={`/bank/case/${mortgageCase.id}`}>
-            <Button variant="outline" size="sm">הצג פרטים</Button>
+            <Button variant="outline" size="sm">View Details</Button>
           </Link>
           <Button 
             variant={isInterested ? "default" : "ghost"} 
@@ -115,7 +113,7 @@ const CaseCard: React.FC<CaseCardProps> = ({
             onClick={handleInterestToggle}
             className={isInterested ? "" : "border"}
           >
-            {isInterested ? "מתעניין ✓" : "הבע עניין"}
+            {isInterested ? "Interested ✓" : "Express Interest"}
           </Button>
         </div>
       </div>
