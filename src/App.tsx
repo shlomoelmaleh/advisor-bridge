@@ -14,6 +14,10 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Add Hebrew language support
+document.documentElement.dir = 'rtl';
+document.documentElement.lang = 'he';
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>

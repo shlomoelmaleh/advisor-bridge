@@ -48,7 +48,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
       const user = loginUser(loginEmail, loginPassword);
       
       if (user) {
-        toast.success('Login successful!');
+        toast.success('התחברות הצליחה!');
         
         // Redirect based on user role
         if (user.role === 'advisor') {
@@ -57,7 +57,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
           navigate('/bank/dashboard');
         }
       } else {
-        toast.error('Invalid credentials');
+        toast.error('פרטים שגויים');
       }
       
       setIsLoading(false);
@@ -70,7 +70,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
 
     // Validate passwords match
     if (registerPassword !== registerConfirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error('הסיסמאות אינן תואמות');
       setIsLoading(false);
       return;
     }
@@ -78,7 +78,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
     // Simulate API call
     setTimeout(() => {
       // In a real app, this would make an API call to register the user
-      toast.success('Account created successfully!');
+      toast.success('החשבון נוצר בהצלחה!');
       setActiveTab('login');
       setIsLoading(false);
     }, 1000);
@@ -99,21 +99,21 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
     <Card className="w-full max-w-md mx-auto animated-card">
       <Tabs defaultValue={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'register')}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">Login</TabsTrigger>
-          <TabsTrigger value="register">Register</TabsTrigger>
+          <TabsTrigger value="login">התחברות</TabsTrigger>
+          <TabsTrigger value="register">הרשמה</TabsTrigger>
         </TabsList>
         
         <TabsContent value="login">
           <form onSubmit={handleLogin}>
             <CardHeader>
-              <CardTitle>Login to your account</CardTitle>
+              <CardTitle>התחברות לחשבון שלך</CardTitle>
               <CardDescription>
-                Enter your credentials below to access your account
+                הזן את פרטי הכניסה שלך כדי לגשת לחשבון שלך
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">דוא"ל</Label>
                 <Input 
                   id="email" 
                   type="email" 
@@ -125,16 +125,16 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">סיסמה</Label>
                   <a 
                     href="#" 
                     className="text-xs text-primary hover:underline"
                     onClick={(e) => {
                       e.preventDefault();
-                      toast.info('Password reset functionality would be implemented in a production app.');
+                      toast.info('תכונת איפוס סיסמה תהיה זמינה בגרסת הייצור.');
                     }}
                   >
-                    Forgot password?
+                    שכחת סיסמה?
                   </a>
                 </div>
                 <Input 
@@ -148,7 +148,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Logging in...' : 'Login'}
+                {isLoading ? 'מתחבר...' : 'התחבר'}
               </Button>
               <div className="flex justify-center space-x-4 w-full">
                 <Button 
@@ -157,7 +157,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
                   size="sm" 
                   onClick={() => setDemoCredentials('advisor')}
                 >
-                  Advisor Demo
+                  הדגמת יועץ
                 </Button>
                 <Button 
                   type="button" 
@@ -165,7 +165,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
                   size="sm" 
                   onClick={() => setDemoCredentials('bank')}
                 >
-                  Bank Demo
+                  הדגמת בנק
                 </Button>
               </div>
             </CardFooter>
@@ -175,49 +175,49 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
         <TabsContent value="register">
           <form onSubmit={handleRegister}>
             <CardHeader>
-              <CardTitle>Create an account</CardTitle>
+              <CardTitle>יצירת חשבון</CardTitle>
               <CardDescription>
-                Enter your information to create your account
+                הזן את המידע שלך כדי ליצור את החשבון שלך
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="role">Account Type</Label>
+                <Label htmlFor="role">סוג חשבון</Label>
                 <Select 
                   value={registerRole} 
                   onValueChange={(value: string) => setRegisterRole(value as UserRole)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select account type" />
+                    <SelectValue placeholder="בחר סוג חשבון" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="advisor">Mortgage Advisor</SelectItem>
-                    <SelectItem value="bank">Bank Representative</SelectItem>
+                    <SelectItem value="advisor">יועץ משכנתאות</SelectItem>
+                    <SelectItem value="bank">נציג בנק</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name">שם מלא</Label>
                 <Input 
                   id="name" 
                   value={registerName}
                   onChange={(e) => setRegisterName(e.target.value)}
-                  placeholder="John Doe" 
+                  placeholder="ישראל ישראלי" 
                   required 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="company">Company</Label>
+                <Label htmlFor="company">חברה</Label>
                 <Input 
                   id="company" 
                   value={registerCompany}
                   onChange={(e) => setRegisterCompany(e.target.value)}
-                  placeholder="Your Company Name" 
+                  placeholder="שם החברה שלך" 
                   required 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">דוא"ל</Label>
                 <Input 
                   id="email" 
                   type="email" 
@@ -228,7 +228,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">סיסמה</Label>
                 <Input 
                   id="password" 
                   type="password" 
@@ -238,7 +238,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm">Confirm Password</Label>
+                <Label htmlFor="confirm">אימות סיסמה</Label>
                 <Input 
                   id="confirm" 
                   type="password" 
@@ -250,7 +250,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Creating account...' : 'Create account'}
+                {isLoading ? 'יוצר חשבון...' : 'צור חשבון'}
               </Button>
             </CardFooter>
           </form>
