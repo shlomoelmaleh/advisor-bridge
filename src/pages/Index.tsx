@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/common/Navbar';
 import Footer from '@/components/common/Footer';
-import { ArrowRight, Clock, Briefcase, BuildingBank, Users, Check, ArrowUpRight } from 'lucide-react';
+import { ArrowRight, Clock, Briefcase, Building, Users, Check, ArrowUpRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const Index = () => {
@@ -60,7 +61,7 @@ const Index = () => {
                     <div className="p-6 text-white">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                          <BuildingBank className="h-4 w-4" />
+                          <Building className="h-4 w-4" />
                         </div>
                         <p className="font-semibold">Mortgage Matching Platform</p>
                       </div>
@@ -99,7 +100,7 @@ const Index = () => {
               <Card className="hover-scale border-transparent shadow-md bg-white">
                 <CardContent className="p-8">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                    <BuildingBank className="h-6 w-6 text-primary" />
+                    <Building className="h-6 w-6 text-primary" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Match with Banks</h3>
                   <p className="text-muted-foreground">
