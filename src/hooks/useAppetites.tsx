@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { BranchAppetite, UpsertAppetiteData } from '@/types/appetites';
 import type { DbCase } from '@/types/cases';
+import { mapDatabaseError } from '@/lib/mapDatabaseError';
 
 interface UseAppetitesReturn {
     myAppetite: BranchAppetite | null;
@@ -44,7 +45,7 @@ export const useAppetites = (): UseAppetitesReturn => {
                 .limit(1)
                 .maybeSingle();
 
-            if (appetiteError) throw new Error(appetiteError.message);
+            if (appetiteError) throw new Error(mapDatabaseError(appetiteError));
             setMyAppetite(appetiteData as BranchAppetite | null);
 
             // 2. Fetch open cases (anonymous cases from advisors)
@@ -54,7 +55,7 @@ export const useAppetites = (): UseAppetitesReturn => {
                 .eq('status', 'open')
                 .order('created_at', { ascending: false });
 
-            if (casesError) throw new Error(casesError.message);
+            if (casesError) throw new Error(mapDatabaseError(casesError));
             setOpenCases((casesData ?? []) as unknown as DbCase[]);
         } catch (err: any) {
             setError(err.message || 'Error fetching data');
@@ -92,7 +93,7 @@ export const useAppetites = (): UseAppetitesReturn => {
                 });
             }
 
-            if (result.error) throw new Error(result.error.message);
+            if (result.error) throw new Error(mapDatabaseError(result.error));
 
             await fetchAppetiteAndCases();
             return { error: null };
@@ -108,7 +109,7 @@ export const useAppetites = (): UseAppetitesReturn => {
                 .update({ is_active: false })
                 .eq('id', id);
 
-            if (updateError) throw new Error(updateError.message);
+            if (updateError) throw new Error(mapDatabaseError(updateError));
 
             setMyAppetite(null);
             return { error: null };

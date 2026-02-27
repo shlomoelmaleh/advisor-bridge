@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Send, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { mapDatabaseError } from '@/lib/mapDatabaseError';
 import type { MatchWithDetails } from '@/types/matches';
 
 interface Message {
@@ -159,8 +160,8 @@ const Chat = () => {
 
             if (error) throw error;
             setNewMessage('');
-        } catch (err: any) {
-            toast.error(`שגיאה בשליחת הודעה: ${err.message}`);
+        } catch (err: unknown) {
+            toast.error(mapDatabaseError(err));
         } finally {
             setSending(false);
         }

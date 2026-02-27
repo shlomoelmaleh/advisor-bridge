@@ -77,6 +77,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_anonymous: boolean | null
+          last_matched_at: string | null
           loan_amount_max: number | null
           loan_amount_min: number | null
           ltv: number | null
@@ -91,6 +92,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_anonymous?: boolean | null
+          last_matched_at?: string | null
           loan_amount_max?: number | null
           loan_amount_min?: number | null
           ltv?: number | null
@@ -105,6 +107,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_anonymous?: boolean | null
+          last_matched_at?: string | null
           loan_amount_max?: number | null
           loan_amount_min?: number | null
           ltv?: number | null
@@ -125,7 +128,9 @@ export type Database = {
       }
       matches: {
         Row: {
+          advisor_status: string | null
           appetite_id: string | null
+          banker_status: string | null
           case_id: string | null
           created_at: string | null
           id: string
@@ -133,7 +138,9 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          advisor_status?: string | null
           appetite_id?: string | null
+          banker_status?: string | null
           case_id?: string | null
           created_at?: string | null
           id?: string
@@ -141,7 +148,9 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          advisor_status?: string | null
           appetite_id?: string | null
+          banker_status?: string | null
           case_id?: string | null
           created_at?: string | null
           id?: string
