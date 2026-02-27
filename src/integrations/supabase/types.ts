@@ -233,7 +233,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      compute_match_score: {
+        Args: { p_appetite_id: string; p_case_id: string }
+        Returns: number
+      }
+      run_matching_for_case: { Args: { p_case_id: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
