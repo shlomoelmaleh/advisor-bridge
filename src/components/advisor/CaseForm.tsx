@@ -1,199 +1,254 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { useCases } from '@/hooks/useCases';
+import type { BorrowerType } from '@/types/cases';
 
 const CaseForm = () => {
   const navigate = useNavigate();
+  const { createCase } = useCases();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Form state
-  const [loanAmount, setLoanAmount] = useState(300000);
-  const [dealType, setDealType] = useState('purchase');
-  const [financingPercentage, setFinancingPercentage] = useState(80);
-  const [borrowerIncome, setBorrowerIncome] = useState(80000);
-  const [borrowerObligations, setBorrowerObligations] = useState(1000);
-  const [loanStructure, setLoanStructure] = useState('');
-  const [notes, setNotes] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // ── Form state ─────────────────────────────────────────────────────────────
+  const [loanAmountMin, setLoanAmountMin] = useState(800_000);
+  const [loanAmountMax, setLoanAmountMax] = useState(1_500_000);
+  const [ltv, setLtv] = useState(75);
+  const [borrowerType, setBorrowerType] = useState<BorrowerType>('employee');
+  const [propertyType, setPropertyType] = useState('apartment');
+  const [region, setRegion] = useState('center');
+
+  // Priorities
+  const [prioritySpeed, setPrioritySpeed] = useState(false);
+  const [priorityRate, setPriorityRate] = useState(false);
+  const [priorityLtv, setPriorityLtv] = useState(false);
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
-    // Validate input
-    if (loanAmount <= 0 || borrowerIncome <= 0) {
-      toast.error('Please enter valid amounts');
-      setIsSubmitting(false);
+    if (loanAmountMin > loanAmountMax) {
+      toast.error('סכום מינימלי לא יכול להיות גדול ממקסימלי');
       return;
     }
 
-    // In a real app, this would be an API call
-    setTimeout(() => {
-      toast.success('Case submitted successfully!');
-      setIsSubmitting(false);
+    setIsSubmitting(true);
+
+    const { error } = await createCase({
+      loan_amount_min: loanAmountMin,
+      loan_amount_max: loanAmountMax,
+      ltv,
+      borrower_type: borrowerType,
+      property_type: propertyType,
+      region,
+      priorities: {
+        speed: prioritySpeed,
+        rate: priorityRate,
+        ltv: priorityLtv,
+      },
+      is_anonymous: true,
+    });
+
+    setIsSubmitting(false);
+
+    if (error) {
+      toast.error(`שגיאה בהגשת התיק: ${error}`);
+    } else {
+      toast.success('התיק הוגש בהצלחה!');
       navigate('/advisor/dashboard');
-    }, 1000);
+    }
   };
 
   return (
     <Card className="max-w-3xl mx-auto animated-card">
       <form onSubmit={handleSubmit}>
         <CardHeader>
-          <CardTitle>Submit New Mortgage Case</CardTitle>
+          <CardTitle>הגשת תיק משכנתא חדש</CardTitle>
           <CardDescription>
-            Complete the form below to submit a new case to bank representatives
+            מלא את הפרטים — התיק יוצג לסניפים באופן אנונימי
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Loan Amount */}
+
+        <CardContent className="space-y-8">
+          {/* ── Loan amount range ─────────────────────────────────────────── */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <Label htmlFor="loanAmount">Loan Amount</Label>
-              <div className="text-right">
-                <span className="text-2xl font-semibold">${loanAmount.toLocaleString()}</span>
+              <Label>טווח סכום המשכנתא</Label>
+              <span className="text-sm text-muted-foreground">
+                ₪{loanAmountMin.toLocaleString()} – ₪{loanAmountMax.toLocaleString()}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="amountMin" className="text-xs text-muted-foreground">
+                  מינימום
+                </Label>
+                <Slider
+                  id="amountMin"
+                  min={100_000}
+                  max={5_000_000}
+                  step={50_000}
+                  value={[loanAmountMin]}
+                  onValueChange={([v]) => setLoanAmountMin(v)}
+                  className="cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>₪100K</span>
+                  <span>₪5M</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="amountMax" className="text-xs text-muted-foreground">
+                  מקסימום
+                </Label>
+                <Slider
+                  id="amountMax"
+                  min={100_000}
+                  max={5_000_000}
+                  step={50_000}
+                  value={[loanAmountMax]}
+                  onValueChange={([v]) => setLoanAmountMax(v)}
+                  className="cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>₪100K</span>
+                  <span>₪5M</span>
+                </div>
               </div>
             </div>
-            <Slider
-              id="loanAmount"
-              min={50000}
-              max={2000000}
-              step={10000}
-              value={[loanAmount]}
-              onValueChange={(values) => setLoanAmount(values[0])}
-              className="cursor-pointer"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>$50,000</span>
-              <span>$2,000,000</span>
-            </div>
           </div>
 
-          {/* Deal Type */}
-          <div className="space-y-2">
-            <Label htmlFor="dealType">Type of Deal</Label>
-            <Select 
-              value={dealType} 
-              onValueChange={setDealType}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select deal type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="purchase">Purchase</SelectItem>
-                <SelectItem value="refinance">Refinance</SelectItem>
-                <SelectItem value="equity">Home Equity</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Financing Percentage */}
-          <div className="space-y-4">
+          {/* ── LTV ──────────────────────────────────────────────────────── */}
+          <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <Label htmlFor="financingPercentage">Financing Percentage</Label>
-              <span className="text-lg font-medium">{financingPercentage}%</span>
+              <Label htmlFor="ltv">אחוז מימון (LTV)</Label>
+              <span className="font-semibold text-lg">{ltv}%</span>
             </div>
             <Slider
-              id="financingPercentage"
-              min={20}
+              id="ltv"
+              min={10}
               max={95}
               step={5}
-              value={[financingPercentage]}
-              onValueChange={(values) => setFinancingPercentage(values[0])}
+              value={[ltv]}
+              onValueChange={([v]) => setLtv(v)}
               className="cursor-pointer"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>20%</span>
+              <span>10%</span>
               <span>95%</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Borrower Income */}
+          {/* ── Borrower type + Property type + Region ───────────────────── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="borrowerIncome">Annual Income</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  id="borrowerIncome"
-                  type="number"
-                  value={borrowerIncome}
-                  onChange={(e) => setBorrowerIncome(Number(e.target.value))}
-                  className="pl-7"
-                  min={0}
-                  required
-                />
-              </div>
+              <Label htmlFor="borrowerType">סוג לווה</Label>
+              <Select
+                value={borrowerType}
+                onValueChange={(v) => setBorrowerType(v as BorrowerType)}
+              >
+                <SelectTrigger id="borrowerType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employee">שכיר</SelectItem>
+                  <SelectItem value="self_employed">עצמאי</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Borrower Obligations */}
             <div className="space-y-2">
-              <Label htmlFor="borrowerObligations">Monthly Obligations</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  id="borrowerObligations"
-                  type="number"
-                  value={borrowerObligations}
-                  onChange={(e) => setBorrowerObligations(Number(e.target.value))}
-                  className="pl-7"
-                  min={0}
-                  required
-                />
-              </div>
+              <Label htmlFor="propertyType">סוג נכס</Label>
+              <Select value={propertyType} onValueChange={setPropertyType}>
+                <SelectTrigger id="propertyType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="apartment">דירה</SelectItem>
+                  <SelectItem value="private_house">בית פרטי</SelectItem>
+                  <SelectItem value="penthouse">פנטהאוז</SelectItem>
+                  <SelectItem value="commercial">מסחרי</SelectItem>
+                  <SelectItem value="land">קרקע</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="region">אזור</Label>
+              <Select value={region} onValueChange={setRegion}>
+                <SelectTrigger id="region">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="center">מרכז</SelectItem>
+                  <SelectItem value="tel_aviv">תל אביב</SelectItem>
+                  <SelectItem value="jerusalem">ירושלים</SelectItem>
+                  <SelectItem value="north">צפון</SelectItem>
+                  <SelectItem value="south">דרום</SelectItem>
+                  <SelectItem value="sharon">שרון</SelectItem>
+                  <SelectItem value="shfela">שפלה</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Loan Structure */}
-          <div className="space-y-2">
-            <Label htmlFor="loanStructure">
-              Desired Loan Structure <span className="text-muted-foreground text-xs">(Optional)</span>
-            </Label>
-            <Input
-              id="loanStructure"
-              value={loanStructure}
-              onChange={(e) => setLoanStructure(e.target.value)}
-              placeholder="e.g., 30-year fixed, 5/1 ARM, etc."
-            />
-          </div>
-
-          {/* Additional Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">
-              Additional Notes <span className="text-muted-foreground text-xs">(Optional)</span>
-            </Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any relevant information about the borrower or property"
-              rows={4}
-            />
+          {/* ── Priorities ────────────────────────────────────────────────── */}
+          <div className="space-y-3">
+            <Label>עדיפויות הלקוח</Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              מה חשוב ללקוח? (ניתן לסמן כמה)
+            </p>
+            <div className="flex flex-wrap gap-6">
+              {[
+                { id: 'speed', label: 'מהירות אישור', checked: prioritySpeed, set: setPrioritySpeed },
+                { id: 'rate', label: 'ריבית נמוכה', checked: priorityRate, set: setPriorityRate },
+                { id: 'ltv', label: 'אחוז מימון גבוה', checked: priorityLtv, set: setPriorityLtv },
+              ].map(({ id, label, checked, set }) => (
+                <div key={id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`priority-${id}`}
+                    checked={checked}
+                    onCheckedChange={(val) => set(val === true)}
+                  />
+                  <Label htmlFor={`priority-${id}`} className="cursor-pointer font-normal">
+                    {label}
+                  </Label>
+                </div>
+              ))}
+            </div>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end space-x-4">
-          <Button 
-            type="button" 
-            variant="outline" 
+
+        <CardFooter className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => navigate('/advisor/dashboard')}
+            disabled={isSubmitting}
           >
-            Cancel
+            ביטול
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Submitting...' : 'Submit Case'}
+            {isSubmitting ? 'שולח…' : 'הגשת תיק'}
           </Button>
         </CardFooter>
       </form>

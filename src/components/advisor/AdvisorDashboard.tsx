@@ -1,230 +1,241 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, FileSpreadsheet, AlertCircle, Check, Clock, HandshakeIcon, LockIcon } from 'lucide-react';
-import { MortgageCase, User } from '@/types';
-import { getCasesByAdvisor, getCurrentUser } from '@/lib/mockData';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  PlusCircle,
+  FileSpreadsheet,
+  AlertCircle,
+  Check,
+  Clock,
+  HandshakeIcon,
+  LockIcon,
+} from 'lucide-react';
+import { useCases } from '@/hooks/useCases';
+import { useAuth } from '@/hooks/useAuth';
+import type { DbCase, CaseStatus } from '@/types/cases';
 
-const getStatusColor = (status: MortgageCase['status']) => {
-  switch (status) {
-    case 'open':
-      return 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20';
-    case 'in_progress':
-      return 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20';
-    case 'matched':
-      return 'bg-green-500/10 text-green-500 hover:bg-green-500/20';
-    case 'closed':
-      return 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20';
-    default:
-      return 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20';
-  }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const STATUS_COLOR: Record<CaseStatus, string> = {
+  open: 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20',
+  in_progress: 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20',
+  matched: 'bg-green-500/10 text-green-500 hover:bg-green-500/20',
+  closed: 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20',
 };
 
-const getStatusIcon = (status: MortgageCase['status']) => {
-  switch (status) {
-    case 'open':
-      return <AlertCircle className="h-4 w-4 mr-1" />;
-    case 'in_progress':
-      return <Clock className="h-4 w-4 mr-1" />;
-    case 'matched':
-      return <HandshakeIcon className="h-4 w-4 mr-1" />;
-    case 'closed':
-      return <LockIcon className="h-4 w-4 mr-1" />;
-    default:
-      return null;
-  }
+const STATUS_ICON: Record<CaseStatus, React.ReactNode> = {
+  open: <AlertCircle className="h-4 w-4 mr-1" />,
+  in_progress: <Clock className="h-4 w-4 mr-1" />,
+  matched: <HandshakeIcon className="h-4 w-4 mr-1" />,
+  closed: <LockIcon className="h-4 w-4 mr-1" />,
 };
 
-const getStatusLabel = (status: MortgageCase['status']) => {
-  switch (status) {
-    case 'open':
-      return 'Open';
-    case 'in_progress':
-      return 'In Progress';
-    case 'matched':
-      return 'Matched';
-    case 'closed':
-      return 'Closed';
-    default:
-      return status;
-  }
+const STATUS_LABEL: Record<CaseStatus, string> = {
+  open: 'פתוח',
+  in_progress: 'בטיפול',
+  matched: 'הותאם',
+  closed: 'סגור',
 };
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  }).format(date);
+const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
+
+const formatDate = (iso: string) =>
+  new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'short', year: 'numeric' }).format(
+    new Date(iso)
+  );
+
+// ─── Skeleton loader ──────────────────────────────────────────────────────────
+
+const CaseSkeleton = () => (
+  <div className="space-y-3">
+    {[1, 2, 3].map((i) => (
+      <div key={i} className="p-4 border rounded-lg flex flex-col gap-2">
+        <Skeleton className="h-5 w-1/3" />
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-4 w-1/4" />
+      </div>
+    ))}
+  </div>
+);
+
+// ─── Single case row ──────────────────────────────────────────────────────────
+
+const CaseRow: React.FC<{ c: DbCase }> = ({ c }) => (
+  <div className="p-4 border rounded-lg hover:bg-accent transition-colors card-highlight">
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="font-semibold text-lg">
+            {fmt(c.loan_amount_min)} – {fmt(c.loan_amount_max)}
+          </h3>
+          <Badge className={`flex items-center ${STATUS_COLOR[c.status]}`}>
+            {STATUS_ICON[c.status]}
+            {STATUS_LABEL[c.status]}
+          </Badge>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-1">
+          <Badge variant="outline">LTV {c.ltv}%</Badge>
+          <Badge variant="outline">
+            {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
+          </Badge>
+          <Badge variant="outline">{c.property_type}</Badge>
+          <Badge variant="outline">{c.region}</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">הוגש ב-{formatDate(c.created_at)}</p>
+      </div>
+    </div>
+  </div>
+);
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+const EmptyState: React.FC<{ filtered?: boolean }> = ({ filtered }) => (
+  <div className="text-center py-10">
+    <p className="text-muted-foreground mb-4">
+      {filtered ? 'אין תיקים בסטטוס זה' : 'עדיין לא הגשת תיקים'}
+    </p>
+    {!filtered && (
+      <Link to="/advisor/submit-case">
+        <Button>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          הגש תיק ראשון
+        </Button>
+      </Link>
+    )}
+  </div>
+);
+
+// ─── Case list for a given filter ─────────────────────────────────────────────
+
+const CaseList: React.FC<{ cases: DbCase[]; filter: string }> = ({ cases, filter }) => {
+  const filtered =
+    filter === 'all' ? cases : cases.filter((c) => c.status === filter);
+
+  return filtered.length > 0 ? (
+    <div className="space-y-3">
+      {filtered.map((c) => (
+        <CaseRow key={c.id} c={c} />
+      ))}
+    </div>
+  ) : (
+    <EmptyState filtered={filter !== 'all'} />
+  );
 };
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 const AdvisorDashboard = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [cases, setCases] = useState<MortgageCase[]>([]);
-  const [filteredCases, setFilteredCases] = useState<MortgageCase[]>([]);
+  const { profile } = useAuth();
+  const { cases, loading, error } = useCases();
   const [activeFilter, setActiveFilter] = useState('all');
-
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-
-    if (currentUser) {
-      const advisorCases = getCasesByAdvisor(currentUser.id);
-      setCases(advisorCases);
-      setFilteredCases(advisorCases);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeFilter === 'all') {
-      setFilteredCases(cases);
-    } else {
-      setFilteredCases(cases.filter(c => c.status === activeFilter));
-    }
-  }, [activeFilter, cases]);
 
   const stats = [
     {
-      title: 'Total Cases',
+      title: 'סה"כ תיקים',
       value: cases.length,
       icon: <FileSpreadsheet className="h-4 w-4" />,
-      color: 'text-blue-500'
+      color: 'text-blue-500',
     },
     {
-      title: 'Matched Cases',
-      value: cases.filter(c => c.status === 'matched').length,
+      title: 'הותאמו',
+      value: cases.filter((c) => c.status === 'matched').length,
       icon: <Check className="h-4 w-4" />,
-      color: 'text-green-500'
+      color: 'text-green-500',
     },
     {
-      title: 'Open Cases',
-      value: cases.filter(c => c.status === 'open').length,
+      title: 'פתוחים',
+      value: cases.filter((c) => c.status === 'open').length,
       icon: <AlertCircle className="h-4 w-4" />,
-      color: 'text-amber-500'
-    }
+      color: 'text-amber-500',
+    },
   ];
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">לוח הבקרה</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user?.name}. Here's an overview of your mortgage cases.
+            שלום, {profile?.full_name ?? 'יועץ'} — כאן כל התיקים שלך
           </p>
         </div>
         <Link to="/advisor/submit-case">
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
-            New Case
+            תיק חדש
           </Button>
         </Link>
       </div>
 
+      {/* Stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {stats.map((stat, index) => (
-          <Card key={index} className="hover-scale">
+        {stats.map((stat, i) => (
+          <Card key={i} className="hover-scale">
             <CardContent className="p-6 flex justify-between items-center">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+                <p className={`text-3xl font-bold ${stat.color}`}>
+                  {loading ? '—' : stat.value}
+                </p>
               </div>
-              <div className={`rounded-full p-3 ${stat.color} bg-opacity-10`}>
-                {stat.icon}
-              </div>
+              <div className={`rounded-full p-3 ${stat.color} bg-opacity-10`}>{stat.icon}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
+      {/* Cases table */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Mortgage Cases</CardTitle>
+          <CardTitle>התיקים שלי</CardTitle>
           <CardDescription>
-            Manage and track all your submitted mortgage cases
+            ניהול ומעקב אחר כל התיקים שהגשת
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="all" className="w-full" onValueChange={setActiveFilter}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="all">All Cases</TabsTrigger>
-              <TabsTrigger value="open">Open</TabsTrigger>
-              <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-              <TabsTrigger value="matched">Matched</TabsTrigger>
-              <TabsTrigger value="closed">Closed</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" className="space-y-4">
-              {filteredCases.length > 0 ? (
-                filteredCases.map(mortgageCase => (
-                  <div 
-                    key={mortgageCase.id} 
-                    className="p-4 border rounded-lg hover:bg-accent transition-colors card-highlight"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center">
-                          <h3 className="font-semibold text-lg">
-                            ${mortgageCase.loanAmount.toLocaleString()}
-                          </h3>
-                          <Badge 
-                            className={`ml-3 flex items-center ${getStatusColor(mortgageCase.status)}`}
-                          >
-                            {getStatusIcon(mortgageCase.status)}
-                            {getStatusLabel(mortgageCase.status)}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          <Badge variant="outline">{mortgageCase.dealType}</Badge>
-                          <Badge variant="outline">{mortgageCase.financingPercentage}% Financing</Badge>
-                          <Badge variant="outline">
-                            Income: ${mortgageCase.borrowerIncome.toLocaleString()}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Submitted on {formatDate(mortgageCase.createdAt)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium">
-                          {mortgageCase.interestedBanks.length} interested {mortgageCase.interestedBanks.length === 1 ? 'bank' : 'banks'}
-                        </span>
-                        <Link to={`/advisor/case/${mortgageCase.id}`}>
-                          <Button variant="outline" size="sm">View Details</Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No cases found.</p>
-                  <Link to="/advisor/submit-case" className="mt-4 inline-block">
-                    <Button>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Submit New Case
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </TabsContent>
-            <TabsContent value="open" className="space-y-4">
-              {/* The filtered cases are shown automatically due to the useEffect */}
-            </TabsContent>
-            <TabsContent value="in_progress" className="space-y-4">
-              {/* The filtered cases are shown automatically due to the useEffect */}
-            </TabsContent>
-            <TabsContent value="matched" className="space-y-4">
-              {/* The filtered cases are shown automatically due to the useEffect */}
-            </TabsContent>
-            <TabsContent value="closed" className="space-y-4">
-              {/* The filtered cases are shown automatically due to the useEffect */}
-            </TabsContent>
-          </Tabs>
+          {error ? (
+            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              שגיאה בטעינת התיקים: {error}
+            </div>
+          ) : loading ? (
+            <CaseSkeleton />
+          ) : (
+            <Tabs defaultValue="all" onValueChange={setActiveFilter}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="all">הכל ({cases.length})</TabsTrigger>
+                <TabsTrigger value="open">
+                  פתוח ({cases.filter((c) => c.status === 'open').length})
+                </TabsTrigger>
+                <TabsTrigger value="in_progress">
+                  בטיפול ({cases.filter((c) => c.status === 'in_progress').length})
+                </TabsTrigger>
+                <TabsTrigger value="matched">
+                  הותאם ({cases.filter((c) => c.status === 'matched').length})
+                </TabsTrigger>
+                <TabsTrigger value="closed">
+                  סגור ({cases.filter((c) => c.status === 'closed').length})
+                </TabsTrigger>
+              </TabsList>
+
+              {/* All tabs render the same CaseList, filtered by value */}
+              {(['all', 'open', 'in_progress', 'matched', 'closed'] as const).map((tab) => (
+                <TabsContent key={tab} value={tab}>
+                  <CaseList cases={cases} filter={tab} />
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
         </CardContent>
       </Card>
     </div>
