@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { DbCase, CreateCaseData, CasePriorities } from '@/types/cases';
+import { mapDatabaseError } from '@/lib/mapDatabaseError';
 
 interface UseCasesReturn {
     cases: DbCase[];
@@ -44,7 +45,7 @@ export const useCases = (): UseCasesReturn => {
         const { data, error: fetchError } = await query;
 
         if (fetchError) {
-            setError(fetchError.message);
+            setError(mapDatabaseError(fetchError));
         } else {
             setCases((data ?? []).map((row) => ({
                 ...row,
@@ -78,7 +79,7 @@ export const useCases = (): UseCasesReturn => {
             status: 'open',
         }]);
 
-        if (insertError) return { error: insertError.message };
+        if (insertError) return { error: mapDatabaseError(insertError) };
 
         await fetchCases();
         return { error: null };
@@ -93,7 +94,7 @@ export const useCases = (): UseCasesReturn => {
             .update({ status })
             .eq('id', id);
 
-        if (updateError) return { error: updateError.message };
+        if (updateError) return { error: mapDatabaseError(updateError) };
 
         // Optimistic local update
         setCases((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c)));

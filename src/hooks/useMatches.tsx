@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { mapDatabaseError } from '@/lib/mapDatabaseError';
 import type { MatchWithDetails, MatchStatus } from '@/types/matches';
 
 interface UseMatchesReturn {
@@ -30,7 +31,6 @@ export const useMatches = (): UseMatchesReturn => {
         setError(null);
 
         try {
-            // Query matches with joined case and appetite data
             const { data, error: fetchError } = await supabase
                 .from('matches')
                 .select(`
@@ -54,10 +54,8 @@ export const useMatches = (): UseMatchesReturn => {
         `)
                 .order('score', { ascending: false });
 
-            if (fetchError) throw new Error(fetchError.message);
+            if (fetchError) throw fetchError;
 
-            // Filter the results in memory since PostgREST doesn't support filtering
-            // by a joined table's column at the top level easily in the JS client
             let filteredData = (data as unknown as MatchWithDetails[]) || [];
 
             if (profile.role === 'advisor') {
@@ -67,8 +65,8 @@ export const useMatches = (): UseMatchesReturn => {
             }
 
             setMatches(filteredData);
-        } catch (err: any) {
-            setError(err.message || 'Error fetching matches');
+        } catch (err: unknown) {
+            setError(mapDatabaseError(err));
         } finally {
             setLoading(false);
         }
@@ -83,30 +81,32 @@ export const useMatches = (): UseMatchesReturn => {
             const { error } = await supabase.rpc('run_matching_for_case', {
                 p_case_id: caseId,
             });
-            if (error) throw new Error(error.message);
+            if (error) throw error;
 
             await fetchMatches();
             return { error: null };
-        } catch (err: any) {
-            return { error: err.message || 'Error running matching algorithm' };
+        } catch (err: unknown) {
+            return { error: mapDatabaseError(err) };
         }
     };
 
     const updateMatchStatus = async (matchId: string, newStatus: MatchStatus) => {
+        if (!profile) return { error: 'Not authenticated' };
+
         try {
+            // Use role-specific column to prevent race conditions
+            const column = profile.role === 'advisor' ? 'advisor_status' : 'banker_status';
             const { error } = await supabase
                 .from('matches')
-                .update({ status: newStatus })
+                .update({ [column]: newStatus } as any)
                 .eq('id', matchId);
 
-            if (error) throw new Error(error.message);
+            if (error) throw error;
 
-            // Status update logic: if both sides mark interested it becomes closed.
-            // Easiest is to just let a DB trigger handle it, or refresh to see the true state.
             await fetchMatches();
             return { error: null };
-        } catch (err: any) {
-            return { error: err.message || `Error updating match to ${newStatus}` };
+        } catch (err: unknown) {
+            return { error: mapDatabaseError(err) };
         }
     };
 

@@ -12,37 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { useAuth, UserRole } from '@/hooks/useAuth';
-import { Building2, UserCheck } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AuthFormProps {
   defaultTab?: 'login' | 'register';
 }
-
-// ─── Role selector card ────────────────────────────────────────────────────────
-const RoleCard: React.FC<{
-  value: UserRole;
-  selected: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}> = ({ selected, onClick, icon, title, description }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={[
-      'flex-1 rounded-lg border-2 p-4 text-left transition-all duration-150 hover:border-primary/60',
-      selected
-        ? 'border-primary bg-primary/5 shadow-sm'
-        : 'border-border bg-background',
-    ].join(' ')}
-  >
-    <div className={`mb-2 ${selected ? 'text-primary' : 'text-muted-foreground'}`}>{icon}</div>
-    <p className={`text-sm font-semibold ${selected ? 'text-primary' : ''}`}>{title}</p>
-    <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-  </button>
-);
 
 // ─── Error banner ─────────────────────────────────────────────────────────────
 const ErrorBanner: React.FC<{ message: string }> = ({ message }) => (
@@ -62,7 +36,6 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // ── Register state ──────────────────────────────────────────────────────────
-  const [role, setRole] = useState<UserRole>('advisor');
   const [fullName, setFullName] = useState('');
   const [company, setCompany] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
@@ -113,7 +86,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
       registerEmail,
       registerPassword,
       fullName.trim(),
-      role,
+      'advisor',
       company.trim() || undefined
     );
 
@@ -200,27 +173,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
               <CardContent className="space-y-5">
                 {registerError && <ErrorBanner message={registerError} />}
 
-                {/* Role selector */}
-                <div className="space-y-2">
-                  <Label>סוג חשבון</Label>
-                  <div className="flex gap-3">
-                    <RoleCard
-                      value="advisor"
-                      selected={role === 'advisor'}
-                      onClick={() => setRole('advisor')}
-                      icon={<UserCheck className="h-5 w-5" />}
-                      title="יועץ משכנתא"
-                      description="הגשת תיקים וקבלת הצעות מסניפים"
-                    />
-                    <RoleCard
-                      value="bank"
-                      selected={role === 'bank'}
-                      onClick={() => setRole('bank')}
-                      icon={<Building2 className="h-5 w-5" />}
-                      title="בנקאי / סניף"
-                      description="הגדרת appetite וקבלת תיקים"
-                    />
-                  </div>
+                {/* Role info */}
+                <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                  <p>חשבון יועץ משכנתא – הגשת תיקים וקבלת הצעות מסניפים.</p>
+                  <p className="mt-1 text-xs">צריך חשבון בנקאי? פנה למנהל המערכת.</p>
                 </div>
 
                 {/* Full name */}
@@ -246,7 +202,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
                     id="reg-company"
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
-                    placeholder={role === 'advisor' ? 'שם משרד הייעוץ' : 'שם הסניף'}
+                    placeholder="שם משרד הייעוץ"
                     autoComplete="organization"
                   />
                 </div>
