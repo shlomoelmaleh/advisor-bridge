@@ -55,7 +55,7 @@ export const useAppetites = (): UseAppetitesReturn => {
                 .order('created_at', { ascending: false });
 
             if (casesError) throw new Error(casesError.message);
-            setOpenCases((casesData ?? []) as DbCase[]);
+            setOpenCases((casesData ?? []) as unknown as DbCase[]);
         } catch (err: any) {
             setError(err.message || 'Error fetching data');
         } finally {
