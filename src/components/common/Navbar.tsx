@@ -2,13 +2,13 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { 
-  Menu, 
-  User, 
-  LogOut, 
+import {
+  Menu,
+  User,
+  LogOut,
   Home,
 } from 'lucide-react';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -50,22 +50,29 @@ const Navbar = () => {
         <div className="hidden md:flex md:items-center md:space-x-4 md:ml-auto">
           {user ? (
             <>
-              <Link 
-                to={profile?.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'} 
+              <Link
+                to={profile?.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'}
                 className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
               >
                 Dashboard
               </Link>
-              
+
+              <Link
+                to="/matches"
+                className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+              >
+                התאמות
+              </Link>
+
               {profile?.role === 'advisor' && (
-                <Link 
-                  to="/advisor/submit-case" 
+                <Link
+                  to="/advisor/submit-case"
                   className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                 >
                   Submit Case
                 </Link>
               )}
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -87,8 +94,8 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Link 
-                to="/login" 
+              <Link
+                to="/login"
                 className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
               >
                 Login
@@ -106,26 +113,34 @@ const Navbar = () => {
             <nav className="flex flex-col space-y-3">
               {user ? (
                 <>
-                  <Link 
-                    to={profile?.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'} 
+                  <Link
+                    to={profile?.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'}
                     className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Home className="mr-2 h-4 w-4" />
                     Dashboard
                   </Link>
-                  
+
+                  <Link
+                    to="/matches"
+                    className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    התאמות
+                  </Link>
+
                   {profile?.role === 'advisor' && (
-                    <Link 
-                      to="/advisor/submit-case" 
+                    <Link
+                      to="/advisor/submit-case"
                       className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Submit Case
                     </Link>
                   )}
-                  
-                  <button 
+
+                  <button
                     onClick={() => {
                       handleLogout();
                       setIsMobileMenuOpen(false);
@@ -138,15 +153,15 @@ const Navbar = () => {
                 </>
               ) : (
                 <>
-                  <Link 
-                    to="/login" 
+                  <Link
+                    to="/login"
                     className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Login
                   </Link>
-                  <Link 
-                    to="/register" 
+                  <Link
+                    to="/register"
                     className="flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >

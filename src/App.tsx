@@ -12,9 +12,10 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import AdvisorDashboard from "./pages/AdvisorDashboard";
-import BankDashboard from "./pages/BankDashboard";
-import CaseSubmit from "./pages/CaseSubmit";
+import AdvisorDashboard from './components/advisor/AdvisorDashboard';
+import BankDashboard from './components/bank/BankDashboard';
+import CaseForm from './components/advisor/CaseForm';
+import MatchesPage from './pages/Matches';
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,7 +70,7 @@ const App = () => (
               path="/advisor/submit-case"
               element={
                 <ProtectedRoute role="advisor">
-                  <CaseSubmit />
+                  <CaseForm />
                 </ProtectedRoute>
               }
             />
@@ -83,6 +84,9 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
+            {/* Shared authenticated routes */}
+            <Route path="/matches" element={<ProtectedRoute><MatchesPage /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
