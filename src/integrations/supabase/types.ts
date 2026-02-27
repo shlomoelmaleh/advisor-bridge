@@ -14,7 +14,220 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      branch_appetites: {
+        Row: {
+          appetite_level: string | null
+          bank_name: string
+          banker_id: string | null
+          branch_name: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          max_ltv: number | null
+          min_loan_amount: number | null
+          preferred_borrower_types: string[] | null
+          preferred_regions: string[] | null
+          sla_days: number | null
+          valid_until: string | null
+        }
+        Insert: {
+          appetite_level?: string | null
+          bank_name: string
+          banker_id?: string | null
+          branch_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_ltv?: number | null
+          min_loan_amount?: number | null
+          preferred_borrower_types?: string[] | null
+          preferred_regions?: string[] | null
+          sla_days?: number | null
+          valid_until?: string | null
+        }
+        Update: {
+          appetite_level?: string | null
+          bank_name?: string
+          banker_id?: string | null
+          branch_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_ltv?: number | null
+          min_loan_amount?: number | null
+          preferred_borrower_types?: string[] | null
+          preferred_regions?: string[] | null
+          sla_days?: number | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_appetites_banker_id_fkey"
+            columns: ["banker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      cases: {
+        Row: {
+          advisor_id: string | null
+          borrower_type: string | null
+          created_at: string | null
+          id: string
+          is_anonymous: boolean | null
+          loan_amount_max: number | null
+          loan_amount_min: number | null
+          ltv: number | null
+          priorities: Json | null
+          property_type: string | null
+          region: string | null
+          status: string | null
+        }
+        Insert: {
+          advisor_id?: string | null
+          borrower_type?: string | null
+          created_at?: string | null
+          id?: string
+          is_anonymous?: boolean | null
+          loan_amount_max?: number | null
+          loan_amount_min?: number | null
+          ltv?: number | null
+          priorities?: Json | null
+          property_type?: string | null
+          region?: string | null
+          status?: string | null
+        }
+        Update: {
+          advisor_id?: string | null
+          borrower_type?: string | null
+          created_at?: string | null
+          id?: string
+          is_anonymous?: boolean | null
+          loan_amount_max?: number | null
+          loan_amount_min?: number | null
+          ltv?: number | null
+          priorities?: Json | null
+          property_type?: string | null
+          region?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cases_advisor_id_fkey"
+            columns: ["advisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          appetite_id: string | null
+          case_id: string | null
+          created_at: string | null
+          id: string
+          score: number | null
+          status: string | null
+        }
+        Insert: {
+          appetite_id?: string | null
+          case_id?: string | null
+          created_at?: string | null
+          id?: string
+          score?: number | null
+          status?: string | null
+        }
+        Update: {
+          appetite_id?: string | null
+          case_id?: string | null
+          created_at?: string | null
+          id?: string
+          score?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_appetite_id_fkey"
+            columns: ["appetite_id"]
+            isOneToOne: false
+            referencedRelation: "branch_appetites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          match_id: string | null
+          sender_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          match_id?: string | null
+          sender_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          match_id?: string | null
+          sender_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          full_name: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
