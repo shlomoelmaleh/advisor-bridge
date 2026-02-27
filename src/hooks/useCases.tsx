@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import type { DbCase, CreateCaseData } from '@/types/cases';
+import type { DbCase, CreateCaseData, CasePriorities } from '@/types/cases';
 
 interface UseCasesReturn {
     cases: DbCase[];
@@ -46,7 +46,12 @@ export const useCases = (): UseCasesReturn => {
         if (fetchError) {
             setError(fetchError.message);
         } else {
-            setCases((data ?? []) as DbCase[]);
+            setCases((data ?? []).map((row) => ({
+                ...row,
+                priorities: (row.priorities ?? { speed: false, rate: false, ltv: false }) as unknown as CasePriorities,
+                status: row.status as DbCase['status'],
+                borrower_type: row.borrower_type as DbCase['borrower_type'],
+            })) as DbCase[]);
         }
 
         setLoading(false);
@@ -60,11 +65,18 @@ export const useCases = (): UseCasesReturn => {
     const createCase = async (data: CreateCaseData): Promise<{ error: string | null }> => {
         if (!user) return { error: 'Not authenticated' };
 
-        const { error: insertError } = await supabase.from('cases').insert({
-            ...data,
+        const { error: insertError } = await supabase.from('cases').insert([{
+            loan_amount_min: data.loan_amount_min,
+            loan_amount_max: data.loan_amount_max,
+            ltv: data.ltv,
+            borrower_type: data.borrower_type,
+            property_type: data.property_type,
+            region: data.region,
+            priorities: data.priorities as unknown as Record<string, boolean>,
+            is_anonymous: data.is_anonymous,
             advisor_id: user.id,
             status: 'open',
-        });
+        }]);
 
         if (insertError) return { error: insertError.message };
 

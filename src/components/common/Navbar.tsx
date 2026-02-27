@@ -3,12 +3,10 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
-  Bell, 
   Menu, 
   User, 
   LogOut, 
   Home,
-  ChevronDown
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -18,28 +16,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getCurrentUser, logoutUser, getUserNotifications } from '@/lib/mockData';
-import { User as UserType } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const [user, setUser] = React.useState<UserType | null>(null);
+  const { user, profile, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  
-  React.useEffect(() => {
-    // Check if user is logged in
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-  }, []);
 
-  const handleLogout = () => {
-    logoutUser();
-    setUser(null);
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
-
-  const notifications = user ? getUserNotifications(user.id) : [];
-  const unreadNotifications = notifications.filter(n => !n.read).length;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -64,13 +51,13 @@ const Navbar = () => {
           {user ? (
             <>
               <Link 
-                to={user.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'} 
+                to={profile?.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'} 
                 className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
               >
                 Dashboard
               </Link>
               
-              {user.role === 'advisor' && (
+              {profile?.role === 'advisor' && (
                 <Link 
                   to="/advisor/submit-case" 
                   className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
@@ -81,64 +68,16 @@ const Navbar = () => {
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Bell className="h-5 w-5" />
-                    {unreadNotifications > 0 && (
-                      <span className="absolute top-1 right-1 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                      </span>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 p-4">
-                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {notifications.length > 0 ? (
-                    notifications.slice(0, 5).map((notification) => (
-                      <DropdownMenuItem key={notification.id} className="py-2 px-3 cursor-pointer">
-                        <div className={`flex flex-col space-y-1 ${!notification.read ? 'font-medium' : ''}`}>
-                          <p className="text-sm">{notification.message}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(notification.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                      </DropdownMenuItem>
-                    ))
-                  ) : (
-                    <p className="py-2 text-sm text-center text-muted-foreground">
-                      No notifications yet
-                    </p>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="py-2 justify-center">
-                    <Link to="/notifications" className="text-primary text-sm">
-                      View all notifications
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <img
-                      src={user.avatar || 'https://i.pravatar.cc/150?img=default'}
-                      alt={user.name}
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
+                    <User className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+                  <DropdownMenuLabel>{profile?.full_name ?? 'User'}</DropdownMenuLabel>
                   <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                     {user.email}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
@@ -168,7 +107,7 @@ const Navbar = () => {
               {user ? (
                 <>
                   <Link 
-                    to={user.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'} 
+                    to={profile?.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'} 
                     className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -176,7 +115,7 @@ const Navbar = () => {
                     Dashboard
                   </Link>
                   
-                  {user.role === 'advisor' && (
+                  {profile?.role === 'advisor' && (
                     <Link 
                       to="/advisor/submit-case" 
                       className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
@@ -185,29 +124,6 @@ const Navbar = () => {
                       Submit Case
                     </Link>
                   )}
-                  
-                  <Link 
-                    to="/notifications" 
-                    className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Bell className="mr-2 h-4 w-4" />
-                    Notifications
-                    {unreadNotifications > 0 && (
-                      <span className="ml-auto bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
-                        {unreadNotifications}
-                      </span>
-                    )}
-                  </Link>
-                  
-                  <Link 
-                    to="/profile" 
-                    className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
                   
                   <button 
                     onClick={() => {
