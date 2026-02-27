@@ -1,259 +1,305 @@
-
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { loginUser } from '@/lib/mockData';
-import { UserRole } from '@/types';
+import { useAuth, UserRole } from '@/hooks/useAuth';
+import { Building2, UserCheck } from 'lucide-react';
 
 interface AuthFormProps {
   defaultTab?: 'login' | 'register';
 }
 
+// ─── Role selector card ────────────────────────────────────────────────────────
+const RoleCard: React.FC<{
+  value: UserRole;
+  selected: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}> = ({ selected, onClick, icon, title, description }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={[
+      'flex-1 rounded-lg border-2 p-4 text-left transition-all duration-150 hover:border-primary/60',
+      selected
+        ? 'border-primary bg-primary/5 shadow-sm'
+        : 'border-border bg-background',
+    ].join(' ')}
+  >
+    <div className={`mb-2 ${selected ? 'text-primary' : 'text-muted-foreground'}`}>{icon}</div>
+    <p className={`text-sm font-semibold ${selected ? 'text-primary' : ''}`}>{title}</p>
+    <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+  </button>
+);
+
+// ─── Error banner ─────────────────────────────────────────────────────────────
+const ErrorBanner: React.FC<{ message: string }> = ({ message }) => (
+  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+    {message}
+  </div>
+);
+
+// ─── Main component ───────────────────────────────────────────────────────────
 const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'login' | 'register'>(defaultTab);
+  const { signIn, signUp } = useAuth();
 
-  // Login form state
-  const [loginEmail, setLoginEmail] = React.useState('');
-  const [loginPassword, setLoginPassword] = React.useState('');
+  // ── Login state ─────────────────────────────────────────────────────────────
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Register form state
-  const [registerName, setRegisterName] = React.useState('');
-  const [registerEmail, setRegisterEmail] = React.useState('');
-  const [registerPassword, setRegisterPassword] = React.useState('');
-  const [registerConfirmPassword, setRegisterConfirmPassword] = React.useState('');
-  const [registerCompany, setRegisterCompany] = React.useState('');
-  const [registerRole, setRegisterRole] = React.useState<UserRole>('advisor');
+  // ── Register state ──────────────────────────────────────────────────────────
+  const [role, setRole] = useState<UserRole>('advisor');
+  const [fullName, setFullName] = useState('');
+  const [company, setCompany] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerConfirm, setRegisterConfirm] = useState('');
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [registerSuccess, setRegisterSuccess] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // ── Sign in ──────────────────────────────────────────────────────────────────
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoginError(null);
+    setLoginLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // Mock login logic - in a real app this would call an API
-      const user = loginUser(loginEmail, loginPassword);
-      
-      if (user) {
-        toast.success('Login successful!');
-        
-        // Redirect based on user role
-        if (user.role === 'advisor') {
-          navigate('/advisor/dashboard');
-        } else {
-          navigate('/bank/dashboard');
-        }
-      } else {
-        toast.error('Invalid credentials');
-      }
-      
-      setIsLoading(false);
-    }, 1000);
+    const { error } = await signIn(loginEmail, loginPassword);
+
+    if (error) {
+      setLoginError(error.message);
+      setLoginLoading(false);
+    }
+    // On success: ProtectedRoute / RootRedirect handles navigation automatically.
+    // We leave loading=true intentionally so the button stays disabled while the
+    // auth state propagates and the router redirects.
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  // ── Sign up ──────────────────────────────────────────────────────────────────
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setRegisterError(null);
 
-    // Validate passwords match
-    if (registerPassword !== registerConfirmPassword) {
-      toast.error('Passwords do not match');
-      setIsLoading(false);
+    if (!fullName.trim()) {
+      setRegisterError('נא להזין שם מלא');
+      return;
+    }
+    if (registerPassword !== registerConfirm) {
+      setRegisterError('הסיסמאות אינן תואמות');
+      return;
+    }
+    if (registerPassword.length < 6) {
+      setRegisterError('הסיסמה חייבת להכיל לפחות 6 תווים');
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, this would make an API call to register the user
-      toast.success('Account created successfully!');
-      setActiveTab('login');
-      setIsLoading(false);
-    }, 1000);
-  };
+    setRegisterLoading(true);
 
-  // For demo purposes, let's provide some test credentials
-  const setDemoCredentials = (role: UserRole) => {
-    if (role === 'advisor') {
-      setLoginEmail('john@advisorgroup.com');
-      setLoginPassword('password');
+    const { error } = await signUp(
+      registerEmail,
+      registerPassword,
+      fullName.trim(),
+      role,
+      company.trim() || undefined
+    );
+
+    setRegisterLoading(false);
+
+    if (error) {
+      setRegisterError(error.message);
     } else {
-      setLoginEmail('michael@nationalbank.com');
-      setLoginPassword('password');
+      setRegisterSuccess(true);
+      toast.success('ההרשמה הצליחה! בדוק את המייל שלך לאישור.');
     }
   };
 
   return (
     <Card className="w-full max-w-md mx-auto animated-card">
-      <Tabs defaultValue={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'register')}>
+      <Tabs defaultValue={defaultTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">Login</TabsTrigger>
-          <TabsTrigger value="register">Register</TabsTrigger>
+          <TabsTrigger value="login">התחברות</TabsTrigger>
+          <TabsTrigger value="register">הרשמה</TabsTrigger>
         </TabsList>
-        
+
+        {/* ── LOGIN ──────────────────────────────────────────────────────────── */}
         <TabsContent value="login">
           <form onSubmit={handleLogin}>
             <CardHeader>
-              <CardTitle>Log in to your account</CardTitle>
-              <CardDescription>
-                Enter your credentials to access your account
-              </CardDescription>
+              <CardTitle>ברוך הבא</CardTitle>
+              <CardDescription>הזן את פרטיך כדי להתחבר לחשבונך</CardDescription>
             </CardHeader>
+
             <CardContent className="space-y-4">
+              {loginError && <ErrorBanner message={loginError} />}
+
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="name@example.com" 
+                <Label htmlFor="login-email">אימייל</Label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  placeholder="name@example.com"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   required
+                  autoComplete="email"
                 />
               </div>
+
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <a 
-                    href="#" 
-                    className="text-xs text-primary hover:underline"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toast.info('Password reset feature will be available in the production version.');
-                    }}
-                  >
-                    Forgot password?
-                  </a>
-                </div>
-                <Input 
-                  id="password" 
-                  type="password" 
+                <Label htmlFor="login-password">סיסמה</Label>
+                <Input
+                  id="login-password"
+                  type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
+                  autoComplete="current-password"
                 />
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Logging in...' : 'Log in'}
+
+            <CardFooter>
+              <Button type="submit" className="w-full" disabled={loginLoading}>
+                {loginLoading ? 'מתחבר…' : 'התחבר'}
               </Button>
-              <div className="flex justify-center space-x-4 w-full">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setDemoCredentials('advisor')}
-                >
-                  Advisor Demo
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setDemoCredentials('bank')}
-                >
-                  Bank Demo
-                </Button>
-              </div>
             </CardFooter>
           </form>
         </TabsContent>
-        
+
+        {/* ── REGISTER ───────────────────────────────────────────────────────── */}
         <TabsContent value="register">
-          <form onSubmit={handleRegister}>
-            <CardHeader>
-              <CardTitle>Create an account</CardTitle>
+          {registerSuccess ? (
+            <CardContent className="py-10 text-center space-y-3">
+              <div className="text-4xl">📬</div>
+              <CardTitle>בדוק את המייל שלך</CardTitle>
               <CardDescription>
-                Enter your information to create your account
+                שלחנו לך לינק לאישור ההרשמה. לאחר האישור תוכל להתחבר.
               </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="role">Account Type</Label>
-                <Select 
-                  value={registerRole} 
-                  onValueChange={(value: string) => setRegisterRole(value as UserRole)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select account type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="advisor">Mortgage Advisor</SelectItem>
-                    <SelectItem value="bank">Bank Representative</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input 
-                  id="name" 
-                  value={registerName}
-                  onChange={(e) => setRegisterName(e.target.value)}
-                  placeholder="John Doe" 
-                  required 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company">Company</Label>
-                <Input 
-                  id="company" 
-                  value={registerCompany}
-                  onChange={(e) => setRegisterCompany(e.target.value)}
-                  placeholder="Your company name" 
-                  required 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  value={registerEmail}
-                  onChange={(e) => setRegisterEmail(e.target.value)}
-                  placeholder="name@example.com" 
-                  required 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  value={registerPassword}
-                  onChange={(e) => setRegisterPassword(e.target.value)}
-                  required 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm">Confirm Password</Label>
-                <Input 
-                  id="confirm" 
-                  type="password" 
-                  value={registerConfirmPassword}
-                  onChange={(e) => setRegisterConfirmPassword(e.target.value)}
-                  required 
-                />
-              </div>
             </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Creating account...' : 'Create account'}
-              </Button>
-            </CardFooter>
-          </form>
+          ) : (
+            <form onSubmit={handleRegister}>
+              <CardHeader>
+                <CardTitle>יצירת חשבון</CardTitle>
+                <CardDescription>בחר את סוג החשבון שלך ומלא את הפרטים</CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-5">
+                {registerError && <ErrorBanner message={registerError} />}
+
+                {/* Role selector */}
+                <div className="space-y-2">
+                  <Label>סוג חשבון</Label>
+                  <div className="flex gap-3">
+                    <RoleCard
+                      value="advisor"
+                      selected={role === 'advisor'}
+                      onClick={() => setRole('advisor')}
+                      icon={<UserCheck className="h-5 w-5" />}
+                      title="יועץ משכנתא"
+                      description="הגשת תיקים וקבלת הצעות מסניפים"
+                    />
+                    <RoleCard
+                      value="bank"
+                      selected={role === 'bank'}
+                      onClick={() => setRole('bank')}
+                      icon={<Building2 className="h-5 w-5" />}
+                      title="בנקאי / סניף"
+                      description="הגדרת appetite וקבלת תיקים"
+                    />
+                  </div>
+                </div>
+
+                {/* Full name */}
+                <div className="space-y-2">
+                  <Label htmlFor="reg-name">שם מלא</Label>
+                  <Input
+                    id="reg-name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="ישראל ישראלי"
+                    required
+                    autoComplete="name"
+                  />
+                </div>
+
+                {/* Company (optional) */}
+                <div className="space-y-2">
+                  <Label htmlFor="reg-company">
+                    חברה / סניף{' '}
+                    <span className="text-muted-foreground text-xs">(אופציונלי)</span>
+                  </Label>
+                  <Input
+                    id="reg-company"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    placeholder={role === 'advisor' ? 'שם משרד הייעוץ' : 'שם הסניף'}
+                    autoComplete="organization"
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="reg-email">אימייל</Label>
+                  <Input
+                    id="reg-email"
+                    type="email"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+
+                {/* Password */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-password">סיסמה</Label>
+                    <Input
+                      id="reg-password"
+                      type="password"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                      required
+                      autoComplete="new-password"
+                      placeholder="לפחות 6 תווים"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-confirm">אימות סיסמה</Label>
+                    <Input
+                      id="reg-confirm"
+                      type="password"
+                      value={registerConfirm}
+                      onChange={(e) => setRegisterConfirm(e.target.value)}
+                      required
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={registerLoading}>
+                  {registerLoading ? 'יוצר חשבון…' : 'צור חשבון'}
+                </Button>
+              </CardFooter>
+            </form>
+          )}
         </TabsContent>
       </Tabs>
     </Card>
