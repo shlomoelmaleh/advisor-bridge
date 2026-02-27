@@ -16,6 +16,7 @@ import AdvisorDashboard from './components/advisor/AdvisorDashboard';
 import BankDashboard from './components/bank/BankDashboard';
 import CaseForm from './components/advisor/CaseForm';
 import MatchesPage from './pages/Matches';
+import Chat from './pages/Chat';
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -87,6 +88,7 @@ const App = () => (
 
             {/* Shared authenticated routes */}
             <Route path="/matches" element={<ProtectedRoute><MatchesPage /></ProtectedRoute>} />
+            <Route path="/chat/:matchId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

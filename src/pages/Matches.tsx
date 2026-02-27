@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
 
 // ─── Component: Advisor View ──────────────────────────────────────────────────
 const AdvisorMatchesView = () => {
+    const navigate = useNavigate();
     const { cases } = useCases();
     const { matches, loading, error, runMatching, expressInterest } = useMatches();
     const [runningFor, setRunningFor] = useState<string | null>(null);
@@ -129,7 +131,13 @@ const AdvisorMatchesView = () => {
                                                         {m.status === 'closed' && (
                                                             <div className="flex flex-col items-end gap-2">
                                                                 <Badge className="bg-green-600 hover:bg-green-700 p-2">🎉 שידוך הושלם!</Badge>
-                                                                <Button variant="link" className="p-0 h-auto">מעבר לצ'אט →</Button>
+                                                                <Button
+                                                                    variant="link"
+                                                                    className="p-0 h-auto"
+                                                                    onClick={() => navigate(`/chat/${m.id}`)}
+                                                                >
+                                                                    מעבר לצ'אט →
+                                                                </Button>
                                                             </div>
                                                         )}
                                                         {m.status === 'rejected' && (
@@ -153,6 +161,7 @@ const AdvisorMatchesView = () => {
 
 // ─── Component: Bank View ─────────────────────────────────────────────────────
 const BankMatchesView = () => {
+    const navigate = useNavigate();
     const { matches, loading, error, expressInterest } = useMatches();
     const [actingOn, setActingOn] = useState<string | null>(null);
 
@@ -224,7 +233,10 @@ const BankMatchesView = () => {
                                     </Button>
                                 )}
                                 {m.status === 'closed' && (
-                                    <Button className="w-full bg-green-600 hover:bg-green-700">
+                                    <Button
+                                        className="w-full bg-green-600 hover:bg-green-700"
+                                        onClick={() => navigate(`/chat/${m.id}`)}
+                                    >
                                         מעבר לצ'אט עם המגיש →
                                     </Button>
                                 )}
