@@ -30,8 +30,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
 
     // ── 3. Role mismatch (profile may still be loading briefly) ───────────────
     if (role && profile && profile.role !== role) {
-        // Redirect the user to the correct dashboard for their role
-        const correctPath = profile.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard';
+        let correctPath = '/';
+        if (profile.role === 'advisor') correctPath = '/advisor/dashboard';
+        else if (profile.role === 'bank') correctPath = '/bank/dashboard';
+        else if (profile.role === 'admin') correctPath = '/admin/dashboard';
+
         return <Navigate to={correctPath} replace />;
     }
 

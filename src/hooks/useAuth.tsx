@@ -4,13 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type UserRole = 'advisor' | 'bank';
+export type UserRole = 'advisor' | 'bank' | 'admin';
 
 export interface Profile {
   user_id: string;
   full_name: string | null;
   company: string | null;
   role: UserRole;
+  is_approved?: boolean;
 }
 
 interface AuthContextValue {
@@ -48,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('user_id, full_name, company, role')
+      .select('user_id, full_name, company, role, is_approved')
       .eq('user_id', userId)
       .single();
 

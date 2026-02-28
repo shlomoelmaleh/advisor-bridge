@@ -17,6 +17,7 @@ import BankDashboard from './components/bank/BankDashboard';
 import CaseForm from './components/advisor/CaseForm';
 import MatchesPage from './pages/Matches';
 import Chat from './pages/Chat';
+import AdminDashboard from './pages/AdminDashboard';
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const RootRedirect = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (profile?.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
   if (profile?.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
+  if (profile?.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
 
   // Authenticated but profile not yet loaded — show the landing page
   return <Index />;
@@ -82,6 +84,16 @@ const App = () => (
               element={
                 <ProtectedRoute role="bank">
                   <BankDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admin-only routes */}
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />

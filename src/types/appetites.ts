@@ -15,6 +15,7 @@ export interface BranchAppetite {
     sla_days: number;
     valid_until: string;      // ISO date string (YYYY-MM-DD)
     is_active: boolean;
+    is_approved?: boolean;
     created_at: string;
 }
 

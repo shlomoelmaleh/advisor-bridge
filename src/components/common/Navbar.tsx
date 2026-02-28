@@ -51,18 +51,20 @@ const Navbar = () => {
           {user ? (
             <>
               <Link
-                to={profile?.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'}
+                to={profile?.role === 'advisor' ? '/advisor/dashboard' : profile?.role === 'bank' ? '/bank/dashboard' : '/admin/dashboard'}
                 className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
               >
-                Dashboard
+                {profile?.role === 'admin' ? 'לוח בקרה' : 'Dashboard'}
               </Link>
 
-              <Link
-                to="/matches"
-                className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
-              >
-                התאמות
-              </Link>
+              {profile?.role !== 'admin' && (
+                <Link
+                  to="/matches"
+                  className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                >
+                  התאמות
+                </Link>
+              )}
 
               {profile?.role === 'advisor' && (
                 <Link
@@ -114,21 +116,23 @@ const Navbar = () => {
               {user ? (
                 <>
                   <Link
-                    to={profile?.role === 'advisor' ? '/advisor/dashboard' : '/bank/dashboard'}
+                    to={profile?.role === 'advisor' ? '/advisor/dashboard' : profile?.role === 'bank' ? '/bank/dashboard' : '/admin/dashboard'}
                     className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Home className="mr-2 h-4 w-4" />
-                    Dashboard
+                    {profile?.role === 'admin' ? 'לוח בקרה' : 'Dashboard'}
                   </Link>
 
-                  <Link
-                    to="/matches"
-                    className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    התאמות
-                  </Link>
+                  {profile?.role !== 'admin' && (
+                    <Link
+                      to="/matches"
+                      className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      התאמות
+                    </Link>
+                  )}
 
                   {profile?.role === 'advisor' && (
                     <Link
