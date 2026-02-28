@@ -13,7 +13,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CaseCard from './CaseCard';
-import { getCurrentUser, getOpenCasesForBanks } from '@/lib/mockData';
+
 import { MortgageCase, User } from '@/types';
 import { Search } from 'lucide-react';
 
@@ -22,7 +22,7 @@ const CaseList = () => {
   const [cases, setCases] = useState<MortgageCase[]>([]);
   const [filteredCases, setFilteredCases] = useState<MortgageCase[]>([]);
   const [interestedCaseIds, setInterestedCaseIds] = useState<string[]>([]);
-  
+
   // Filter states
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,12 +37,12 @@ const CaseList = () => {
     if (currentUser) {
       const availableCases = getOpenCasesForBanks();
       setCases(availableCases);
-      
+
       // Initialize interested cases based on mock data
       const interested = availableCases
         .filter(c => c.interestedBanks.includes(currentUser.id))
         .map(c => c.id);
-      
+
       setInterestedCaseIds(interested);
     }
   }, []);
@@ -63,9 +63,9 @@ const CaseList = () => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
-        c => c.notes?.toLowerCase().includes(query) || 
-             c.loanAmount.toString().includes(query) ||
-             c.dealType.toLowerCase().includes(query)
+        c => c.notes?.toLowerCase().includes(query) ||
+          c.loanAmount.toString().includes(query) ||
+          c.dealType.toLowerCase().includes(query)
       );
     }
 
@@ -117,12 +117,12 @@ const CaseList = () => {
           <TabsTrigger value="all">All Cases</TabsTrigger>
           <TabsTrigger value="interested">Interested ({interestedCaseIds.length})</TabsTrigger>
         </TabsList>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
           <div className="lg:col-span-1 space-y-6">
             <div className="space-y-4 p-4 border rounded-lg">
               <h3 className="font-semibold">Filters</h3>
-              
+
               <div>
                 <Label htmlFor="search">Search</Label>
                 <div className="relative">
@@ -136,11 +136,11 @@ const CaseList = () => {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label>Deal Type</Label>
-                <RadioGroup 
-                  value={dealTypeFilter} 
+                <RadioGroup
+                  value={dealTypeFilter}
                   onValueChange={setDealTypeFilter}
                   className="mt-2"
                 >
@@ -162,7 +162,7 @@ const CaseList = () => {
                   </div>
                 </RadioGroup>
               </div>
-              
+
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="minLoanAmount">Minimum Loan Amount</Label>
@@ -181,7 +181,7 @@ const CaseList = () => {
                   <span>$1M+</span>
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="sortBy">Sort By</Label>
                 <Select value={sortBy} onValueChange={setSortBy}>
@@ -198,7 +198,7 @@ const CaseList = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="lg:col-span-3">
             <TabsContent value="all" className="m-0">
               {filteredCases.length > 0 ? (
@@ -219,7 +219,7 @@ const CaseList = () => {
                 </div>
               )}
             </TabsContent>
-            
+
             <TabsContent value="interested" className="m-0">
               {filteredCases.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

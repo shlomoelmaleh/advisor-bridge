@@ -150,7 +150,7 @@ const AdminDashboard = () => {
                                                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                                                     <span>{u.company || 'ללא חברה'}</span>
                                                     <span>•</span>
-                                                    <span className="text-xs">הצטרף לאחרונה</span>
+                                                    <span className="text-xs">{u.created_at ? new Date(u.created_at).toLocaleDateString('he-IL') : '—'}</span>
                                                 </div>
                                             </div>
                                             <div className="flex gap-2">

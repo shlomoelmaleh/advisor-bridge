@@ -12,6 +12,7 @@ export interface Profile {
   company: string | null;
   role: UserRole;
   is_approved?: boolean;
+  created_at?: string;
 }
 
 interface AuthContextValue {
