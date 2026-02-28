@@ -10,6 +10,8 @@ export interface DbMatch {
     appetite_id: string;
     score: number;
     status: MatchStatus;
+    advisor_status: 'pending' | 'interested' | 'rejected';
+    banker_status: 'pending' | 'interested' | 'rejected';
     created_at: string;
 }
 

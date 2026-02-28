@@ -22,6 +22,7 @@ export interface DbCase {
     priorities: CasePriorities;
     status: CaseStatus;
     created_at: string;
+    last_matched_at?: string | null;
     is_anonymous?: boolean;
 }
 

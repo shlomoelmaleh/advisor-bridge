@@ -123,7 +123,7 @@ const AdvisorMatchesView = () => {
                                                                 מעוניין להגיש
                                                             </Button>
                                                         )}
-                                                        {m.status === 'interested' && (
+                                                        {m.advisor_status === 'interested' && m.banker_status !== 'interested' && (
                                                             <Badge className="bg-amber-500 hover:bg-amber-600 text-white p-2">
                                                                 ✅ הבעת עניין - ממתין לאישור בנק
                                                             </Badge>
@@ -140,7 +140,7 @@ const AdvisorMatchesView = () => {
                                                                 </Button>
                                                             </div>
                                                         )}
-                                                        {m.status === 'rejected' && (
+                                                        {(m.advisor_status === 'rejected' || m.banker_status === 'rejected') && (
                                                             <Badge variant="outline" className="text-muted-foreground">נדחה</Badge>
                                                         )}
                                                     </div>
@@ -215,10 +215,11 @@ const BankMatchesView = () => {
                   We simplify UI based on the prompt instructions.
                 */}
                                 <div className="text-sm text-center py-3 bg-accent/20 rounded-md">
-                                    {m.status === 'pending' && "ממתין לתגובה שלך / של היועץ"}
-                                    {m.status === 'interested' && <span className="text-blue-600 font-semibold">יועץ הראה התעניינות!</span>}
+                                    {m.banker_status === 'pending' && m.advisor_status === 'pending' && "ממתין לתגובה שלך / של היועץ"}
+                                    {m.banker_status !== 'interested' && m.advisor_status === 'interested' && <span className="text-blue-600 font-semibold">יועץ הראה התעניינות!</span>}
+                                    {m.banker_status === 'interested' && m.advisor_status !== 'interested' && <span className="text-amber-600 font-semibold">ממתין לאישור היועץ...</span>}
                                     {m.status === 'closed' && <span className="text-green-600 font-semibold">שידוך סגור! זהות המגיש נחשפה.</span>}
-                                    {m.status === 'rejected' && "נדחה."}
+                                    {(m.banker_status === 'rejected' || m.advisor_status === 'rejected') && "נדחה."}
                                 </div>
                             </CardContent>
 
