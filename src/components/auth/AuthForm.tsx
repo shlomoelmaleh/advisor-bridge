@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Briefcase, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -44,6 +45,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'advisor' | 'bank'>('advisor');
 
   // ── Sign in ──────────────────────────────────────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
@@ -86,7 +88,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
       registerEmail,
       registerPassword,
       fullName.trim(),
-      'advisor',
+      selectedRole,
       company.trim() || undefined
     );
 
@@ -173,10 +175,22 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
               <CardContent className="space-y-5">
                 {registerError && <ErrorBanner message={registerError} />}
 
-                {/* Role info */}
-                <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-                  <p>חשבון יועץ משכנתא – הגשת תיקים וקבלת הצעות מסניפים.</p>
-                  <p className="mt-1 text-xs">צריך חשבון בנקאי? פנה למנהל המערכת.</p>
+                {/* Role selection */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div
+                    className={`flex flex-col items-center justify-center p-4 border rounded-lg cursor-pointer transition-colors ${selectedRole === 'advisor' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-accent'}`}
+                    onClick={() => setSelectedRole('advisor')}
+                  >
+                    <Briefcase className="h-8 w-8 mb-2" />
+                    <span className="font-semibold text-sm">יועץ משכנתא</span>
+                  </div>
+                  <div
+                    className={`flex flex-col items-center justify-center p-4 border rounded-lg cursor-pointer transition-colors ${selectedRole === 'bank' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-accent'}`}
+                    onClick={() => setSelectedRole('bank')}
+                  >
+                    <Building2 className="h-8 w-8 mb-2" />
+                    <span className="font-semibold text-sm">בנקאי / סניף</span>
+                  </div>
                 </div>
 
                 {/* Full name */}

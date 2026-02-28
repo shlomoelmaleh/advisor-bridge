@@ -22,9 +22,9 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Set English language and LTR direction
-document.documentElement.dir = 'ltr';
-document.documentElement.lang = 'en';
+// Set Hebrew language and RTL direction
+document.documentElement.dir = 'rtl';
+document.documentElement.lang = 'he';
 
 // Smart root redirect: send authenticated users to their dashboard
 const RootRedirect = () => {
