@@ -22,6 +22,7 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useCases } from '@/hooks/useCases';
+import { caseSchema } from '@/lib/validation';
 import type { BorrowerType } from '@/types/cases';
 
 const CaseForm = () => {
@@ -46,8 +47,19 @@ const CaseForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (loanAmountMin > loanAmountMax) {
-      toast.error('סכום מינימלי לא יכול להיות גדול ממקסימלי');
+    const parsed = caseSchema.safeParse({
+      loan_amount_min: loanAmountMin,
+      loan_amount_max: loanAmountMax,
+      ltv,
+      borrower_type: borrowerType,
+      property_type: propertyType,
+      region,
+      priorities: { speed: prioritySpeed, rate: priorityRate, ltv: priorityLtv },
+      is_anonymous: true,
+    });
+
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'נתונים לא תקינים');
       return;
     }
 
