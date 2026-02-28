@@ -19,6 +19,15 @@ interface AuthFormProps {
   defaultTab?: 'login' | 'register';
 }
 
+const getPasswordStrength = (password: string) => {
+  if (!password) return null;
+  if (password.length < 8) return { text: 'סיסמה חלשה מדי', color: 'text-red-500' };
+  const hasLetters = /[a-zA-Zא-ת]/.test(password);
+  const hasNumbers = /[0-9]/.test(password);
+  if (!hasLetters || !hasNumbers) return { text: 'הוסף מספרים ואותיות', color: 'text-orange-500' };
+  return { text: 'סיסמה תקינה', color: 'text-green-500' };
+};
+
 // ─── Error banner ─────────────────────────────────────────────────────────────
 const ErrorBanner: React.FC<{ message: string }> = ({ message }) => (
   <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -77,8 +86,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
       setRegisterError('הסיסמאות אינן תואמות');
       return;
     }
-    if (registerPassword.length < 6) {
-      setRegisterError('הסיסמה חייבת להכיל לפחות 6 תווים');
+    if (registerPassword.length < 8) {
+      setRegisterError('הסיסמה חייבת להכיל לפחות 8 תווים');
+      return;
+    }
+    const hasLetters = /[a-zA-Zא-ת]/.test(registerPassword);
+    const hasNumbers = /[0-9]/.test(registerPassword);
+    if (!hasLetters || !hasNumbers) {
+      setRegisterError('הסיסמה חייבת להכיל מספרים ואותיות');
       return;
     }
 
@@ -246,8 +261,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
                       onChange={(e) => setRegisterPassword(e.target.value)}
                       required
                       autoComplete="new-password"
-                      placeholder="לפחות 6 תווים"
+                      placeholder="לפחות 8 תווים"
                     />
+                    {registerPassword && (
+                      <p className={`text-xs font-medium ${getPasswordStrength(registerPassword)?.color}`}>
+                        {getPasswordStrength(registerPassword)?.text}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="reg-confirm">אימות סיסמה</Label>
