@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error fetching profile:', error.message);
       return null;
     }
-    return data as Profile;
+    return data as unknown as Profile;
   };
 
   useEffect(() => {

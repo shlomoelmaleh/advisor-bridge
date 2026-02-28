@@ -53,29 +53,29 @@ export const useAdmin = () => {
 
             if (profilesError) throw profilesError;
 
-            const allProfiles = profiles as Profile[];
+            const allProfiles = (profiles ?? []) as unknown as Profile[];
             setAllUsers(allProfiles);
             setPendingUsers(allProfiles.filter(p => p.is_approved === false));
 
             // 2. Fetch Pending Cases
-            const { data: casesData, error: casesError } = await supabase
-                .from('cases')
+            const { data: casesData, error: casesError } = await (supabase
+                .from('cases' as any)
                 .select('*')
                 .eq('is_approved', false)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })) as any;
 
             if (casesError) throw casesError;
-            setPendingCases(casesData as DbCase[]);
+            setPendingCases((casesData ?? []) as unknown as DbCase[]);
 
             // 3. Fetch Pending Appetites
-            const { data: appetitesData, error: appetitesError } = await supabase
-                .from('branch_appetites')
+            const { data: appetitesData, error: appetitesError } = await (supabase
+                .from('branch_appetites' as any)
                 .select('*')
                 .eq('is_approved', false)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })) as any;
 
             if (appetitesError) throw appetitesError;
-            setPendingAppetites(appetitesData as BranchAppetite[]);
+            setPendingAppetites((appetitesData ?? []) as unknown as BranchAppetite[]);
 
             // 4. Fetch Stats Data
             // Use concurrent count queries to compute stats efficiently
@@ -86,12 +86,12 @@ export const useAdmin = () => {
                 { count: matchCount },
                 { count: closedCount }
             ] = await Promise.all([
-                supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'advisor').eq('is_approved', true),
-                supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'bank').eq('is_approved', true),
-                supabase.from('cases').select('*', { count: 'exact', head: true }).eq('status', 'open').eq('is_approved', true),
+                supabase.from('profiles' as any).select('*', { count: 'exact', head: true }).eq('role', 'advisor').eq('is_approved', true),
+                supabase.from('profiles' as any).select('*', { count: 'exact', head: true }).eq('role', 'bank').eq('is_approved', true),
+                supabase.from('cases' as any).select('*', { count: 'exact', head: true }).eq('status', 'open').eq('is_approved', true),
                 supabase.from('matches').select('*', { count: 'exact', head: true }),
                 supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'closed')
-            ]);
+            ]) as any;
 
             setStats({
                 totalAdvisors: advCount || 0,
@@ -117,7 +117,7 @@ export const useAdmin = () => {
     const approveUser = async (userId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
         try {
-            const { error } = await supabase.from('profiles').update({ is_approved: true }).eq('user_id', userId);
+            const { error } = await supabase.from('profiles').update({ is_approved: true } as any).eq('user_id', userId);
             if (error) throw error;
             await fetchAll();
             return { error: null };
@@ -129,7 +129,7 @@ export const useAdmin = () => {
     const suspendUser = async (userId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
         try {
-            const { error } = await supabase.from('profiles').update({ is_approved: false }).eq('user_id', userId);
+            const { error } = await supabase.from('profiles').update({ is_approved: false } as any).eq('user_id', userId);
             if (error) throw error;
             await fetchAll();
             return { error: null };
@@ -155,7 +155,7 @@ export const useAdmin = () => {
     const approveCase = async (caseId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
         try {
-            const { error } = await supabase.from('cases').update({ is_approved: true }).eq('id', caseId);
+            const { error } = await supabase.from('cases').update({ is_approved: true } as any).eq('id', caseId);
             if (error) throw error;
             await fetchAll();
             return { error: null };
@@ -181,7 +181,7 @@ export const useAdmin = () => {
     const approveAppetite = async (appetiteId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
         try {
-            const { error } = await supabase.from('branch_appetites').update({ is_approved: true }).eq('id', appetiteId);
+            const { error } = await supabase.from('branch_appetites').update({ is_approved: true } as any).eq('id', appetiteId);
             if (error) throw error;
             await fetchAll();
             return { error: null };
@@ -193,7 +193,7 @@ export const useAdmin = () => {
     const rejectAppetite = async (appetiteId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
         try {
-            const { error } = await supabase.from('branch_appetites').update({ is_approved: false, is_active: false }).eq('id', appetiteId);
+            const { error } = await supabase.from('branch_appetites').update({ is_approved: false, is_active: false } as any).eq('id', appetiteId);
             if (error) throw error;
             await fetchAll();
             return { error: null };

@@ -23,6 +23,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_active: boolean | null
+          is_approved: boolean | null
           max_ltv: number | null
           min_loan_amount: number | null
           preferred_borrower_types: string[] | null
@@ -38,6 +39,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_approved?: boolean | null
           max_ltv?: number | null
           min_loan_amount?: number | null
           preferred_borrower_types?: string[] | null
@@ -53,6 +55,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_approved?: boolean | null
           max_ltv?: number | null
           min_loan_amount?: number | null
           preferred_borrower_types?: string[] | null
@@ -77,6 +80,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_anonymous: boolean | null
+          is_approved: boolean | null
           last_matched_at: string | null
           loan_amount_max: number | null
           loan_amount_min: number | null
@@ -92,6 +96,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_anonymous?: boolean | null
+          is_approved?: boolean | null
           last_matched_at?: string | null
           loan_amount_max?: number | null
           loan_amount_min?: number | null
@@ -107,6 +112,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_anonymous?: boolean | null
+          is_approved?: boolean | null
           last_matched_at?: string | null
           loan_amount_max?: number | null
           loan_amount_min?: number | null
@@ -218,6 +224,7 @@ export type Database = {
           company: string | null
           created_at: string | null
           full_name: string | null
+          is_approved: boolean | null
           role: string
           user_id: string
         }
@@ -225,6 +232,7 @@ export type Database = {
           company?: string | null
           created_at?: string | null
           full_name?: string | null
+          is_approved?: boolean | null
           role: string
           user_id: string
         }
@@ -232,6 +240,7 @@ export type Database = {
           company?: string | null
           created_at?: string | null
           full_name?: string | null
+          is_approved?: boolean | null
           role?: string
           user_id?: string
         }
