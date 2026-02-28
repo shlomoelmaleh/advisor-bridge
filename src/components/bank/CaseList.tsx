@@ -14,12 +14,14 @@ import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CaseCard from './CaseCard';
 
-import { MortgageCase, User } from '@/types';
+import { MortgageCase } from '@/types';
 import { Search } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useCases } from '@/hooks/useCases';
 
 const CaseList = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [cases, setCases] = useState<MortgageCase[]>([]);
+  const { user } = useAuth();
+  const { cases: dbCases, loading } = useCases();
   const [filteredCases, setFilteredCases] = useState<MortgageCase[]>([]);
   const [interestedCaseIds, setInterestedCaseIds] = useState<string[]>([]);
 
@@ -30,26 +32,24 @@ const CaseList = () => {
   const [minLoanAmount, setMinLoanAmount] = useState(0);
   const [sortBy, setSortBy] = useState('newest');
 
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-
-    if (currentUser) {
-      const availableCases = getOpenCasesForBanks();
-      setCases(availableCases);
-
-      // Initialize interested cases based on mock data
-      const interested = availableCases
-        .filter(c => c.interestedBanks.includes(currentUser.id))
-        .map(c => c.id);
-
-      setInterestedCaseIds(interested);
-    }
-  }, []);
+  // Map DB cases to MortgageCase shape for CaseCard compatibility
+  const cases: MortgageCase[] = (dbCases ?? []).map((c) => ({
+    id: c.id,
+    advisorId: c.advisor_id,
+    createdAt: c.created_at,
+    status: c.status as MortgageCase['status'],
+    loanAmount: c.loan_amount_min ?? 0,
+    dealType: (c.property_type as MortgageCase['dealType']) || 'other',
+    financingPercentage: c.ltv ?? 0,
+    borrowerIncome: 0,
+    borrowerObligations: 0,
+    interestedBanks: [],
+    notes: c.region ?? undefined,
+  }));
 
   useEffect(() => {
     filterAndSortCases();
-  }, [cases, activeTab, searchQuery, dealTypeFilter, minLoanAmount, sortBy, interestedCaseIds]);
+  }, [cases.length, activeTab, searchQuery, dealTypeFilter, minLoanAmount, sortBy, interestedCaseIds]);
 
   const filterAndSortCases = () => {
     let result = [...cases];
@@ -109,6 +109,10 @@ const CaseList = () => {
   const formatCurrency = (value: number) => {
     return `$${value.toLocaleString()}`;
   };
+
+  if (loading) {
+    return <div className="text-center py-12 text-muted-foreground">Loading cases…</div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
