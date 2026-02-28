@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Send, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { mapDatabaseError } from '@/lib/mapDatabaseError';
+import { messageSchema } from '@/lib/validation';
 import type { MatchWithDetails } from '@/types/matches';
 
 interface Message {
@@ -148,7 +149,12 @@ const Chat = () => {
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !user || !matchId) return;
+        const validated = messageSchema.safeParse({ content: newMessage });
+        if (!validated.success) {
+            toast.error(validated.error.errors[0]?.message || 'הודעה לא תקינה');
+            return;
+        }
+        if (!user || !matchId) return;
 
         setSending(true);
         try {
