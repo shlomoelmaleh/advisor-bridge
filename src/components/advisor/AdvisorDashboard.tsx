@@ -139,6 +139,20 @@ const AdvisorDashboard = () => {
   const { cases, loading, error } = useCases();
   const [activeFilter, setActiveFilter] = useState('all');
 
+  if (profile && profile.is_approved === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-md p-8">
+          <div className="text-5xl">⏳</div>
+          <h2 className="text-2xl font-bold">ממתין לאישור</h2>
+          <p className="text-muted-foreground">
+            החשבון שלך נמצא בבדיקה. מנהל המערכת יאשר אותך בקרוב.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const stats = [
     {
       title: 'סה"כ תיקים',

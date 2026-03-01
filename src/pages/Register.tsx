@@ -1,9 +1,21 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import AuthForm from '@/components/auth/AuthForm';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 const Register = () => {
+  const { user, profile, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+    if (profile?.role === 'advisor') navigate('/advisor/dashboard', { replace: true });
+    else if (profile?.role === 'bank') navigate('/bank/dashboard', { replace: true });
+    else if (profile?.role === 'admin') navigate('/admin/dashboard', { replace: true });
+  }, [user, profile, loading]);
+
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -23,7 +35,7 @@ const Register = () => {
             </Link>
           </p>
         </div>
-        
+
         <div className="mt-8">
           <AuthForm defaultTab="register" />
         </div>

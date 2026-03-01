@@ -28,6 +28,14 @@ const Navbar = () => {
     navigate('/');
   };
 
+  const getDashboardPath = () => {
+    if (!profile) return '/';
+    if (profile.role === 'advisor') return '/advisor/dashboard';
+    if (profile.role === 'bank') return '/bank/dashboard';
+    if (profile.role === 'admin') return '/admin/dashboard';
+    return '/';
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center px-4 sm:px-8">
@@ -51,7 +59,7 @@ const Navbar = () => {
           {user ? (
             <>
               <Link
-                to={profile?.role === 'advisor' ? '/advisor/dashboard' : profile?.role === 'bank' ? '/bank/dashboard' : '/admin/dashboard'}
+                to={getDashboardPath()}
                 className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
               >
                 {profile?.role === 'admin' ? 'לוח בקרה' : 'Dashboard'}
@@ -77,8 +85,13 @@ const Navbar = () => {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <User className="h-5 w-5" />
+                  <Button variant="ghost" className="relative flex items-center gap-2 rounded-full px-2">
+                    <span className="text-sm font-medium hidden sm:inline-block">
+                      {profile?.full_name}
+                    </span>
+                    <div className="h-8 w-8 bg-muted rounded-full flex items-center justify-center">
+                      <User className="h-5 w-5" />
+                    </div>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -116,7 +129,7 @@ const Navbar = () => {
               {user ? (
                 <>
                   <Link
-                    to={profile?.role === 'advisor' ? '/advisor/dashboard' : profile?.role === 'bank' ? '/bank/dashboard' : '/admin/dashboard'}
+                    to={getDashboardPath()}
                     className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
