@@ -25,7 +25,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
 
     // ── 2. Not authenticated ───────────────────────────────────────────────────
     if (!user) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return <Navigate to="/" state={{ from: location }} replace />;
     }
 
     // ── 3. Role mismatch (profile may still be loading briefly) ───────────────

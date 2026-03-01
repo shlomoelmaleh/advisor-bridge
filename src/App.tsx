@@ -11,19 +11,30 @@ import { useAuth } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import AuthPage from "./pages/AuthPage";
-import AdvisorDashboard from './components/advisor/AdvisorDashboard';
-import BankDashboard from './components/bank/BankDashboard';
-import CaseForm from './components/advisor/CaseForm';
+import AdvisorDashboard from './pages/AdvisorDashboard';
+import BankDashboard from './pages/BankDashboard';
+import CaseSubmit from './pages/CaseSubmit';
 import MatchesPage from './pages/Matches';
 import Chat from './pages/Chat';
 import AdminDashboard from './pages/AdminDashboard';
 import NotFound from "./pages/NotFound";
+import Navbar from "@/components/common/Navbar";
+import Footer from "@/components/common/Footer";
 
 const queryClient = new QueryClient();
 
 // Set Hebrew language and RTL direction
 document.documentElement.dir = 'rtl';
 document.documentElement.lang = 'he';
+
+// Layout wrapper for authenticated pages that need Navbar + Footer
+const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="min-h-screen flex flex-col">
+    <Navbar />
+    <main className="flex-grow container py-8">{children}</main>
+    <Footer />
+  </div>
+);
 
 // Root route: if logged in redirect to dashboard, otherwise show auth form
 const RootRoute = () => {
@@ -74,7 +85,7 @@ const App = () => (
               path="/advisor/submit-case"
               element={
                 <ProtectedRoute role="advisor">
-                  <CaseForm />
+                  <CaseSubmit />
                 </ProtectedRoute>
               }
             />
@@ -94,14 +105,34 @@ const App = () => (
               path="/admin/dashboard"
               element={
                 <ProtectedRoute role="admin">
-                  <AdminDashboard />
+                  <AppLayout>
+                    <AdminDashboard />
+                  </AppLayout>
                 </ProtectedRoute>
               }
             />
 
             {/* Shared authenticated routes */}
-            <Route path="/matches" element={<ProtectedRoute><MatchesPage /></ProtectedRoute>} />
-            <Route path="/chat/:matchId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+            <Route
+              path="/matches"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <MatchesPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat/:matchId"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Chat />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

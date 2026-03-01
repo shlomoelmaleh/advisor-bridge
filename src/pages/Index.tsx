@@ -22,7 +22,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
+
       <main className="flex-grow">
         {/* Hero Section */}
         <section className="relative bg-background py-20 md:py-32 overflow-hidden">
@@ -31,30 +31,30 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-6 max-w-2xl animate-fade-in">
                 <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary/10 text-primary mb-2">
-                  <span className="font-medium">Simplifying Mortgage Matching</span>
+                  <span className="font-medium">הפלטפורמה לשידוך משכנתאות</span>
                 </div>
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
-                  Connect Mortgage Advisors with Bank Representatives
+                  מחברים יועצי משכנתאות עם סניפי בנקים
                 </h1>
                 <p className="text-xl text-muted-foreground">
-                  Streamline the mortgage process by matching loan requests with the right financial institutions, all in one platform.
+                  ייעלו את תהליך המשכנתא על ידי שידוך בקשות הלוואה עם המוסדות המתאימים, הכל בפלטפורמה אחת.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <Button size="lg" asChild>
-                    <Link to="/register">
-                      Get Started <ArrowRight className="ml-2 h-4 w-4" />
+                    <Link to="/?tab=register">
+                      הרשמה חינם <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
                   <Button size="lg" variant="outline" asChild>
-                    <Link to="/login">Sign In</Link>
+                    <Link to="/">התחברות</Link>
                   </Button>
                 </div>
               </div>
               <div className="relative lg:order-last">
                 <div className="rounded-2xl overflow-hidden border shadow-lg bg-card animate-fade-in">
-                  <img 
-                    src="https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2073&q=80" 
-                    alt="Mortgage Advisors" 
+                  <img
+                    src="https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2073&q=80"
+                    alt="Mortgage Advisors"
                     className="w-full h-72 lg:h-96 object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end">
@@ -63,10 +63,10 @@ const Index = () => {
                         <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
                           <Building className="h-4 w-4" />
                         </div>
-                        <p className="font-semibold">Mortgage Matching Platform</p>
+                        <p className="font-semibold">פלטפורמת שידוך משכנתאות</p>
                       </div>
-                      <h3 className="text-2xl font-bold mb-2">Faster Loan Approvals</h3>
-                      <p className="text-white/80">Connect directly with institutions that match your clients' needs</p>
+                      <h3 className="text-2xl font-bold mb-2">אישורי הלוואה מהירים יותר</h3>
+                      <p className="text-white/80">התחבר ישירות למוסדות שמתאימים לצרכי הלקוחות שלך</p>
                     </div>
                   </div>
                 </div>
@@ -80,9 +80,9 @@ const Index = () => {
         <section className="py-20 bg-slate-50">
           <div className="container px-4 mx-auto">
             <div className="max-w-3xl mx-auto text-center mb-16">
-              <h2 className="text-3xl font-bold mb-4">How It Works</h2>
+              <h2 className="text-3xl font-bold mb-4">איך זה עובד?</h2>
               <p className="text-xl text-muted-foreground">
-                Our platform streamlines the connection between mortgage advisors and financial institutions
+                הפלטפורמה שלנו מייעלת את החיבור בין יועצי משכנתאות למוסדות פיננסיים
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -91,9 +91,9 @@ const Index = () => {
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                     <Briefcase className="h-6 w-6 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">Submit Loan Requests</h3>
+                  <h3 className="text-xl font-semibold mb-2">הגשת בקשות הלוואה</h3>
                   <p className="text-muted-foreground">
-                    Mortgage advisors can quickly submit new loan requests with all essential details through a simple form.
+                    יועצי משכנתאות יכולים לשלוח בקשות הלוואה חדשות בטופס פשוט ומהיר.
                   </p>
                 </CardContent>
               </Card>
@@ -102,9 +102,9 @@ const Index = () => {
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                     <Building className="h-6 w-6 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">Match with Banks</h3>
+                  <h3 className="text-xl font-semibold mb-2">שידוך עם בנקים</h3>
                   <p className="text-muted-foreground">
-                    Bank representatives receive real-time notifications about new requests and can filter by their criteria.
+                    נציגי בנק מקבלים התראות בזמן אמת על בקשות חדשות ויכולים לסנן לפי הקריטריונים שלהם.
                   </p>
                 </CardContent>
               </Card>
@@ -113,9 +113,9 @@ const Index = () => {
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                     <Check className="h-6 w-6 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">Secure Connections</h3>
+                  <h3 className="text-xl font-semibold mb-2">חיבורים מאובטחים</h3>
                   <p className="text-muted-foreground">
-                    When there's mutual interest, both parties can communicate directly through our secure platform.
+                    כשיש עניין הדדי, שני הצדדים יכולים לתקשר ישירות דרך הפלטפורמה המאובטחת שלנו.
                   </p>
                 </CardContent>
               </Card>
@@ -129,23 +129,23 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-6">
                 <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary/10 text-primary mb-2">
-                  <span className="font-medium">Simplified Process</span>
+                  <span className="font-medium">תהליך פשוט</span>
                 </div>
                 <h2 className="text-3xl font-bold leading-tight">
-                  Benefits for Both Mortgage Advisors and Banks
+                  יתרונות ליועצים ולבנקאים
                 </h2>
                 <p className="text-xl text-muted-foreground">
-                  Our platform creates value for all parties involved in the mortgage process
+                  הפלטפורמה שלנו יוצרת ערך לכל המשתתפים בתהליך המשכנתא
                 </p>
-                
+
                 <div className="space-y-4 mt-8">
                   <div className="flex items-start gap-4">
                     <div className="mt-1 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Clock className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold mb-1">Time Efficiency</h3>
-                      <p className="text-muted-foreground">Reduce the time spent shopping for mortgage options across multiple institutions.</p>
+                      <h3 className="text-lg font-semibold mb-1">חיסכון בזמן</h3>
+                      <p className="text-muted-foreground">צמצמו את הזמן שמושקע בחיפוש אופציות משכנתא במוסדות שונים.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4">
@@ -153,8 +153,8 @@ const Index = () => {
                       <Users className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold mb-1">Perfect Matching</h3>
-                      <p className="text-muted-foreground">Match clients with institutions that are actually interested in their specific case.</p>
+                      <h3 className="text-lg font-semibold mb-1">שידוך מושלם</h3>
+                      <p className="text-muted-foreground">שדכו לקוחות עם מוסדות שבאמת מתעניינים בתיק הספציפי שלכם.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4">
@@ -162,50 +162,50 @@ const Index = () => {
                       <Briefcase className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold mb-1">Streamlined Communication</h3>
-                      <p className="text-muted-foreground">All interactions happen in one place, with clear status updates for each request.</p>
+                      <h3 className="text-lg font-semibold mb-1">תקשורת ישירה</h3>
+                      <p className="text-muted-foreground">כל האינטראקציות במקום אחד, עם עדכוני סטטוס ברורים לכל בקשה.</p>
                     </div>
                   </div>
                 </div>
-                
+
                 <Button size="lg" className="mt-6" asChild>
-                  <Link to="/register">Join Now <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                  <Link to="/?tab=register">הצטרפו עכשיו <ArrowRight className="ml-2 h-4 w-4" /></Link>
                 </Button>
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <Card className="border-0 overflow-hidden shadow-lg hover-scale">
                   <div className="h-48 bg-gradient-to-br from-blue-500 to-blue-700 p-8 text-white flex flex-col justify-between">
-                    <h3 className="text-2xl font-bold">For Mortgage Advisors</h3>
+                    <h3 className="text-2xl font-bold">ליועצי משכנתאות</h3>
                     <div className="flex justify-between items-end">
-                      <p className="text-white/80">Submit cases in minutes</p>
+                      <p className="text-white/80">הגישו תיקים תוך דקות</p>
                       <ArrowUpRight className="h-5 w-5" />
                     </div>
                   </div>
                 </Card>
                 <Card className="border-0 overflow-hidden shadow-lg hover-scale mt-8 sm:mt-12">
                   <div className="h-48 bg-gradient-to-br from-emerald-500 to-emerald-700 p-8 text-white flex flex-col justify-between">
-                    <h3 className="text-2xl font-bold">For Bank Representatives</h3>
+                    <h3 className="text-2xl font-bold">לסניפי בנק</h3>
                     <div className="flex justify-between items-end">
-                      <p className="text-white/80">Find the perfect matches</p>
+                      <p className="text-white/80">מצאו את השידוכים המושלמים</p>
                       <ArrowUpRight className="h-5 w-5" />
                     </div>
                   </div>
                 </Card>
                 <Card className="border-0 overflow-hidden shadow-lg hover-scale">
                   <div className="h-48 bg-gradient-to-br from-amber-500 to-amber-700 p-8 text-white flex flex-col justify-between">
-                    <h3 className="text-2xl font-bold">Real-time Notifications</h3>
+                    <h3 className="text-2xl font-bold">עדכונים בזמן אמת</h3>
                     <div className="flex justify-between items-end">
-                      <p className="text-white/80">Stay updated on all activity</p>
+                      <p className="text-white/80">הישארו מעודכנים בכל פעילות</p>
                       <ArrowUpRight className="h-5 w-5" />
                     </div>
                   </div>
                 </Card>
                 <Card className="border-0 overflow-hidden shadow-lg hover-scale mt-8 sm:mt-12">
                   <div className="h-48 bg-gradient-to-br from-violet-500 to-violet-700 p-8 text-white flex flex-col justify-between">
-                    <h3 className="text-2xl font-bold">Secure Platform</h3>
+                    <h3 className="text-2xl font-bold">פלטפורמה מאובטחת</h3>
                     <div className="flex justify-between items-end">
-                      <p className="text-white/80">Privacy and security built-in</p>
+                      <p className="text-white/80">פרטיות ואבטחה מובנים</p>
                       <ArrowUpRight className="h-5 w-5" />
                     </div>
                   </div>
@@ -219,27 +219,27 @@ const Index = () => {
         <section className="py-20 bg-gradient-to-r from-primary to-primary/80 text-white">
           <div className="container px-4 mx-auto text-center">
             <div className="max-w-3xl mx-auto">
-              <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Mortgage Process?</h2>
+              <h2 className="text-4xl font-bold mb-4">מוכנים לשדרג את תהליך המשכנתא?</h2>
               <p className="text-xl opacity-90 mb-8">
-                Join our platform today and experience a more efficient way to connect mortgage advisors with financial institutions.
+                הירשמו לפלטפורמה היום ותחוו דרך יעילה יותר לחבר יועצי משכנתאות עם מוסדות פיננסיים.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button size="lg" variant="default" className="bg-white text-primary hover:bg-white/90" asChild>
-                  <Link to="/register">Create Your Account</Link>
+                  <Link to="/?tab=register">צור חשבון</Link>
                 </Button>
                 <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10" asChild>
-                  <Link to="/login">Sign In</Link>
+                  <Link to="/">התחבר</Link>
                 </Button>
               </div>
             </div>
           </div>
         </section>
       </main>
-      
+
       <Footer />
-      
+
       {/* Quick access button that appears when scrolled */}
-      <div 
+      <div
         className={`fixed bottom-6 right-6 z-50 transition-transform duration-300 ${isScrolled ? 'translate-y-0' : 'translate-y-20'}`}
       >
         <Link to="/register">

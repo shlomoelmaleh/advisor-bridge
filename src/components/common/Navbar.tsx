@@ -79,7 +79,7 @@ const Navbar = () => {
                   to="/advisor/submit-case"
                   className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                 >
-                  Submit Case
+                  הגש תיק
                 </Link>
               )}
 
@@ -102,7 +102,7 @@ const Navbar = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>התנתקות</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -110,13 +110,13 @@ const Navbar = () => {
           ) : (
             <>
               <Link
-                to="/login"
+                to="/"
                 className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
               >
-                Login
+                התחבר
               </Link>
-              <Link to="/register">
-                <Button>Register</Button>
+              <Link to="/?tab=register">
+                <Button>הרשם</Button>
               </Link>
             </>
           )}
@@ -153,7 +153,7 @@ const Navbar = () => {
                       className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      Submit Case
+                      הגש תיק
                     </Link>
                   )}
 
@@ -165,24 +165,24 @@ const Navbar = () => {
                     className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    Log out
+                    התנתקות
                   </button>
                 </>
               ) : (
                 <>
                   <Link
-                    to="/login"
+                    to="/"
                     className="flex items-center px-4 py-2 text-foreground rounded-md hover:bg-accent"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Login
+                    התחבר
                   </Link>
                   <Link
-                    to="/register"
+                    to="/?tab=register"
                     className="flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Register
+                    הרשם
                   </Link>
                 </>
               )}
