@@ -125,7 +125,7 @@ const App = () => (
             <Route
               path="/advisor/dashboard"
               element={
-                <ProtectedRoute role="advisor">
+                <ProtectedRoute allowedRoles={['advisor']}>
                   <AdvisorDashboard />
                 </ProtectedRoute>
               }
@@ -133,7 +133,7 @@ const App = () => (
             <Route
               path="/advisor/submit-case"
               element={
-                <ProtectedRoute role="advisor">
+                <ProtectedRoute allowedRoles={['advisor']}>
                   <CaseSubmit />
                 </ProtectedRoute>
               }
@@ -143,7 +143,7 @@ const App = () => (
             <Route
               path="/bank/dashboard"
               element={
-                <ProtectedRoute role="bank">
+                <ProtectedRoute allowedRoles={['bank']}>
                   <BankDashboard />
                 </ProtectedRoute>
               }
@@ -153,7 +153,7 @@ const App = () => (
             <Route
               path="/admin/dashboard"
               element={
-                <ProtectedRoute role="admin">
+                <ProtectedRoute allowedRoles={['admin']}>
                   <AppLayout>
                     <AdminDashboard />
                   </AppLayout>
@@ -165,7 +165,7 @@ const App = () => (
             <Route
               path="/matches"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles="any">
                   <AppLayout>
                     <MatchesPage />
                   </AppLayout>
@@ -175,7 +175,7 @@ const App = () => (
             <Route
               path="/chat/:matchId"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles="any">
                   <AppLayout>
                     <Chat />
                   </AppLayout>

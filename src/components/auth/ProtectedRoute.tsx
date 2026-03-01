@@ -4,20 +4,21 @@ import { useAuth, UserRole } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
-    role?: UserRole;
+    allowedRoles: UserRole[] | 'any';
 }
 
 /**
  * Route guard for authenticated pages.
- * Uses `status` enum — NO ambiguous loading/profile states.
- * NO redirects to dashboards here — that's RootRoute's job.
- * This only guards: is the user allowed to see THIS page?
+ * NO generic redirects during loading states (prevents infinite loops).
+ * Only enforces role checks based on the explicit `allowedRoles` prop.
  */
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
     const { status, profile } = useAuth();
     const location = useLocation();
 
-    console.log(`[ProtectedRoute] status=${status} requiredRole=${role} profileRole=${profile?.role}`);
+    // Log the current evaluation for debugging
+    const allowedRolesStr = allowedRoles === 'any' ? 'any' : allowedRoles.join(',');
+    console.log(`[ProtectedRoute] Path="${location.pathname}" Status="${status}" AllowedRoles=[${allowedRolesStr}] UserRole="${profile?.role ?? 'NONE'}"`);
 
     switch (status) {
         // ── Loading: show spinner, NO redirect ─────────────────────────────────
@@ -27,28 +28,35 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
                 <div className="min-h-screen flex items-center justify-center bg-background">
                     <div className="flex flex-col items-center gap-3">
                         <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                        <p className="text-sm text-muted-foreground">טוען…</p>
+                        <p className="text-sm text-muted-foreground">
+                            {status === 'loading' ? 'טוען…' : 'טוען פרופיל…'}
+                        </p>
                     </div>
                 </div>
             );
 
-        // ── Not authenticated: send to root ────────────────────────────────────
+        // ── Not authenticated / No Profile / Unapproved: send to root ──────────
         case 'unauthenticated':
-            return <Navigate to="/" state={{ from: location }} replace />;
-
-        // ── Account exists but not fully set up: send to root (shows status) ───
         case 'no-profile':
         case 'pending-approval':
-            return <Navigate to="/" replace />;
+            // RootRoute handles displaying the correct UI for these edge cases.
+            // We just redirect them back to root.
+            return <Navigate to="/" state={{ from: location }} replace />;
 
-        // ── Ready: check role ──────────────────────────────────────────────────
+        // ── Ready: check explicit roles ────────────────────────────────────────
         case 'ready': {
-            if (role && profile && profile.role !== role) {
+            if (allowedRoles === 'any') {
+                return <>{children}</>;
+            }
+
+            if (!profile || !allowedRoles.includes(profile.role)) {
+                console.warn(`[ProtectedRoute] Access denied to ${location.pathname}. User role: ${profile?.role}`);
                 // Wrong role → redirect to correct dashboard
                 let correctPath = '/';
-                if (profile.role === 'advisor') correctPath = '/advisor/dashboard';
-                else if (profile.role === 'bank') correctPath = '/bank/dashboard';
-                else if (profile.role === 'admin') correctPath = '/admin/dashboard';
+                if (profile?.role === 'advisor') correctPath = '/advisor/dashboard';
+                else if (profile?.role === 'bank') correctPath = '/bank/dashboard';
+                else if (profile?.role === 'admin') correctPath = '/admin/dashboard';
+
                 return <Navigate to={correctPath} replace />;
             }
 
