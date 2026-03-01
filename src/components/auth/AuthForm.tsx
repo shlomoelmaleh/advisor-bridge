@@ -67,10 +67,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
     if (error) {
       setLoginError(error.message);
       setLoginLoading(false);
-    } else {
-      // Give auth state 3 seconds to propagate, then force-reset loading
-      setTimeout(() => setLoginLoading(false), 3000);
+      return;
     }
+
+    // signIn succeeded — navigate to root, RootRedirect will handle role-based routing
+    window.location.href = '/';
   };
 
   // ── Sign up ──────────────────────────────────────────────────────────────────

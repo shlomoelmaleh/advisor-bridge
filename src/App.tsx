@@ -32,19 +32,28 @@ const RootRedirect = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (profile?.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
-  if (profile?.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
-  if (profile?.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
 
-  // Authenticated but profile not yet loaded — show the landing page
-  return <Index />;
+  // User logged in but profile still loading
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (profile.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
+  if (profile.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
+  if (profile.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
+
+  return <Navigate to="/login" replace />;
 };
 
 const App = () => (
