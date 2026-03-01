@@ -42,6 +42,7 @@ const RootRoute = () => {
   const [searchParams] = useSearchParams();
   const tab = searchParams.get('tab') === 'register' ? 'register' : 'login';
 
+  // 1. Auth state still resolving → show spinner
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -50,13 +51,26 @@ const RootRoute = () => {
     );
   }
 
-  if (user && profile) {
+  // 2. Not logged in → show auth form
+  if (!user) {
+    return <AuthPage defaultTab={tab} />;
+  }
+
+  // 3. Logged in WITH profile → redirect to dashboard
+  if (profile) {
     if (profile.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
     if (profile.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
     if (profile.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
   }
 
-  return <AuthPage defaultTab={tab} />;
+  // 4. Logged in but NO profile yet (still fetching, or profile doesn't exist)
+  //    Show a "waiting" screen — NOT the login form (to avoid loop)
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+      <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      <p className="text-muted-foreground text-sm">טוען פרופיל…</p>
+    </div>
+  );
 };
 
 const App = () => (

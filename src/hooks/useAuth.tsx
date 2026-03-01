@@ -42,21 +42,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Step 1: get current session once on mount
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const p = await fetchProfile(session.user.id);
-        setProfile(p);
-      }
-      setLoading(false); // Always set loading=false here, no exceptions
-    });
+    let cancelled = false;
 
-    // Step 2: listen for future auth changes (login, logout, token refresh)
+    const init = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        const sess = data.session ?? null;
+        if (cancelled) return;
+
+        setSession(sess);
+        setUser(sess?.user ?? null);
+
+        // CRITICAL: set loading=false IMMEDIATELY after session resolves
+        // Profile loads separately — UI should not be blocked on it
+        setLoading(false);
+
+        // Then fetch profile in the background
+        if (sess?.user) {
+          const p = await fetchProfile(sess.user.id);
+          if (!cancelled) setProfile(p);
+        } else {
+          setProfile(null);
+        }
+      } catch (e) {
+        // Even on error — never stay stuck on loading
+        if (!cancelled) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    init();
+
+    // Listen for future auth changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // Ignore INITIAL_SESSION — getSession already handles it
+        // Ignore INITIAL_SESSION — init() already handles it
         if (event === 'INITIAL_SESSION') return;
 
         setSession(session);
@@ -64,14 +90,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (session?.user) {
           const p = await fetchProfile(session.user.id);
-          setProfile(p);
+          if (!cancelled) setProfile(p);
         } else {
           setProfile(null);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, role: UserRole, company?: string) => {

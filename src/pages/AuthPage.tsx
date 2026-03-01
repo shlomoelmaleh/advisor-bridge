@@ -1,24 +1,12 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import AuthForm from '@/components/auth/AuthForm';
-import { useAuth } from '@/hooks/useAuth';
 
 interface AuthPageProps {
   defaultTab?: 'login' | 'register';
 }
 
 const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
-  const { user, profile, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (loading || !user || !profile) return;
-
-    if (profile.role === 'advisor') navigate('/advisor/dashboard', { replace: true });
-    else if (profile.role === 'bank') navigate('/bank/dashboard', { replace: true });
-    else if (profile.role === 'admin') navigate('/admin/dashboard', { replace: true });
-  }, [user, profile, loading, navigate]);
-
+  // No redirect logic here — RootRoute is the single source of truth for redirects
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">

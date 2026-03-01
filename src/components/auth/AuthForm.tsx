@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Briefcase, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +39,7 @@ const ErrorBanner: React.FC<{ message: string }> = ({ message }) => (
 // ─── Main component ───────────────────────────────────────────────────────────
 const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
   const { signIn, signUp } = useAuth();
+  const navigate = useNavigate();
 
   // ── Login state ─────────────────────────────────────────────────────────────
   const [loginEmail, setLoginEmail] = useState('');
@@ -70,8 +72,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
       return;
     }
 
-    // signIn succeeded — navigate to root, RootRoute will handle role-based routing
-    window.location.href = '/';
+    // signIn succeeded — onAuthStateChange will update user/profile state,
+    // then RootRoute will handle the redirect. Use navigate, not hard refresh.
+    setLoginLoading(false);
+    navigate('/', { replace: true });
   };
 
   // ── Sign up ──────────────────────────────────────────────────────────────────
