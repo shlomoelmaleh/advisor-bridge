@@ -21,29 +21,46 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     console.log(`[ProtectedRoute] Path="${location.pathname}" Status="${status}" AllowedRoles=[${allowedRolesStr}] UserRole="${profile?.role ?? 'NONE'}"`);
 
     switch (status) {
-        // ── Loading: show spinner, NO redirect ─────────────────────────────────
+        // ── 1. Initial Auth Loading (Session Unresolved) ───────────────────────
         case 'loading':
-        case 'profile-loading':
             return (
                 <div className="min-h-screen flex items-center justify-center bg-background">
                     <div className="flex flex-col items-center gap-3">
                         <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                        <p className="text-sm text-muted-foreground">
-                            {status === 'loading' ? 'טוען…' : 'טוען פרופיל…'}
-                        </p>
+                        <p className="text-sm text-muted-foreground">טוען…</p>
                     </div>
                 </div>
             );
 
-        // ── Not authenticated / No Profile / Unapproved: send to root ──────────
+        // ── 2. Unauthenticated ──────────────────────────────────────────────────
         case 'unauthenticated':
-        case 'no-profile':
-        case 'pending-approval':
-            // RootRoute handles displaying the correct UI for these edge cases.
-            // We just redirect them back to root.
             return <Navigate to="/" state={{ from: location }} replace />;
 
-        // ── Ready: check explicit roles ────────────────────────────────────────
+        // ── 3. Authenticated but Profile Not Fully Evaluated ────────────────────
+        case 'profile-loading':
+        case 'no-profile':
+        case 'pending-approval':
+            // "any" means AUTH-ONLY: Do NOT wait for profile! Render immediately.
+            if (allowedRoles === 'any') {
+                return <>{children}</>;
+            }
+
+            // For role-specific routes, we MUST wait if profile is still fetching
+            if (status === 'profile-loading') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-background">
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                            <p className="text-sm text-muted-foreground">טוען פרופיל…</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            // If fetch finished but no profile/not approved, send to root for error UI
+            return <Navigate to="/" replace />;
+
+        // ── 4. Fully Ready ──────────────────────────────────────────────────────
         case 'ready': {
             if (allowedRoles === 'any') {
                 return <>{children}</>;
