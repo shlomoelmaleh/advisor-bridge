@@ -37,45 +37,54 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 // ─── ROOT ROUTE ───────────────────────────────────────────────────────────────
-// This is the SINGLE source of truth for all auth-based routing decisions.
-// No other component should navigate based on auth state.
+// SINGLE source of truth for auth-based routing. No other component redirects
+// based on auth state. Uses the `status` enum from useAuth — no ambiguous states.
 const RootRoute = () => {
-  const { user, profile, loading, profileLoading } = useAuth();
+  const { status, profile } = useAuth();
   const [searchParams] = useSearchParams();
   const tab = searchParams.get('tab') === 'register' ? 'register' : 'login';
 
-  // Safety timeout: if stuck on profile loading for >5 seconds, show error
-  const [timedOut, setTimedOut] = React.useState(false);
-  React.useEffect(() => {
-    if (!user || profile || !profileLoading) {
-      setTimedOut(false);
-      return;
-    }
-    const t = setTimeout(() => setTimedOut(true), 5000);
-    return () => clearTimeout(t);
-  }, [user, profile, profileLoading]);
+  console.log(`[RootRoute] status=${status}`);
 
-  // ── STATE 1: Initial auth loading (session not yet resolved) ──────────────
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground">טוען…</p>
+  switch (status) {
+    // ── Loading states: show spinner, NO redirects ──────────────────────────
+    case 'loading':
+    case 'profile-loading':
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            <p className="text-sm text-muted-foreground">
+              {status === 'loading' ? 'טוען…' : 'טוען פרופיל…'}
+            </p>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
 
-  // ── STATE 2: No user → show login/register form ───────────────────────────
-  if (!user) {
-    return <AuthPage defaultTab={tab} />;
-  }
+    // ── Anonymous: show login form ──────────────────────────────────────────
+    case 'unauthenticated':
+      return <AuthPage defaultTab={tab} />;
 
-  // ── STATE 3: User exists, profile loaded → route by role ──────────────────
-  if (profile) {
-    // 3a: User not approved → show approval waiting screen
-    if (profile.is_approved === false) {
+    // ── User exists but no profile record ───────────────────────────────────
+    case 'no-profile':
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+          <div className="text-6xl">⏳</div>
+          <h2 className="text-2xl font-bold">ממתין להקמת חשבון</h2>
+          <p className="text-muted-foreground text-center max-w-md">
+            החשבון שלך נוצר. הפרופיל בתהליך הקמה — נסה לרענן בעוד מספר שניות.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            נסה שוב
+          </button>
+        </div>
+      );
+
+    // ── User exists + profile, but not yet approved ─────────────────────────
+    case 'pending-approval':
       return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
           <div className="text-6xl">⏳</div>
@@ -85,51 +94,27 @@ const RootRoute = () => {
           </p>
         </div>
       );
-    }
 
-    // 3b: Approved → redirect to dashboard
-    if (profile.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
-    if (profile.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
-    if (profile.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
+    // ── Fully ready: redirect to dashboard ──────────────────────────────────
+    case 'ready':
+      if (profile?.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
+      if (profile?.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
+      if (profile?.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
+      // Fallback (should never happen)
+      return <AuthPage defaultTab={tab} />;
+
+    default:
+      return <AuthPage defaultTab={tab} />;
   }
-
-  // ── STATE 4: User exists but profile not yet loaded ───────────────────────
-  if (profileLoading && !timedOut) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-        <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        <p className="text-muted-foreground text-sm">טוען פרופיל…</p>
-      </div>
-    );
-  }
-
-  // ── STATE 5: Safety fallback — profile never loaded ───────────────────────
-  // Profile fetch finished or timed out, but profile is still null.
-  // This means either: the profile doesn't exist yet, or something failed.
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-      <div className="text-6xl">⏳</div>
-      <h2 className="text-2xl font-bold">ממתין להקמת חשבון</h2>
-      <p className="text-muted-foreground text-center max-w-md">
-        החשבון שלך נוצר. הפרופיל בתהליך הקמה — נסה לרענן בעוד מספר שניות.
-      </p>
-      <button
-        onClick={() => window.location.reload()}
-        className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-      >
-        נסה שוב
-      </button>
-    </div>
-  );
 };
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<RootRoute />} />
@@ -200,9 +185,9 @@ const App = () => (
 
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
