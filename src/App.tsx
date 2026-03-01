@@ -36,39 +36,89 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
-// Root route: if logged in redirect to dashboard, otherwise show auth form
+// ─── ROOT ROUTE ───────────────────────────────────────────────────────────────
+// This is the SINGLE source of truth for all auth-based routing decisions.
+// No other component should navigate based on auth state.
 const RootRoute = () => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const tab = searchParams.get('tab') === 'register' ? 'register' : 'login';
 
-  // 1. Auth state still resolving → show spinner
+  // Safety timeout: if stuck on profile loading for >5 seconds, show error
+  const [timedOut, setTimedOut] = React.useState(false);
+  React.useEffect(() => {
+    if (!user || profile || !profileLoading) {
+      setTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, [user, profile, profileLoading]);
+
+  // ── STATE 1: Initial auth loading (session not yet resolved) ──────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">טוען…</p>
+        </div>
       </div>
     );
   }
 
-  // 2. Not logged in → show auth form
+  // ── STATE 2: No user → show login/register form ───────────────────────────
   if (!user) {
     return <AuthPage defaultTab={tab} />;
   }
 
-  // 3. Logged in WITH profile → redirect to dashboard
+  // ── STATE 3: User exists, profile loaded → route by role ──────────────────
   if (profile) {
+    // 3a: User not approved → show approval waiting screen
+    if (profile.is_approved === false) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+          <div className="text-6xl">⏳</div>
+          <h2 className="text-2xl font-bold">ממתין לאישור מנהל</h2>
+          <p className="text-muted-foreground text-center max-w-md">
+            החשבון שלך נוצר בהצלחה. מנהל המערכת יאשר אותך בהקדם.
+          </p>
+        </div>
+      );
+    }
+
+    // 3b: Approved → redirect to dashboard
     if (profile.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
     if (profile.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
     if (profile.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
   }
 
-  // 4. Logged in but NO profile yet (still fetching, or profile doesn't exist)
-  //    Show a "waiting" screen — NOT the login form (to avoid loop)
+  // ── STATE 4: User exists but profile not yet loaded ───────────────────────
+  if (profileLoading && !timedOut) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+        <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+        <p className="text-muted-foreground text-sm">טוען פרופיל…</p>
+      </div>
+    );
+  }
+
+  // ── STATE 5: Safety fallback — profile never loaded ───────────────────────
+  // Profile fetch finished or timed out, but profile is still null.
+  // This means either: the profile doesn't exist yet, or something failed.
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-      <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-      <p className="text-muted-foreground text-sm">טוען פרופיל…</p>
+      <div className="text-6xl">⏳</div>
+      <h2 className="text-2xl font-bold">ממתין להקמת חשבון</h2>
+      <p className="text-muted-foreground text-center max-w-md">
+        החשבון שלך נוצר. הפרופיל בתהליך הקמה — נסה לרענן בעוד מספר שניות.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+      >
+        נסה שוב
+      </button>
     </div>
   );
 };
