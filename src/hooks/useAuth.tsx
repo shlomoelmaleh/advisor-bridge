@@ -69,10 +69,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (session?.user) {
         const p = await fetchProfile(session.user.id);
-        setProfile(p);
+        if (p) {
+          setProfile(p);
+          setLoading(false);
+        }
+        // If profile not found on first try, do NOT set loading=false here.
+        // onAuthStateChange will fire immediately after with retry logic
+        // and will set both profile and loading=false when it succeeds.
+      } else {
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
     // 2. Subscribe to future auth changes

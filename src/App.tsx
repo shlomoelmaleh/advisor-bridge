@@ -1,4 +1,5 @@
 
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,6 +30,13 @@ document.documentElement.lang = 'he';
 // Smart root redirect: send authenticated users to their dashboard
 const RootRedirect = () => {
   const { user, profile, loading } = useAuth();
+  const [profileTimeout, setProfileTimeout] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!user || profile) return;
+    const t = setTimeout(() => setProfileTimeout(true), 5000);
+    return () => clearTimeout(t);
+  }, [user, profile]);
 
   if (loading) {
     return (
@@ -39,6 +47,11 @@ const RootRedirect = () => {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+
+  // Safety fallback: if profile never loads after 5s, redirect to login
+  if (!profile && profileTimeout) {
+    return <Navigate to="/login" replace />;
+  }
 
   // User logged in but profile still loading
   if (!profile) {
