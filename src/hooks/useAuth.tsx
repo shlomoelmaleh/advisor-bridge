@@ -63,13 +63,27 @@ const fetchProfile = async (userId: string): Promise<Profile | null> => {
 let providerMountCount = 0; // DEBUG: track remounts
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, _setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [status, setStatus] = useState<AuthStatus>('loading');
+  const [status, _setStatus] = useState<AuthStatus>('loading');
 
   const mountedRef = useRef(true);
   const initRanRef = useRef(false); // prevent double init in StrictMode
+
+  // Track latest state for the listener closure
+  const userRef = useRef<User | null>(null);
+  const statusRef = useRef<AuthStatus>('loading');
+
+  const setUser = useCallback((u: User | null) => {
+    userRef.current = u;
+    _setUser(u);
+  }, []);
+
+  const setStatus = useCallback((s: AuthStatus) => {
+    statusRef.current = s;
+    _setStatus(s);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -142,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Safety timeout: if still 'loading' after 10s, force unauthenticated
     const safetyTimer = setTimeout(() => {
-      if (mountedRef.current && status === 'loading') {
+      if (mountedRef.current && statusRef.current === 'loading') {
         console.warn('[Auth] Safety timeout: forcing unauthenticated');
         setStatus('unauthenticated');
       }
@@ -159,6 +173,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         listenerCount++;
         console.log(`[Auth] onAuthStateChange: event=${event} (call #${listenerCount})`);
+
+        const currentUser = userRef.current;
+        const currentStatus = statusRef.current;
+
+        // Idempotency check: prevent duplicate profile-loading when SIGNED_IN fires redundant times
+        if (
+          (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') &&
+          newSession?.user &&
+          currentUser?.id === newSession.user.id &&
+          (currentStatus === 'ready' || currentStatus === 'pending-approval' || currentStatus === 'no-profile')
+        ) {
+          console.log('[Auth] SIGNED_IN idempotent return: user unchanged and profile already loaded');
+          // Update session just in case the token refreshed, but DO NOT fetch profile
+          setSession(newSession);
+          return;
+        }
 
         setSession(newSession);
         setUser(newSession?.user ?? null);
