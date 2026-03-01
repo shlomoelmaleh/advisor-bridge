@@ -4,15 +4,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 
 import { AuthProvider } from "@/hooks/useAuth";
 import { useAuth } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+import AuthPage from "./pages/AuthPage";
 import AdvisorDashboard from './components/advisor/AdvisorDashboard';
 import BankDashboard from './components/bank/BankDashboard';
 import CaseForm from './components/advisor/CaseForm';
@@ -27,16 +25,11 @@ const queryClient = new QueryClient();
 document.documentElement.dir = 'rtl';
 document.documentElement.lang = 'he';
 
-// Smart root redirect: send authenticated users to their dashboard
-const RootRedirect = () => {
+// Root route: if logged in redirect to dashboard, otherwise show auth form
+const RootRoute = () => {
   const { user, profile, loading } = useAuth();
-  const [profileTimeout, setProfileTimeout] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!user || profile) return;
-    const t = setTimeout(() => setProfileTimeout(true), 5000);
-    return () => clearTimeout(t);
-  }, [user, profile]);
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get('tab') === 'register' ? 'register' : 'login';
 
   if (loading) {
     return (
@@ -46,27 +39,13 @@ const RootRedirect = () => {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
-
-  // Safety fallback: if profile never loads after 5s, redirect to login
-  if (!profile && profileTimeout) {
-    return <Navigate to="/login" replace />;
+  if (user && profile) {
+    if (profile.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
+    if (profile.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
+    if (profile.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
   }
 
-  // User logged in but profile still loading
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
-  if (profile.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
-  if (profile.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
-  if (profile.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
-
-  return <Navigate to="/login" replace />;
+  return <AuthPage defaultTab={tab} />;
 };
 
 const App = () => (
@@ -78,9 +57,9 @@ const App = () => (
         <AuthProvider>
           <Routes>
             {/* Public routes */}
-            <Route path="/" element={<RootRedirect />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/" element={<RootRoute />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/register" element={<Navigate to="/?tab=register" replace />} />
 
             {/* Advisor-only routes */}
             <Route
