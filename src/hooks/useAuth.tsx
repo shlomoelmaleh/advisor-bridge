@@ -64,7 +64,7 @@ let providerMountCount = 0; // DEBUG: track remounts
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, _setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, _setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [status, _setStatus] = useState<AuthStatus>('loading');
 
@@ -73,11 +73,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Track latest state for the listener closure
   const userRef = useRef<User | null>(null);
+  const profileRef = useRef<Profile | null>(null);
   const statusRef = useRef<AuthStatus>('loading');
 
   const setUser = useCallback((u: User | null) => {
     userRef.current = u;
     _setUser(u);
+  }, []);
+
+  const setProfile = useCallback((p: Profile | null) => {
+    profileRef.current = p;
+    _setProfile(p);
   }, []);
 
   const setStatus = useCallback((s: AuthStatus) => {
@@ -126,35 +132,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // User exists — fetch profile BEFORE setting final status
+        // Only block visually if we DO NOT have a profile yet
+        if (!profileRef.current) {
+          setStatus('profile-loading');
+        }
+
         console.log('[Auth] init: session found, fetching profile…');
-        setStatus('profile-loading');
         const p = await fetchProfile(sess.user.id);
         if (!mountedRef.current) return;
 
-        setProfile(p);
-        if (!p) {
-          console.log('[Auth] init: profile is null → no-profile');
-          setStatus('no-profile');
-        } else if (p.is_approved === false) {
-          console.log('[Auth] init: profile not approved → pending-approval');
-          setStatus('pending-approval');
+        if (p) {
+          setProfile(p);
+          if (p.is_approved === false) setStatus('pending-approval');
+          else setStatus('ready');
         } else {
-          console.log('[Auth] init: profile ready → ready');
-          setStatus('ready');
+          // If fetch fails, retain the last known good profile (if any)
+          if (profileRef.current) {
+            console.warn('[Auth] init: profile fetch failed, keeping stale profile');
+            setStatus('ready');
+          } else {
+            setStatus('no-profile');
+          }
         }
       } catch (e) {
         console.error('[Auth] init exception:', e);
         if (mountedRef.current) {
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setStatus('unauthenticated');
+          if (!profileRef.current) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setStatus('unauthenticated');
+          } else {
+            console.warn('[Auth] init: exception caught, restoring ready status to protect stable view');
+            setStatus('ready');
+          }
         }
       }
     };
 
-    // Safety timeout: if still 'loading' after 10s, force unauthenticated
     const safetyTimer = setTimeout(() => {
       if (mountedRef.current && statusRef.current === 'loading') {
         console.warn('[Auth] Safety timeout: forcing unauthenticated');
@@ -167,7 +182,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // ── auth listener ─────────────────────────────────────────────────────────
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        // Skip INITIAL_SESSION — init() already handles it
         if (event === 'INITIAL_SESSION') return;
         if (!mountedRef.current) return;
 
@@ -175,18 +189,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log(`[Auth] onAuthStateChange: event=${event} (call #${listenerCount})`);
 
         const currentUser = userRef.current;
+        const currentProfile = profileRef.current;
         const currentStatus = statusRef.current;
 
-        // Idempotency check: prevent duplicate profile-loading when SIGNED_IN fires redundant times
+        // Idempotency: Ignore redundant SIGNED_IN/TOKEN_REFRESHED if nothing changed
         if (
           (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') &&
           newSession?.user &&
           currentUser?.id === newSession.user.id &&
           (currentStatus === 'ready' || currentStatus === 'pending-approval' || currentStatus === 'no-profile')
         ) {
-          console.log('[Auth] SIGNED_IN idempotent return: user unchanged and profile already loaded');
-          // Update session just in case the token refreshed, but DO NOT fetch profile
-          setSession(newSession);
+          console.log('[Auth] Listener idempotent return: profile already stabilized');
+          setSession(newSession); // update token
           return;
         }
 
@@ -199,18 +213,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // User signed in/changed — fetch profile
-        setStatus('profile-loading');
+        // Only transition to 'profile-loading' if we actually lack a profile
+        if (!currentProfile || currentUser?.id !== newSession.user.id) {
+          setStatus('profile-loading');
+        } else {
+          console.log('[Auth] Listener: Background refetching profile (silent)');
+        }
+
         const p = await fetchProfile(newSession.user.id);
         if (!mountedRef.current) return;
 
-        setProfile(p);
-        if (!p) {
-          setStatus('no-profile');
-        } else if (p.is_approved === false) {
-          setStatus('pending-approval');
+        if (p) {
+          setProfile(p);
+          if (p.is_approved === false) setStatus('pending-approval');
+          else setStatus('ready');
         } else {
-          setStatus('ready');
+          // If fetch fails but we had a profile, keep it stable!
+          if (currentProfile && currentUser?.id === newSession.user.id) {
+            console.warn('[Auth] Listener: profile refetch failed, preserving existing profile state');
+            setStatus('ready');
+          } else {
+            setStatus('no-profile');
+          }
         }
       }
     );
