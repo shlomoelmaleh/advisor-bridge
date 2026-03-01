@@ -67,10 +67,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
     if (error) {
       setLoginError(error.message);
       setLoginLoading(false);
+    } else {
+      // Give auth state 3 seconds to propagate, then force-reset loading
+      setTimeout(() => setLoginLoading(false), 3000);
     }
-    // On success: ProtectedRoute / RootRedirect handles navigation automatically.
-    // We leave loading=true intentionally so the button stays disabled while the
-    // auth state propagates and the router redirects.
   };
 
   // ── Sign up ──────────────────────────────────────────────────────────────────

@@ -11,10 +11,21 @@ const Login = () => {
   useEffect(() => {
     if (loading) return;
     if (!user) return;
-    if (profile?.role === 'advisor') navigate('/advisor/dashboard', { replace: true });
-    else if (profile?.role === 'bank') navigate('/bank/dashboard', { replace: true });
-    else if (profile?.role === 'admin') navigate('/admin/dashboard', { replace: true });
-  }, [user, profile, loading]);
+
+    // If user is logged in but profile not yet fetched, wait a moment
+    if (!profile) {
+      const timer = setTimeout(() => {
+        // Force navigate to root, RootRedirect will handle the rest
+        navigate('/', { replace: true });
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+
+    if (profile.role === 'advisor') navigate('/advisor/dashboard', { replace: true });
+    else if (profile.role === 'bank') navigate('/bank/dashboard', { replace: true });
+    else if (profile.role === 'admin') navigate('/admin/dashboard', { replace: true });
+    else navigate('/', { replace: true });
+  }, [user, profile, loading, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">

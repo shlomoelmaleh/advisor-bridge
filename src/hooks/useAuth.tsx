@@ -82,12 +82,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Capture id before setTimeout to avoid TypeScript narrowing loss
           const userId = session.user.id;
-          setTimeout(async () => {
-            const p = await fetchProfile(userId);
-            setProfile(p);
-          }, 0);
+
+          // Retry profile fetch up to 5 times with 500ms delay
+          let profile = null;
+          for (let i = 0; i < 5; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            profile = await fetchProfile(userId);
+            if (profile) break;
+          }
+          setProfile(profile);
         } else {
           setProfile(null);
         }
