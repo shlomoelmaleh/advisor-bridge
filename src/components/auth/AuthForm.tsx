@@ -70,8 +70,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
       return;
     }
 
-    // signIn succeeded — navigate to root, RootRedirect will handle role-based routing
-    window.location.href = '/';
+    // signIn succeeded — onAuthStateChange in useAuth will update user/profile,
+    // then the Login/Register page's useEffect will handle role-based redirect.
+    // Do NOT do window.location.href or navigate here to avoid race conditions.
+    setLoginLoading(false);
   };
 
   // ── Sign up ──────────────────────────────────────────────────────────────────
