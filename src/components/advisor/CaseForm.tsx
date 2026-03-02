@@ -22,13 +22,17 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useCases } from '@/hooks/useCases';
+import { useAuth } from '@/hooks/useAuth';
 import { caseSchema } from '@/lib/validation';
 import type { BorrowerType } from '@/types/cases';
 
 const CaseForm = () => {
   const navigate = useNavigate();
   const { createCase } = useCases();
+  const { profileState } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isReadOnly = profileState === 'pending' || profileState === 'missing';
 
   // ── Form state ─────────────────────────────────────────────────────────────
   const [loanAmountMin, setLoanAmountMin] = useState(800_000);
@@ -259,8 +263,8 @@ const CaseForm = () => {
           >
             ביטול
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'שולח…' : 'הגשת תיק'}
+          <Button type="submit" disabled={isSubmitting || isReadOnly}>
+            {isSubmitting ? 'שולח…' : isReadOnly ? 'ממתין לאישור' : 'הגשת תיק'}
           </Button>
         </CardFooter>
       </form>

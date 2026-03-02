@@ -34,10 +34,10 @@ const STATUS_COLOR: Record<CaseStatus, string> = {
 };
 
 const STATUS_ICON: Record<CaseStatus, React.ReactNode> = {
-  open: <AlertCircle className="h-4 w-4 mr-1" />,
-  in_progress: <Clock className="h-4 w-4 mr-1" />,
-  matched: <HandshakeIcon className="h-4 w-4 mr-1" />,
-  closed: <LockIcon className="h-4 w-4 mr-1" />,
+  open: <AlertCircle className="h-4 w-4 ml-1" />,
+  in_progress: <Clock className="h-4 w-4 ml-1" />,
+  matched: <HandshakeIcon className="h-4 w-4 ml-1" />,
+  closed: <LockIcon className="h-4 w-4 ml-1" />,
 };
 
 const STATUS_LABEL: Record<CaseStatus, string> = {
@@ -99,15 +99,15 @@ const CaseRow: React.FC<{ c: DbCase }> = ({ c }) => (
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-const EmptyState: React.FC<{ filtered?: boolean }> = ({ filtered }) => (
+const EmptyState: React.FC<{ filtered?: boolean; isReadOnly: boolean }> = ({ filtered, isReadOnly }) => (
   <div className="text-center py-10">
     <p className="text-muted-foreground mb-4">
       {filtered ? 'אין תיקים בסטטוס זה' : 'עדיין לא הגשת תיקים'}
     </p>
     {!filtered && (
-      <Link to="/advisor/submit-case">
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
+      <Link to={isReadOnly ? "#" : "/advisor/submit-case"}>
+        <Button disabled={isReadOnly} variant={isReadOnly ? "secondary" : "default"}>
+          <PlusCircle className="ml-2 h-4 w-4" />
           הגש תיק ראשון
         </Button>
       </Link>
@@ -117,7 +117,7 @@ const EmptyState: React.FC<{ filtered?: boolean }> = ({ filtered }) => (
 
 // ─── Case list for a given filter ─────────────────────────────────────────────
 
-const CaseList: React.FC<{ cases: DbCase[]; filter: string }> = ({ cases, filter }) => {
+const CaseList: React.FC<{ cases: DbCase[]; filter: string; isReadOnly: boolean }> = ({ cases, filter, isReadOnly }) => {
   const filtered =
     filter === 'all' ? cases : cases.filter((c) => c.status === filter);
 
@@ -128,30 +128,18 @@ const CaseList: React.FC<{ cases: DbCase[]; filter: string }> = ({ cases, filter
       ))}
     </div>
   ) : (
-    <EmptyState filtered={filter !== 'all'} />
+    <EmptyState filtered={filter !== 'all'} isReadOnly={isReadOnly} />
   );
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const AdvisorDashboard = () => {
-  const { profile } = useAuth();
+  const { profile, profileState } = useAuth();
   const { cases, loading, error } = useCases();
   const [activeFilter, setActiveFilter] = useState('all');
 
-  if (profile && profile.is_approved === false) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md p-8">
-          <div className="text-5xl">⏳</div>
-          <h2 className="text-2xl font-bold">ממתין לאישור</h2>
-          <p className="text-muted-foreground">
-            החשבון שלך נמצא בבדיקה. מנהל המערכת יאשר אותך בקרוב.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const isReadOnly = profileState === 'pending' || profileState === 'missing';
 
   const stats = [
     {
@@ -175,7 +163,7 @@ const AdvisorDashboard = () => {
   ];
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in text-right" dir="rtl">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -184,9 +172,9 @@ const AdvisorDashboard = () => {
             שלום, {profile?.full_name ?? 'יועץ'} — כאן כל התיקים שלך
           </p>
         </div>
-        <Link to="/advisor/submit-case">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
+        <Link to={isReadOnly ? "#" : "/advisor/submit-case"}>
+          <Button disabled={isReadOnly} variant={isReadOnly ? "secondary" : "default"}>
+            <PlusCircle className="ml-2 h-4 w-4" />
             תיק חדש
           </Button>
         </Link>
@@ -197,13 +185,13 @@ const AdvisorDashboard = () => {
         {stats.map((stat, i) => (
           <Card key={i} className="hover-scale">
             <CardContent className="p-6 flex justify-between items-center">
-              <div>
+              <div className={`rounded-full p-3 ${stat.color} bg-opacity-10`}>{stat.icon}</div>
+              <div className="text-left">
                 <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
                 <p className={`text-3xl font-bold ${stat.color}`}>
                   {loading ? '—' : stat.value}
                 </p>
               </div>
-              <div className={`rounded-full p-3 ${stat.color} bg-opacity-10`}>{stat.icon}</div>
             </CardContent>
           </Card>
         ))}
@@ -226,26 +214,25 @@ const AdvisorDashboard = () => {
             <CaseSkeleton />
           ) : (
             <Tabs defaultValue="all" onValueChange={setActiveFilter}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="all">הכל ({cases.length})</TabsTrigger>
-                <TabsTrigger value="open">
+              <TabsList className="mb-4 flex flex-wrap justify-start h-auto gap-2 bg-transparent p-0">
+                <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">הכל ({cases.length})</TabsTrigger>
+                <TabsTrigger value="open" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   פתוח ({cases.filter((c) => c.status === 'open').length})
                 </TabsTrigger>
-                <TabsTrigger value="in_progress">
+                <TabsTrigger value="in_progress" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   בטיפול ({cases.filter((c) => c.status === 'in_progress').length})
                 </TabsTrigger>
-                <TabsTrigger value="matched">
+                <TabsTrigger value="matched" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   הותאם ({cases.filter((c) => c.status === 'matched').length})
                 </TabsTrigger>
-                <TabsTrigger value="closed">
+                <TabsTrigger value="closed" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   סגור ({cases.filter((c) => c.status === 'closed').length})
                 </TabsTrigger>
               </TabsList>
 
-              {/* All tabs render the same CaseList, filtered by value */}
               {(['all', 'open', 'in_progress', 'matched', 'closed'] as const).map((tab) => (
                 <TabsContent key={tab} value={tab}>
-                  <CaseList cases={cases} filter={tab} />
+                  <CaseList cases={cases} filter={tab} isReadOnly={isReadOnly} />
                 </TabsContent>
               ))}
             </Tabs>

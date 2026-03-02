@@ -1,18 +1,14 @@
-
 import React from 'react';
-import Navbar from '@/components/common/Navbar';
-import Footer from '@/components/common/Footer';
 import BankDashboardContent from '@/components/bank/BankDashboard';
+import AppLayout from '@/components/layout/AppLayout';
 
 const BankDashboard = () => {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-grow container py-8">
+    <AppLayout>
+      <div className="container py-8">
         <BankDashboardContent />
-      </main>
-      <Footer />
-    </div>
+      </div>
+    </AppLayout>
   );
 };
 

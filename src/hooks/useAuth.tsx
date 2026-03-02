@@ -6,6 +6,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type UserRole = 'advisor' | 'bank' | 'admin';
 
+export type SessionState = 'booting' | 'no-session' | 'has-session';
+export type RoleState = UserRole | 'unknown';
+export type ProfileState = 'idle' | 'loading' | 'ready' | 'missing' | 'pending' | 'error';
+
 export interface Profile {
   user_id: string;
   full_name: string | null;
@@ -15,21 +19,13 @@ export interface Profile {
   created_at?: string;
 }
 
-/** Possible auth states — every consumer must handle each one explicitly */
-export type AuthStatus =
-  | 'loading'            // session not yet resolved
-  | 'unauthenticated'    // no user
-  | 'profile-loading'    // user exists, profile being fetched (blocking spinner)
-  | 'no-profile'         // user exists, profile missing (show "Pending Setup" screen)
-  | 'pending-approval'   // user + profile, but is_approved === false (show "Waiting Approval" screen)
-  | 'profile-error'      // network error during fetch (show "Error/Retry" screen)
-  | 'ready';             // user + approved profile (allow dashboard)
-
 interface AuthContextValue {
   user: User | null;
-  profile: Profile | null;
   session: Session | null;
-  status: AuthStatus;
+  sessionState: SessionState;
+  roleState: RoleState;
+  profileState: ProfileState;
+  profile: Profile | null;
   isProfileFetching: boolean;
   signUp: (email: string, password: string, fullName: string, role: UserRole, company?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -52,92 +48,162 @@ const safeParseJSON = (str: string | null) => {
   }
 };
 
-const fetchProfile = async (userId: string): Promise<Profile | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('user_id, full_name, company, role, is_approved, created_at')
-      .eq('user_id', userId)
-      .single();
-    if (error) {
-      console.warn('[Auth] fetchProfile error:', error.message);
-      // differentiate between "no record" and "network error"
-      if (error.code === 'PGRST116') return null; // no rows
-      throw error;
-    }
-    return data as unknown as Profile;
-  } catch (e) {
-    console.error('[Auth] fetchProfile exception:', e);
-    throw e;
+const fetchProfile = async (userId: string, signal?: AbortSignal): Promise<Profile | null> => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_id, full_name, company, role, is_approved, created_at')
+    .eq('user_id', userId)
+    .single();
+
+  if (signal?.aborted) throw new Error('Aborted');
+
+  if (error) {
+    if (error.code === 'PGRST116') return null; // no rows
+    throw error;
   }
+  return data as unknown as Profile;
 };
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
-let providerMountCount = 0; // DEBUG: track remounts
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, _setUser] = useState<User | null>(null);
+  const [session, _setSession] = useState<Session | null>(null);
+
+  const [sessionState, setSessionState] = useState<SessionState>('booting');
+  const [roleState, setRoleState] = useState<RoleState>('unknown');
+  const [profileState, setProfileState] = useState<ProfileState>('idle');
   const [profile, _setProfile] = useState<Profile | null>(() => safeParseJSON(localStorage.getItem('advisor_bridge_profile')));
-  const [session, setSession] = useState<Session | null>(null);
-  const [status, _setStatus] = useState<AuthStatus>('loading');
-  const [isProfileFetching, setIsProfileFetching] = useState<boolean>(false);
+  const [isProfileFetching, setIsProfileFetching] = useState(false);
 
   const mountedRef = useRef(true);
-  const initRanRef = useRef(false); // prevent double init in StrictMode
+  const initRanRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const sessionUserRef = useRef<string | null>(null);
 
-  // Track latest state for the listener closure
+  // Refs for state to avoid closure staleness in listeners
   const userRef = useRef<User | null>(null);
-  const profileRef = useRef<Profile | null>(profile);
-  const statusRef = useRef<AuthStatus>('loading');
-
-  const setUser = useCallback((u: User | null) => {
-    userRef.current = u;
-    _setUser(u);
-  }, []);
+  const roleRef = useRef<RoleState>('unknown');
 
   const setProfile = useCallback((p: Profile | null) => {
-    profileRef.current = p;
     _setProfile(p);
     if (p) {
       localStorage.setItem('advisor_bridge_profile', JSON.stringify(p));
+      localStorage.setItem('advisor_bridge_role', p.role);
     } else {
       localStorage.removeItem('advisor_bridge_profile');
+      localStorage.removeItem('advisor_bridge_role');
     }
   }, []);
 
-  const setStatus = useCallback((s: AuthStatus) => {
-    statusRef.current = s;
-    _setStatus(s);
+  const resolveRole = useCallback((u: User | null, p: Profile | null) => {
+    const jwtRole = u?.user_metadata?.role as UserRole | undefined;
+    const dbRole = p?.role;
+    const cachedRole = localStorage.getItem('advisor_bridge_role') as UserRole | null;
+
+    let finalRole: RoleState = 'unknown';
+
+    // Priority: JWT > DB > Cache
+    if (jwtRole) {
+      finalRole = jwtRole;
+      if (dbRole && dbRole !== jwtRole) {
+        console.warn(`[Auth][WARN] role mismatch JWT=${jwtRole} DB=${dbRole} -> using JWT`);
+      }
+    } else if (dbRole) {
+      finalRole = dbRole;
+    } else if (cachedRole) {
+      finalRole = cachedRole;
+    }
+
+    if (finalRole !== roleRef.current) {
+      console.log(`[Auth] role resolved: ${finalRole}`);
+      roleRef.current = finalRole;
+      setRoleState(finalRole);
+    }
   }, []);
 
   const handleProfileFetch = async (uid: string) => {
     if (!mountedRef.current) return;
+
+    // Cancellation of previous in-flight request
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+
     setIsProfileFetching(true);
+    setProfileState('loading');
+    console.log('[Auth] profile fetch start');
+
     try {
-      const p = await fetchProfile(uid);
+      const p = await fetchProfile(uid, abortControllerRef.current.signal);
       if (!mountedRef.current) return;
 
       setProfile(p);
+      resolveRole(userRef.current, p);
+
       if (!p) {
-        setStatus('no-profile');
+        console.log('[Auth] profile state=missing');
+        setProfileState('missing');
       } else if (p.is_approved === false) {
-        setStatus('pending-approval');
+        console.log('[Auth] profile state=pending');
+        setProfileState('pending');
       } else {
-        setStatus('ready');
+        console.log('[Auth] profile state=ready');
+        setProfileState('ready');
       }
-    } catch (e) {
-      console.error('[Auth] Profile fetch failed:', e);
-      if (!mountedRef.current) return;
-      // If we have a cached profile, keep the UI stable even if refresh fails
-      if (profileRef.current) {
-        console.warn('[Auth] Fetch failed, but using cached profile to avoid UI block.');
-        // stay in existing status
-      } else {
-        setStatus('profile-error');
+    } catch (e: any) {
+      if (e.message === 'Aborted') return;
+      console.error('[Auth] profile fetch error:', e);
+      if (mountedRef.current) {
+        setProfileState('error');
       }
     } finally {
-      if (mountedRef.current) setIsProfileFetching(false);
+      if (mountedRef.current) {
+        setIsProfileFetching(false);
+        console.log('[App] ready');
+      }
+    }
+  };
+
+  const init = async () => {
+    console.log('[Auth] init starting');
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (!mountedRef.current) return;
+
+      if (error) {
+        console.error('[Auth] getSession error:', error.message);
+        setSessionState('no-session');
+        return;
+      }
+
+      const sess = data.session ?? null;
+      const u = sess?.user ?? null;
+
+      _setSession(sess);
+      _setUser(u);
+      userRef.current = u;
+      sessionUserRef.current = u?.id ?? null;
+
+      if (!u) {
+        console.log('[Auth] session=no-session');
+        setSessionState('no-session');
+        setRoleState('unknown');
+        roleRef.current = 'unknown';
+        return;
+      }
+
+      console.log('[Auth] session=has-session');
+      setSessionState('has-session');
+
+      // Immediate role resolution (JWT > Cache)
+      resolveRole(u, profile);
+
+      // Background profile fetch
+      handleProfileFetch(u.id);
+
+    } catch (e) {
+      console.error('[Auth] init exception:', e);
+      if (mountedRef.current) setSessionState('no-session');
     }
   };
 
@@ -149,76 +215,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     mountedRef.current = true;
-    providerMountCount++;
-    console.log(`[Auth] AuthProvider mounted (count: ${providerMountCount}) (Initial Cached Profile: ${profileRef.current?.role ?? 'NONE'})`);
-
-    if (initRanRef.current) {
-      console.log('[Auth] Skipping duplicate init (StrictMode)');
-      return;
-    }
+    if (initRanRef.current) return;
     initRanRef.current = true;
-
-    let listenerCount = 0;
-
-    const init = async () => {
-      console.log('[Auth] init() starting');
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (!mountedRef.current) return;
-
-        if (error) {
-          console.error('[Auth] getSession error:', error.message);
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setStatus('unauthenticated');
-          return;
-        }
-
-        const sess = data.session ?? null;
-        setSession(sess);
-        setUser(sess?.user ?? null);
-
-        if (!sess?.user) {
-          console.log('[Auth] init: no session → unauthenticated');
-          setProfile(null);
-          setStatus('unauthenticated');
-          return;
-        }
-
-        // NON-BLOCKING PROFILE INIT: 
-        // 1. If we have a cached profile, show it immediately (ready or pending-approval)
-        // 2. If no cache, show "no-profile" (stable Pending screen) immediately
-        // 3. Fetch fresh data in background. NEVER set "profile-loading" (spinner).
-        if (profileRef.current && profileRef.current.user_id === sess.user.id) {
-          console.log('[Auth] init: Using cached profile locally.');
-          if (profileRef.current.is_approved === false) setStatus('pending-approval');
-          else setStatus('ready');
-        } else {
-          console.log('[Auth] init: No cached profile for user. Showing pending state.');
-          setStatus('no-profile');
-        }
-
-        handleProfileFetch(sess.user.id);
-      } catch (e) {
-        console.error('[Auth] init exception:', e);
-        if (mountedRef.current) {
-          if (!profileRef.current) {
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            setStatus('unauthenticated');
-          }
-        }
-      }
-    };
-
-    const safetyTimer = setTimeout(() => {
-      if (mountedRef.current && statusRef.current === 'loading') {
-        console.warn('[Auth] Safety timeout: forcing unauthenticated');
-        setStatus('unauthenticated');
-      }
-    }, 10000);
 
     init();
 
@@ -227,60 +225,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (event === 'INITIAL_SESSION') return;
         if (!mountedRef.current) return;
 
-        listenerCount++;
-        console.log(`[Auth] onAuthStateChange: event=${event} (call #${listenerCount})`);
-
-        const currentUser = userRef.current;
-        const currentProfile = profileRef.current;
-        const currentStatus = statusRef.current;
-
-        // Idempotency: Ignore redundant SIGNED_IN/TOKEN_REFRESHED if nothing changed
+        // Idempotency: skip if session user is the same and we aren't explicit sign-out/in
+        const newUser = newSession?.user ?? null;
         if (
           (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') &&
-          newSession?.user &&
-          currentUser?.id === newSession.user.id &&
-          (currentStatus === 'ready' || currentStatus === 'pending-approval' || currentStatus === 'no-profile')
+          newUser?.id === sessionUserRef.current &&
+          sessionState === 'has-session'
         ) {
-          console.log('[Auth] Listener idempotent return: profile already stabilized');
-          setSession(newSession);
+          _setSession(newSession);
           return;
         }
 
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
+        console.log(`[Auth] onAuthStateChange: event=${event}`);
 
-        if (!newSession?.user || event === 'SIGNED_OUT') {
-          console.log('[Auth] Listener: Session terminated. Destroying profile.');
+        _setSession(newSession);
+        _setUser(newUser);
+        userRef.current = newUser;
+        sessionUserRef.current = newUser?.id ?? null;
+
+        if (!newUser || event === 'SIGNED_OUT') {
+          console.log('[Auth] session=no-session');
+          setSessionState('no-session');
+          setRoleState('unknown');
+          roleRef.current = 'unknown';
           setProfile(null);
-          setStatus('unauthenticated');
+          setProfileState('idle');
+          if (abortControllerRef.current) abortControllerRef.current.abort();
           return;
         }
 
-        // NON-BLOCKING LISTENER:
-        // Transition to stable states immediately, fetch in background.
-        if (!currentProfile || currentUser?.id !== newSession.user.id) {
-          console.log('[Auth] Listener: No valid profile for this user. Showing pending state.');
-          setStatus('no-profile');
-        } else {
-          console.log('[Auth] Listener: Background fetching refreshed profile.');
-        }
+        console.log('[Auth] session=has-session');
+        setSessionState('has-session');
 
-        handleProfileFetch(newSession.user.id);
+        // Immediate role resolution from JWT
+        resolveRole(newUser, null);
+
+        // Refresh profile in background
+        handleProfileFetch(newUser.id);
       }
     );
 
     return () => {
-      console.log('[Auth] AuthProvider cleanup');
       mountedRef.current = false;
-      clearTimeout(safetyTimer);
       subscription.unsubscribe();
-      // Reset initRanRef so re-mount in StrictMode works correctly
-      initRanRef.current = false;
+      if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ─── Auth actions ───────────────────────────────────────────────────────────
+  }, []); // Empty deps to ensure single listener
 
   const signUp = useCallback(async (email: string, password: string, fullName: string, role: UserRole, company?: string) => {
     const { error } = await supabase.auth.signUp({
@@ -293,28 +283,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    // onAuthStateChange will handle status transitions
     return { error: error as Error | null };
   }, []);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
-    // onAuthStateChange will set status to 'unauthenticated'
-    // but set explicitly for immediate UI response:
     if (mountedRef.current) {
-      setUser(null);
+      _setUser(null);
       setProfile(null);
-      setSession(null);
-      setStatus('unauthenticated');
+      _setSession(null);
+      setSessionState('no-session');
+      setRoleState('unknown');
+      roleRef.current = 'unknown';
+      setProfileState('idle');
     }
-  }, []);
+  }, [setProfile]);
 
-  // Backwards compat: expose loading and profileLoading as derived
-  const contextValue: AuthContextValue = {
+  const value: AuthContextValue = {
     user,
-    profile,
     session,
-    status,
+    sessionState,
+    roleState,
+    profileState,
+    profile,
     isProfileFetching,
     signUp,
     signIn,
@@ -323,13 +314,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {sessionState === 'booting' ? (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export const useAuth = (): AuthContextValue => {
   const ctx = useContext(AuthContext);

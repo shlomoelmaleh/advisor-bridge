@@ -4,76 +4,64 @@ import { useAuth, UserRole } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
-    allowedRoles: UserRole[] | 'any';
+    allowedRoles: UserRole[] | 'any-authenticated';
 }
 
 /**
  * Route guard for authenticated pages.
- * NO generic redirects during loading states (prevents infinite loops).
- * Only enforces role checks based on the explicit `allowedRoles` prop.
+ * Routing depends ONLY on SessionState and RoleState.
+ * NEVER inspects ProfileState or approval status.
  */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-    const { status, profile } = useAuth();
+    const { sessionState, roleState } = useAuth();
     const location = useLocation();
 
     // Log the current evaluation for debugging
-    const allowedRolesStr = allowedRoles === 'any' ? 'any' : allowedRoles.join(',');
-    console.log(`[ProtectedRoute] Path="${location.pathname}" Status="${status}" AllowedRoles=[${allowedRolesStr}] UserRole="${profile?.role ?? 'NONE'}"`);
+    const allowedRolesStr = allowedRoles === 'any-authenticated' ? 'any-authenticated' : allowedRoles.join(',');
+    console.log(`[RouteGuard] Path="${location.pathname}" Session="${sessionState}" Role="${roleState}" AllowedRoles=[${allowedRolesStr}]`);
 
-    switch (status) {
-        // ── 1. Initial Auth Loading (Session Unresolved) ───────────────────────
-        case 'loading':
-            return (
-                <div className="min-h-screen flex items-center justify-center bg-background">
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                        <p className="text-sm text-muted-foreground">טוען…</p>
-                    </div>
-                </div>
-            );
+    // 1. Unauthenticated -> redirect to login (RootRoute)
+    if (sessionState === 'no-session') {
+        return <Navigate to="/" state={{ from: location }} replace />;
+    }
 
-        // ── 2. Unauthenticated ──────────────────────────────────────────────────
-        case 'unauthenticated':
-            return <Navigate to="/" state={{ from: location }} replace />;
-
-        // ── 3. Authenticated but Profile Not Fully Evaluated ────────────────────
-        case 'profile-loading':
-        case 'profile-error':
-        case 'no-profile':
-        case 'pending-approval':
-            // "any" means AUTH-ONLY: Do NOT wait for profile! Render immediately.
-            if (allowedRoles === 'any') {
-                return <>{children}</>;
-            }
-
-            // For role-specific routes, if we don't have a ready profile,
-            // redirect to root where RootRoute handles stable Error/Pending screens.
-            return <Navigate to="/" replace />;
-
-        // ── 4. Fully Ready ──────────────────────────────────────────────────────
-        case 'ready': {
-            if (allowedRoles === 'any') {
-                return <>{children}</>;
-            }
-
-            if (!profile || !allowedRoles.includes(profile.role)) {
-                console.warn(`[ProtectedRoute] Access denied to ${location.pathname}. User role: ${profile?.role}`);
-                // Wrong role → redirect to correct dashboard
-                let correctPath = '/';
-                if (profile?.role === 'advisor') correctPath = '/advisor/dashboard';
-                else if (profile?.role === 'bank') correctPath = '/bank/dashboard';
-                else if (profile?.role === 'admin') correctPath = '/admin/dashboard';
-
-                return <Navigate to={correctPath} replace />;
-            }
-
-            // Authorized ✓
+    // 2. Session resolved -> check roles
+    if (sessionState === 'has-session') {
+        // Any authenticated user allowed
+        if (allowedRoles === 'any-authenticated') {
             return <>{children}</>;
         }
 
-        default:
-            return <Navigate to="/" replace />;
+        // Specific roles allowed
+        if (roleState !== 'unknown' && allowedRoles.includes(roleState as UserRole)) {
+            return <>{children}</>;
+        }
+
+        // Role mismatch or still unknown
+        if (roleState !== 'unknown') {
+            console.warn(`[RouteGuard] Access denied to ${location.pathname}. User role: ${roleState}`);
+            // Redirect to their default dashboard instead of root to avoid redirect loops
+            let correctPath = '/';
+            if (roleState === 'advisor') correctPath = '/advisor/dashboard';
+            else if (roleState === 'bank') correctPath = '/bank/dashboard';
+            else if (roleState === 'admin') correctPath = '/admin/dashboard';
+
+            // If they are already on the correct path but it's not allowed (shouldn't happen), go to root
+            if (location.pathname === correctPath) return <Navigate to="/" replace />;
+
+            return <Navigate to={correctPath} replace />;
+        }
+
+        // Role still resolving: show small spinner in-place
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            </div>
+        );
     }
+
+    // Still booting
+    return null;
 };
 
 export default ProtectedRoute;

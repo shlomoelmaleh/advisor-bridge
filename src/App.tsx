@@ -17,9 +17,12 @@ import CaseSubmit from './pages/CaseSubmit';
 import MatchesPage from './pages/Matches';
 import Chat from './pages/Chat';
 import AdminDashboard from './pages/AdminDashboard';
+import BankAppetite from './pages/BankAppetite';
+import BankChat from './pages/BankChat';
 import NotFound from "./pages/NotFound";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
+import AppLayout from "@/components/layout/AppLayout";
 
 const queryClient = new QueryClient();
 
@@ -27,108 +30,40 @@ const queryClient = new QueryClient();
 document.documentElement.dir = 'rtl';
 document.documentElement.lang = 'he';
 
-// Layout wrapper for authenticated pages that need Navbar + Footer
-const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="min-h-screen flex flex-col">
-    <Navbar />
-    <main className="flex-grow container py-8">{children}</main>
-    <Footer />
-  </div>
-);
-
 // ─── ROOT ROUTE ───────────────────────────────────────────────────────────────
-// SINGLE source of truth for auth-based routing. No other component redirects
-// based on auth state. Uses the `status` enum from useAuth — no ambiguous states.
+// SINGLE source of truth for auth-based entry. 
+// It blocks only during initial session resolution (booting).
 const RootRoute = () => {
-  const { status, profile, reFetchProfile } = useAuth();
+  const { sessionState, roleState } = useAuth();
   const [searchParams] = useSearchParams();
   const tab = searchParams.get('tab') === 'register' ? 'register' : 'login';
 
-  console.log(`[RootRoute] status=${status}`);
+  console.log(`[RootRoute] sessionState=${sessionState} roleState=${roleState}`);
 
-  switch (status) {
-    // ── Loading session: show spinner ───────────────────────────────────────
-    case 'loading':
-    case 'profile-loading': // kept as fallback, but useAuth now avoids this
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-            <p className="text-sm text-muted-foreground">טוען…</p>
-          </div>
-        </div>
-      );
-
-    // ── Anonymous: show login form ──────────────────────────────────────────
-    case 'unauthenticated':
-      return <AuthPage defaultTab={tab} />;
-
-    // ── Profile Error: Show retry UI ────────────────────────────────────────
-    case 'profile-error':
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background px-4">
-          <div className="text-6xl">⚠️</div>
-          <h2 className="text-2xl font-bold">שגיאה בטעינת הנתונים</h2>
-          <p className="text-muted-foreground text-center max-w-md">
-            אירעה שגיאה בתקשורת עם השרת בזמן טעינת הפרופיל שלך.
-          </p>
-          <button
-            onClick={() => reFetchProfile()}
-            className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            נסה שוב
-          </button>
-        </div>
-      );
-
-    // ── User exists but no profile record ───────────────────────────────────
-    case 'no-profile':
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-          <div className="text-6xl">⏳</div>
-          <h2 className="text-2xl font-bold">ממתין להקמת חשבון</h2>
-          <p className="text-muted-foreground text-center max-w-md">
-            החשבון שלך נוצר. הפרופיל בתהליך הקמה — זה לוקח מספר שניות.
-            המערכת תרענן את עצמה אוטומטית ברגע שהכל יהיה מוכן.
-          </p>
-          <button
-            onClick={() => reFetchProfile()}
-            className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            בדוק עכשיו
-          </button>
-        </div>
-      );
-
-    // ── User exists + profile, but not yet approved ─────────────────────────
-    case 'pending-approval':
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-          <div className="text-6xl">⏳</div>
-          <h2 className="text-2xl font-bold">ממתין לאישור מנהל</h2>
-          <p className="text-muted-foreground text-center max-w-md">
-            החשבון שלך נוצר בהצלחה. מנהל המערכת יאשר אותך בהקדם.
-          </p>
-          <button
-            onClick={() => reFetchProfile()}
-            className="mt-4 px-4 py-1 text-sm text-primary hover:underline"
-          >
-            בדוק סטטוס אישור
-          </button>
-        </div>
-      );
-
-    // ── Fully ready: redirect to dashboard ──────────────────────────────────
-    case 'ready':
-      if (profile?.role === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
-      if (profile?.role === 'bank') return <Navigate to="/bank/dashboard" replace />;
-      if (profile?.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
-      // Fallback (should never happen)
-      return <AuthPage defaultTab={tab} />;
-
-    default:
-      return <AuthPage defaultTab={tab} />;
+  if (sessionState === 'booting') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
   }
+
+  if (sessionState === 'no-session') {
+    return <AuthPage defaultTab={tab} />;
+  }
+
+  // has-session: redirect to default dashboard based on role
+  if (roleState === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
+  if (roleState === 'bank') return <Navigate to="/bank/dashboard" replace />;
+  if (roleState === 'admin') return <Navigate to="/admin/dashboard" replace />;
+
+  // role unknown or resolving
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+      <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      <p className="text-muted-foreground">מזהה הרשאות…</p>
+    </div>
+  );
 };
 
 const App = () => (
@@ -171,6 +106,26 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/bank/appetite"
+              element={
+                <ProtectedRoute allowedRoles={['bank']}>
+                  <AppLayout>
+                    <div className="p-4">טוען הגדרות תיאבון…</div>
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bank/chat"
+              element={
+                <ProtectedRoute allowedRoles={['bank']}>
+                  <AppLayout>
+                    <div className="p-4">טוען שיחות…</div>
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Admin-only routes */}
             <Route
@@ -188,7 +143,7 @@ const App = () => (
             <Route
               path="/matches"
               element={
-                <ProtectedRoute allowedRoles="any">
+                <ProtectedRoute allowedRoles="any-authenticated">
                   <AppLayout>
                     <MatchesPage />
                   </AppLayout>
@@ -198,7 +153,7 @@ const App = () => (
             <Route
               path="/chat/:matchId"
               element={
-                <ProtectedRoute allowedRoles="any">
+                <ProtectedRoute allowedRoles="any-authenticated">
                   <AppLayout>
                     <Chat />
                   </AppLayout>
