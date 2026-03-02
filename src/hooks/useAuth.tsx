@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       finalRole = dbRole;
       source = 'db';
       if (isValidRole(jwtRole) && jwtRole !== dbRole) {
-        console.warn(`[Auth] role mismatch JWT=${jwtRole} DB=${dbRole} → using DB`);
+        console.log(`[Auth] role correction: JWT=${jwtRole} DB=${dbRole} → following DB`);
       }
     }
     // Priority 3 — JWT (optimistic, NEVER admin)
@@ -150,6 +150,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Admin from JWT alone is denied — must come from DB or allowlist
         finalRole = 'unknown';
         source = 'jwt-denied-admin';
+      } else if (email && ADMIN_EMAILS.includes(email)) {
+        // User is in Admin allowlist — don't use optimistic advisor role, wait for DB
+        finalRole = 'unknown';
+        source = 'jwt-admin-waiting-db';
       } else {
         finalRole = jwtRole;
         source = 'jwt-optimistic';
@@ -257,6 +261,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sessionUidRef.current = u.id;
 
     setSessionState('has-session');
+    // Set loading early so isRoleFinal stays false until DB fetch completes
+    setProfileState('loading');
 
     // Optimistic role from cache/JWT (never admin from JWT alone)
     resolveRole(u, null);
