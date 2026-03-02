@@ -79,6 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const mountedRef = useRef(true);
   const initRanRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const fetchingUserIdRef = useRef<string | null>(null);
   const sessionUserRef = useRef<string | null>(null);
 
   // Refs for state to avoid closure staleness in listeners
@@ -96,27 +97,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const resolveRole = useCallback((u: User | null, p: Profile | null) => {
+  const resolveRole = useCallback((u: User | null, p: Profile | null, source: 'jwt' | 'db' | 'cache' = 'jwt') => {
     const jwtRole = u?.user_metadata?.role as UserRole | undefined;
     const dbRole = p?.role;
     const cachedRole = localStorage.getItem('advisor_bridge_role') as UserRole | null;
 
     let finalRole: RoleState = 'unknown';
+    let actualSource = source;
 
     // Priority: JWT > DB > Cache
     if (jwtRole) {
       finalRole = jwtRole;
+      actualSource = 'jwt';
       if (dbRole && dbRole !== jwtRole) {
         console.warn(`[Auth][WARN] role mismatch JWT=${jwtRole} DB=${dbRole} -> using JWT`);
       }
     } else if (dbRole) {
       finalRole = dbRole;
+      actualSource = 'db';
     } else if (cachedRole) {
       finalRole = cachedRole;
+      actualSource = 'cache';
     }
 
     if (finalRole !== roleRef.current) {
-      console.log(`[Auth] role resolved: ${finalRole}`);
+      console.log(`[Auth] role resolved: ${finalRole} (source=${actualSource})`);
       roleRef.current = finalRole;
       setRoleState(finalRole);
     }
@@ -125,20 +130,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleProfileFetch = async (uid: string) => {
     if (!mountedRef.current) return;
 
+    // In-flight protection
+    if (fetchingUserIdRef.current === uid) {
+      console.log(`[Auth] profile fetch already in-flight for ${uid}, skipping`);
+      return;
+    }
+
     // Cancellation of previous in-flight request
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
+    fetchingUserIdRef.current = uid;
 
-    setIsProfileFetching(true);
     setProfileState('loading');
-    console.log('[Auth] profile fetch start');
+    console.log(`[Auth] profile fetch start (userId=${uid})`);
 
     try {
       const p = await fetchProfile(uid, abortControllerRef.current.signal);
       if (!mountedRef.current) return;
 
       setProfile(p);
-      resolveRole(userRef.current, p);
+      resolveRole(userRef.current, p, 'db');
 
       if (!p) {
         console.log('[Auth] profile state=missing');
@@ -157,15 +168,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfileState('error');
       }
     } finally {
-      if (mountedRef.current) {
+      if (mountedRef.current && fetchingUserIdRef.current === uid) {
+        fetchingUserIdRef.current = null;
         setIsProfileFetching(false);
-        console.log('[App] ready');
       }
     }
   };
 
   const init = async () => {
-    console.log('[Auth] init starting');
+    console.log('[Auth] init start');
     try {
       const { data, error } = await supabase.auth.getSession();
       if (!mountedRef.current) return;
@@ -196,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSessionState('has-session');
 
       // Immediate role resolution (JWT > Cache)
-      resolveRole(u, profile);
+      resolveRole(u, profile, 'cache');
 
       // Background profile fetch
       handleProfileFetch(u.id);
@@ -204,6 +215,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error('[Auth] init exception:', e);
       if (mountedRef.current) setSessionState('no-session');
+    } finally {
+      console.log('[App] ready');
     }
   };
 
@@ -222,15 +235,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        if (event === 'INITIAL_SESSION') return;
         if (!mountedRef.current) return;
+        if (event === 'INITIAL_SESSION') return;
 
-        // Idempotency: skip if session user is the same and we aren't explicit sign-out/in
         const newUser = newSession?.user ?? null;
+
+        // Idempotency: skip if session user is the same and it's just a token refresh
         if (
-          (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') &&
-          newUser?.id === sessionUserRef.current &&
-          sessionState === 'has-session'
+          event === 'TOKEN_REFRESHED' &&
+          newUser?.id === sessionUserRef.current
         ) {
           _setSession(newSession);
           return;
@@ -241,6 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         _setSession(newSession);
         _setUser(newUser);
         userRef.current = newUser;
+        const oldUid = sessionUserRef.current;
         sessionUserRef.current = newUser?.id ?? null;
 
         if (!newUser || event === 'SIGNED_OUT') {
@@ -251,6 +265,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(null);
           setProfileState('idle');
           if (abortControllerRef.current) abortControllerRef.current.abort();
+          fetchingUserIdRef.current = null;
           return;
         }
 
@@ -258,10 +273,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSessionState('has-session');
 
         // Immediate role resolution from JWT
-        resolveRole(newUser, null);
+        resolveRole(newUser, null, 'jwt');
 
-        // Refresh profile in background
-        handleProfileFetch(newUser.id);
+        // Only fetch if it's a new user or a SIGNED_IN event (which might be after session cleared)
+        if (newUser.id !== oldUid || event === 'SIGNED_IN') {
+          handleProfileFetch(newUser.id);
+        }
       }
     );
 

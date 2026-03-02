@@ -110,9 +110,7 @@ const App = () => (
               path="/bank/appetite"
               element={
                 <ProtectedRoute allowedRoles={['bank']}>
-                  <AppLayout>
-                    <div className="p-4">טוען הגדרות תיאבון…</div>
-                  </AppLayout>
+                  <BankAppetite />
                 </ProtectedRoute>
               }
             />
@@ -120,9 +118,7 @@ const App = () => (
               path="/bank/chat"
               element={
                 <ProtectedRoute allowedRoles={['bank']}>
-                  <AppLayout>
-                    <div className="p-4">טוען שיחות…</div>
-                  </AppLayout>
+                  <BankChat />
                 </ProtectedRoute>
               }
             />
@@ -132,9 +128,7 @@ const App = () => (
               path="/admin/dashboard"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <AppLayout>
-                    <AdminDashboard />
-                  </AppLayout>
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />

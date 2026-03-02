@@ -40,14 +40,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
         // Role mismatch or still unknown
         if (roleState !== 'unknown') {
             console.warn(`[RouteGuard] Access denied to ${location.pathname}. User role: ${roleState}`);
-            // Redirect to their default dashboard instead of root to avoid redirect loops
+
+            // If they are authorized for THIS route but roleState recently changed, 
+            // the above check already returned children. 
+            // If we are here, they are definitely NOT allowed.
+
             let correctPath = '/';
             if (roleState === 'advisor') correctPath = '/advisor/dashboard';
             else if (roleState === 'bank') correctPath = '/bank/dashboard';
             else if (roleState === 'admin') correctPath = '/admin/dashboard';
-
-            // If they are already on the correct path but it's not allowed (shouldn't happen), go to root
-            if (location.pathname === correctPath) return <Navigate to="/" replace />;
 
             return <Navigate to={correctPath} replace />;
         }
