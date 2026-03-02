@@ -19,10 +19,11 @@ export interface Profile {
 export type AuthStatus =
   | 'loading'            // session not yet resolved
   | 'unauthenticated'    // no user
-  | 'profile-loading'    // user exists, profile being fetched
-  | 'no-profile'         // user exists, profile fetch completed with null
-  | 'pending-approval'   // user + profile, but is_approved === false
-  | 'ready';             // user + approved profile
+  | 'profile-loading'    // user exists, profile being fetched (blocking spinner)
+  | 'no-profile'         // user exists, profile missing (show "Pending Setup" screen)
+  | 'pending-approval'   // user + profile, but is_approved === false (show "Waiting Approval" screen)
+  | 'profile-error'      // network error during fetch (show "Error/Retry" screen)
+  | 'ready';             // user + approved profile (allow dashboard)
 
 interface AuthContextValue {
   user: User | null;
@@ -33,6 +34,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, fullName: string, role: UserRole, company?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  reFetchProfile: () => Promise<void>;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -59,12 +61,14 @@ const fetchProfile = async (userId: string): Promise<Profile | null> => {
       .single();
     if (error) {
       console.warn('[Auth] fetchProfile error:', error.message);
-      return null;
+      // differentiate between "no record" and "network error"
+      if (error.code === 'PGRST116') return null; // no rows
+      throw error;
     }
     return data as unknown as Profile;
   } catch (e) {
-    console.warn('[Auth] fetchProfile exception:', e);
-    return null;
+    console.error('[Auth] fetchProfile exception:', e);
+    throw e;
   }
 };
 
@@ -107,12 +111,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     _setStatus(s);
   }, []);
 
+  const handleProfileFetch = async (uid: string) => {
+    if (!mountedRef.current) return;
+    setIsProfileFetching(true);
+    try {
+      const p = await fetchProfile(uid);
+      if (!mountedRef.current) return;
+
+      setProfile(p);
+      if (!p) {
+        setStatus('no-profile');
+      } else if (p.is_approved === false) {
+        setStatus('pending-approval');
+      } else {
+        setStatus('ready');
+      }
+    } catch (e) {
+      console.error('[Auth] Profile fetch failed:', e);
+      if (!mountedRef.current) return;
+      // If we have a cached profile, keep the UI stable even if refresh fails
+      if (profileRef.current) {
+        console.warn('[Auth] Fetch failed, but using cached profile to avoid UI block.');
+        // stay in existing status
+      } else {
+        setStatus('profile-error');
+      }
+    } finally {
+      if (mountedRef.current) setIsProfileFetching(false);
+    }
+  };
+
+  const reFetchProfile = useCallback(async () => {
+    if (userRef.current) {
+      await handleProfileFetch(userRef.current.id);
+    }
+  }, []);
+
   useEffect(() => {
     mountedRef.current = true;
     providerMountCount++;
     console.log(`[Auth] AuthProvider mounted (count: ${providerMountCount}) (Initial Cached Profile: ${profileRef.current?.role ?? 'NONE'})`);
 
-    // In StrictMode, useEffect runs twice. Guard with initRanRef.
     if (initRanRef.current) {
       console.log('[Auth] Skipping duplicate init (StrictMode)');
       return;
@@ -121,7 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let listenerCount = 0;
 
-    // ── init: resolve session, then profile ─────────────────────────────────
     const init = async () => {
       console.log('[Auth] init() starting');
       try {
@@ -148,49 +186,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // If we DO NOT have a cached profile, we MUST block the UI to load it.
-        // If we DO have a cached profile, we jump straight to its resolution visually,
-        // and fetch fresh data in the background non-destructively.
-        if (!profileRef.current) {
-          setStatus('profile-loading');
-        } else {
-          console.log('[Auth] init: Using cached profile locally. Background refreshing...');
+        // NON-BLOCKING PROFILE INIT: 
+        // 1. If we have a cached profile, show it immediately (ready or pending-approval)
+        // 2. If no cache, show "no-profile" (stable Pending screen) immediately
+        // 3. Fetch fresh data in background. NEVER set "profile-loading" (spinner).
+        if (profileRef.current && profileRef.current.user_id === sess.user.id) {
+          console.log('[Auth] init: Using cached profile locally.');
           if (profileRef.current.is_approved === false) setStatus('pending-approval');
           else setStatus('ready');
-        }
-
-        console.log('[Auth] init: fetching explicit profile data…');
-        setIsProfileFetching(true);
-        const p = await fetchProfile(sess.user.id);
-        if (!mountedRef.current) return;
-        setIsProfileFetching(false);
-
-        if (p) {
-          setProfile(p);
-          if (p.is_approved === false) setStatus('pending-approval');
-          else setStatus('ready');
         } else {
-          // If fetch fails but we had a cached profile, RETAIN IT explicitly
-          // so the UI doesn't crash to "No Profile".
-          if (profileRef.current) {
-            console.warn('[Auth] init: profile fetch failed! Retaining cached profile.');
-          } else {
-            console.warn('[Auth] init: profile fetch returned null. No cached fallback.');
-            setStatus('no-profile');
-          }
+          console.log('[Auth] init: No cached profile for user. Showing pending state.');
+          setStatus('no-profile');
         }
+
+        handleProfileFetch(sess.user.id);
       } catch (e) {
         console.error('[Auth] init exception:', e);
         if (mountedRef.current) {
-          setIsProfileFetching(false);
           if (!profileRef.current) {
             setSession(null);
             setUser(null);
             setProfile(null);
             setStatus('unauthenticated');
-          } else {
-            console.warn('[Auth] init: exception caught, restoring ready status to protect stable view');
-            setStatus('ready');
           }
         }
       }
@@ -205,7 +222,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     init();
 
-    // ── auth listener ─────────────────────────────────────────────────────────
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (event === 'INITIAL_SESSION') return;
@@ -226,14 +242,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           (currentStatus === 'ready' || currentStatus === 'pending-approval' || currentStatus === 'no-profile')
         ) {
           console.log('[Auth] Listener idempotent return: profile already stabilized');
-          setSession(newSession); // update token
+          setSession(newSession);
           return;
         }
 
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
-        // Explicit SIGN OUT event — truly destroy the profile
         if (!newSession?.user || event === 'SIGNED_OUT') {
           console.log('[Auth] Listener: Session terminated. Destroying profile.');
           setProfile(null);
@@ -241,31 +256,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // Only transition visually to 'profile-loading' if we genuinely have NO offline/cached profile
+        // NON-BLOCKING LISTENER:
+        // Transition to stable states immediately, fetch in background.
         if (!currentProfile || currentUser?.id !== newSession.user.id) {
-          console.log('[Auth] Listener: No valid profile for this user. Blocking UI for fetch.');
-          setStatus('profile-loading');
+          console.log('[Auth] Listener: No valid profile for this user. Showing pending state.');
+          setStatus('no-profile');
         } else {
-          console.log('[Auth] Listener: Valid profile exists. Background fetching (silent).');
+          console.log('[Auth] Listener: Background fetching refreshed profile.');
         }
 
-        setIsProfileFetching(true);
-        const p = await fetchProfile(newSession.user.id);
-        if (!mountedRef.current) return;
-        setIsProfileFetching(false);
-
-        if (p) {
-          setProfile(p);
-          if (p.is_approved === false) setStatus('pending-approval');
-          else setStatus('ready');
-        } else {
-          if (currentProfile && currentUser?.id === newSession.user.id) {
-            console.warn('[Auth] Listener: profile refetch failed, preserving existing stable profile');
-            setStatus('ready');
-          } else {
-            setStatus('no-profile');
-          }
-        }
+        handleProfileFetch(newSession.user.id);
       }
     );
 
@@ -319,6 +319,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     signOut,
+    reFetchProfile,
   };
 
   return (

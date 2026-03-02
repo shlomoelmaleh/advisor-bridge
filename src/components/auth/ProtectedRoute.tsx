@@ -38,6 +38,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 
         // ── 3. Authenticated but Profile Not Fully Evaluated ────────────────────
         case 'profile-loading':
+        case 'profile-error':
         case 'no-profile':
         case 'pending-approval':
             // "any" means AUTH-ONLY: Do NOT wait for profile! Render immediately.
@@ -45,19 +46,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
                 return <>{children}</>;
             }
 
-            // For role-specific routes, we MUST wait if profile is still fetching
-            if (status === 'profile-loading') {
-                return (
-                    <div className="min-h-screen flex items-center justify-center bg-background">
-                        <div className="flex flex-col items-center gap-3">
-                            <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                            <p className="text-sm text-muted-foreground">טוען פרופיל…</p>
-                        </div>
-                    </div>
-                );
-            }
-
-            // If fetch finished but no profile/not approved, send to root for error UI
+            // For role-specific routes, if we don't have a ready profile,
+            // redirect to root where RootRoute handles stable Error/Pending screens.
             return <Navigate to="/" replace />;
 
         // ── 4. Fully Ready ──────────────────────────────────────────────────────

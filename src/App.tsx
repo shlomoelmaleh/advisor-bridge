@@ -40,23 +40,21 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 // SINGLE source of truth for auth-based routing. No other component redirects
 // based on auth state. Uses the `status` enum from useAuth — no ambiguous states.
 const RootRoute = () => {
-  const { status, profile } = useAuth();
+  const { status, profile, reFetchProfile } = useAuth();
   const [searchParams] = useSearchParams();
   const tab = searchParams.get('tab') === 'register' ? 'register' : 'login';
 
   console.log(`[RootRoute] status=${status}`);
 
   switch (status) {
-    // ── Loading states: show spinner, NO redirects ──────────────────────────
+    // ── Loading session: show spinner ───────────────────────────────────────
     case 'loading':
-    case 'profile-loading':
+    case 'profile-loading': // kept as fallback, but useAuth now avoids this
       return (
         <div className="min-h-screen flex items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-3">
             <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-            <p className="text-sm text-muted-foreground">
-              {status === 'loading' ? 'טוען…' : 'טוען פרופיל…'}
-            </p>
+            <p className="text-sm text-muted-foreground">טוען…</p>
           </div>
         </div>
       );
@@ -65,6 +63,24 @@ const RootRoute = () => {
     case 'unauthenticated':
       return <AuthPage defaultTab={tab} />;
 
+    // ── Profile Error: Show retry UI ────────────────────────────────────────
+    case 'profile-error':
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background px-4">
+          <div className="text-6xl">⚠️</div>
+          <h2 className="text-2xl font-bold">שגיאה בטעינת הנתונים</h2>
+          <p className="text-muted-foreground text-center max-w-md">
+            אירעה שגיאה בתקשורת עם השרת בזמן טעינת הפרופיל שלך.
+          </p>
+          <button
+            onClick={() => reFetchProfile()}
+            className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            נסה שוב
+          </button>
+        </div>
+      );
+
     // ── User exists but no profile record ───────────────────────────────────
     case 'no-profile':
       return (
@@ -72,13 +88,14 @@ const RootRoute = () => {
           <div className="text-6xl">⏳</div>
           <h2 className="text-2xl font-bold">ממתין להקמת חשבון</h2>
           <p className="text-muted-foreground text-center max-w-md">
-            החשבון שלך נוצר. הפרופיל בתהליך הקמה — נסה לרענן בעוד מספר שניות.
+            החשבון שלך נוצר. הפרופיל בתהליך הקמה — זה לוקח מספר שניות.
+            המערכת תרענן את עצמה אוטומטית ברגע שהכל יהיה מוכן.
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => reFetchProfile()}
             className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
-            נסה שוב
+            בדוק עכשיו
           </button>
         </div>
       );
@@ -92,6 +109,12 @@ const RootRoute = () => {
           <p className="text-muted-foreground text-center max-w-md">
             החשבון שלך נוצר בהצלחה. מנהל המערכת יאשר אותך בהקדם.
           </p>
+          <button
+            onClick={() => reFetchProfile()}
+            className="mt-4 px-4 py-1 text-sm text-primary hover:underline"
+          >
+            בדוק סטטוס אישור
+          </button>
         </div>
       );
 
