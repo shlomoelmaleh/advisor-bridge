@@ -285,6 +285,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [fullReset, bootstrapSession]);
 
+  const listenerAttachedRef = useRef(false);
+
   // ── Auth state change listener ────────────────────────────────────────────
   useEffect(() => {
     mountedRef.current = true;
@@ -294,15 +296,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Run init
     init();
 
-    // 2. Attach listener
+    // 2. Attach listener (once)
+    if (listenerAttachedRef.current) return;
+    listenerAttachedRef.current = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mountedRef.current) return;
-        if (event === 'INITIAL_SESSION') return; // handled by init()
+        if (event === 'INITIAL_SESSION') return;
 
         const newUser = newSession?.user ?? null;
 
-        // Token refresh for same user → update session ref only
+        // Idempotency: skip if session user is the same and it's just a token refresh
         if (
           (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
           newUser?.id === sessionUidRef.current
@@ -322,15 +327,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // ── SIGNED_IN or new user ───────────────────────────────────────
         const isNewUser = newUser.id !== sessionUidRef.current;
 
-        if (isNewUser || event === 'SIGNED_IN') {
-          // Reset previous user's state first if switching users
+        // Prevent redundant boot if already in correct state
+        if (event === 'SIGNED_IN' || isNewUser) {
           if (isNewUser && sessionUidRef.current) {
-            console.log('[Auth] user changed, resetting previous state');
+            console.log('[Auth] user switch detected, resetting state');
             if (abortRef.current) abortRef.current.abort();
             fetchingUidRef.current = null;
             fetchingPromiseRef.current = null;
           }
-
           bootstrapSession(newUser, newSession!);
         }
       }
@@ -340,7 +344,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       mountedRef.current = false;
-      subscription.unsubscribe();
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
       if (abortRef.current) abortRef.current.abort();
     };
   }, [init, fullReset, bootstrapSession]);
