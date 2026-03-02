@@ -52,10 +52,9 @@ const RootRoute = () => {
     return <AuthPage defaultTab={tab} />;
   }
 
-  // has-session: redirect to default dashboard based on role
-  if (roleState === 'advisor') return <Navigate to="/advisor/dashboard" replace />;
-  if (roleState === 'bank') return <Navigate to="/bank/dashboard" replace />;
-  if (roleState === 'admin') return <Navigate to="/admin/dashboard" replace />;
+  if (sessionState === 'has-session') {
+    return <AuthPage defaultTab={tab} />;
+  }
 
   // role unknown or resolving
   return (

@@ -64,6 +64,8 @@ const fetchProfile = async (userId: string, signal?: AbortSignal): Promise<Profi
   return data as unknown as Profile;
 };
 
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mortgagebridge.co.il').split(',').map(e => e.trim().toLowerCase());
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -97,7 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const resolveRole = useCallback((u: User | null, p: Profile | null, source: 'jwt' | 'db' | 'cache' = 'jwt') => {
+  const resolveRole = useCallback((u: User | null, p: Profile | null, source: 'allowlist' | 'jwt' | 'db' | 'cache' = 'jwt') => {
+    const userEmail = u?.email?.toLowerCase();
     const jwtRole = u?.user_metadata?.role as UserRole | undefined;
     const dbRole = p?.role;
     const cachedRole = localStorage.getItem('advisor_bridge_role') as UserRole | null;
@@ -105,8 +108,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let finalRole: RoleState = 'unknown';
     let actualSource = source;
 
-    // Priority: JWT > DB > Cache
-    if (jwtRole) {
+    // Priority: Allowlist > JWT > DB > Cache
+    if (userEmail && ADMIN_EMAILS.includes(userEmail)) {
+      finalRole = 'admin';
+      actualSource = 'allowlist';
+      console.log(`[Auth] admin override via allowlist for ${userEmail}`);
+    } else if (jwtRole) {
       finalRole = jwtRole;
       actualSource = 'jwt';
       if (dbRole && dbRole !== jwtRole) {
