@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth, UserRole } from '@/hooks/useAuth';
+import { useAuth, UserRole, getHomePathByRole } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
@@ -75,11 +75,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 
     // Role known but NOT in allowedRoles → redirect to their dashboard
     console.warn(`[RouteGuard] denied ${location.pathname} for role=${roleState}`);
-    const dest =
-        roleState === 'advisor' ? '/advisor/dashboard' :
-            roleState === 'bank' ? '/bank/dashboard' :
-                roleState === 'admin' ? '/admin/dashboard' :
-                    '/';
+    const dest = getHomePathByRole(roleState);
     return <Navigate to={dest} replace />;
 };
 

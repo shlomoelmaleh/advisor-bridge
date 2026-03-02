@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AuthForm from '@/components/auth/AuthForm';
-import { useAuth, UserRole } from '@/hooks/useAuth';
+import { useAuth, getHomePathByRole } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
 interface AuthPageProps {
@@ -12,77 +12,60 @@ interface AuthPageProps {
 const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
   const { sessionState, roleState, user, signOut, profileState } = useAuth();
   const [isSwitching, setIsSwitching] = useState(false);
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // ── Auto-Redirect Logic ──────────────────────────────────────────────────
+  // ── Role is "final" when DB has spoken (or failed) ────────────────────────
+  // profileState === 'loading' means the DB fetch is still in-flight,
+  // so the current roleState may be optimistic (JWT) and could change.
+  const isRoleFinal =
+    roleState !== 'unknown' &&
+    profileState !== 'loading';
+
+  // ── Auto-Redirect: only when role is FINAL ────────────────────────────────
   useEffect(() => {
-    if (sessionState === 'has-session' && roleState !== 'unknown' && !isSwitching) {
-      const dashboardPath =
-        roleState === 'admin' ? '/admin/dashboard' :
-          roleState === 'bank' ? '/bank/dashboard' :
-            '/advisor/dashboard';
-
-      console.log(`[AuthPage] Auto-redirecting to ${dashboardPath}`);
-      navigate(dashboardPath, { replace: true });
+    if (sessionState === 'has-session' && isRoleFinal && !isSwitching) {
+      const dest = getHomePathByRole(roleState);
+      console.log(`[Nav] redirecting to ${dest} (reason=role-final, role=${roleState})`);
+      navigate(dest, { replace: true });
     }
-  }, [sessionState, roleState, navigate, isSwitching]);
+  }, [sessionState, roleState, isRoleFinal, navigate, isSwitching]);
 
-  // ── Manual Switch Account ────────────────────────────────────────────────
+  // ── Switch Account ────────────────────────────────────────────────────────
   const handleSwitchAccount = async () => {
     setIsSwitching(true);
     await signOut();
-    // After signOut, sessionState will become no-session and the login form will show
   };
 
-  // ── Case 1: Session exists + Role known → Auto-redirecting (should be fast) ──────
-  if (sessionState === 'has-session' && roleState !== 'unknown' && !isSwitching) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
-        <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
-        <p className="text-muted-foreground animate-pulse">מעביר אותך לדאשבורד...</p>
-      </div>
-    );
-  }
-
-  // ── Case 2: Session exists but Role unknown → Resolving state ──────────────────
+  // ── Session exists, waiting for final role or redirecting ─────────────────
   if (sessionState === 'has-session' && !isSwitching) {
-    const roleName =
-      roleState === 'admin' ? 'מנהל' :
-        roleState === 'bank' ? 'בנקאי' :
-          roleState === 'advisor' ? 'יועץ' :
-            'משתמש';
+    // Role final → show brief redirect spinner (useEffect navigates away)
+    if (isRoleFinal) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+          <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
+          <p className="text-muted-foreground animate-pulse">מעביר אותך לדאשבורד...</p>
+        </div>
+      );
+    }
 
+    // Role NOT final → show "resolving" + option to switch
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background text-right" dir="rtl">
+      <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 bg-background" dir="rtl">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-          <div className="inline-flex items-center justify-center mb-8">
-            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-primary-foreground font-bold text-2xl">MB</span>
-            </div>
+          <div className="w-16 h-16 mx-auto bg-primary rounded-2xl flex items-center justify-center shadow-lg mb-6">
+            <span className="text-primary-foreground font-bold text-2xl">MB</span>
           </div>
-          <h1 className="text-3xl font-extrabold text-foreground mb-2">אתה כבר מחובר!</h1>
-          <p className="text-muted-foreground mb-4">
+
+          <p className="text-muted-foreground mb-2">
             מחובר כ-<strong>{user?.email}</strong>
           </p>
 
-          <div className="bg-muted/50 p-6 rounded-xl mb-6 flex flex-col items-center gap-4">
-            {roleState === 'unknown' || profileState === 'loading' ? (
-              <>
-                <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                <p className="text-sm font-medium">מזהה הרשאות ותפקיד...</p>
-              </>
-            ) : (
-              <p className="text-sm font-medium">תפקיד מזוהה: {roleName}</p>
-            )}
+          <div className="bg-muted/50 p-6 rounded-xl mb-6 flex flex-col items-center gap-3">
+            <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <p className="text-sm font-medium">מזהה הרשאות ותפקיד...</p>
           </div>
 
-          <Button
-            size="lg"
-            variant="outline"
-            className="w-full px-8 gap-2"
-            onClick={handleSwitchAccount}
-          >
+          <Button size="lg" variant="outline" className="w-full gap-2" onClick={handleSwitchAccount}>
             <LogOut className="h-4 w-4" />
             התנתק / החלף חשבון
           </Button>
@@ -91,7 +74,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
     );
   }
 
-  // ── Case 3: No session → Show Login/Register form ────────────────────────
+  // ── No session → login form ───────────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -108,7 +91,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
             פלטפורמת התיווך למשכנתאות
           </p>
         </div>
-
         <AuthForm defaultTab={defaultTab} />
       </div>
     </div>

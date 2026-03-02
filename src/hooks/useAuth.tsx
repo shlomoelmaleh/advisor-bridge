@@ -19,6 +19,17 @@ export interface Profile {
   created_at?: string;
 }
 
+// ─── Routing Helpers ──────────────────────────────────────────────────────────
+
+export const getHomePathByRole = (role: RoleState): string => {
+  switch (role) {
+    case 'admin': return '/admin/dashboard';
+    case 'bank': return '/bank/dashboard';
+    case 'advisor': return '/advisor/dashboard';
+    default: return '/';
+  }
+};
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
