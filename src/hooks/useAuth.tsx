@@ -39,16 +39,15 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const VALID_ROLES: UserRole[] = ['advisor', 'bank', 'admin'];
+const isValidRole = (r: unknown): r is UserRole => VALID_ROLES.includes(r as UserRole);
+
 const safeParseJSON = (str: string | null) => {
   if (!str) return null;
-  try {
-    return JSON.parse(str);
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(str); } catch { return null; }
 };
 
-const fetchProfile = async (userId: string, signal?: AbortSignal): Promise<Profile | null> => {
+const fetchProfileFromDB = async (userId: string, signal?: AbortSignal): Promise<Profile | null> => {
   const { data, error } = await supabase
     .from('profiles')
     .select('user_id, full_name, company, role, is_approved, created_at')
@@ -56,7 +55,6 @@ const fetchProfile = async (userId: string, signal?: AbortSignal): Promise<Profi
     .single();
 
   if (signal?.aborted) throw new Error('Aborted');
-
   if (error) {
     if (error.code === 'PGRST116') return null; // no rows
     throw error;
@@ -64,7 +62,15 @@ const fetchProfile = async (userId: string, signal?: AbortSignal): Promise<Profi
   return data as unknown as Profile;
 };
 
-const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mortgagebridge.co.il').split(',').map(e => e.trim().toLowerCase());
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mortgagebridge.co.il')
+  .split(',').map((e: string) => e.trim().toLowerCase());
+
+// ─── Cache helpers (user-scoped) ──────────────────────────────────────────────
+
+const clearAuthCache = () => {
+  localStorage.removeItem('advisor_bridge_profile');
+  localStorage.removeItem('advisor_bridge_role');
+};
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
@@ -75,130 +81,129 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [sessionState, setSessionState] = useState<SessionState>('booting');
   const [roleState, setRoleState] = useState<RoleState>('unknown');
   const [profileState, setProfileState] = useState<ProfileState>('idle');
-  const [profile, _setProfile] = useState<Profile | null>(() => safeParseJSON(localStorage.getItem('advisor_bridge_profile')));
+  const [profile, _setProfile] = useState<Profile | null>(null);
   const [isProfileFetching, setIsProfileFetching] = useState(false);
 
   const mountedRef = useRef(true);
   const initRanRef = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Deduplication refs
-  const fetchingUserIdRef = useRef<string | null>(null);
+  // Deduplication: userId currently being fetched + the promise for it
+  const fetchingUidRef = useRef<string | null>(null);
   const fetchingPromiseRef = useRef<Promise<Profile | null> | null>(null);
 
-  const sessionUserRef = useRef<string | null>(null);
+  const sessionUidRef = useRef<string | null>(null);
+  const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
 
-  // Refs for state to avoid closure staleness in listeners
+  // Refs to avoid closure staleness
   const userRef = useRef<User | null>(null);
   const roleRef = useRef<RoleState>('unknown');
 
+  // ── Persist profile to cache ──────────────────────────────────────────────
   const setProfile = useCallback((p: Profile | null) => {
     _setProfile(p);
     if (p) {
       localStorage.setItem('advisor_bridge_profile', JSON.stringify(p));
       localStorage.setItem('advisor_bridge_role', p.role);
     } else {
-      localStorage.removeItem('advisor_bridge_profile');
-      localStorage.removeItem('advisor_bridge_role');
+      clearAuthCache();
     }
   }, []);
 
-  const resolveRole = useCallback((u: User | null, p: Profile | null, sourceHint: 'jwt' | 'db' | 'cache' | 'allowlist' | 'security-lock' | 'jwt-optimistic' | 'cache-fallback' = 'jwt') => {
-    const userEmail = u?.email?.toLowerCase();
-    const jwtRole = u?.user_metadata?.role as UserRole | undefined;
-    const dbRole = p?.role;
-    const cachedRole = localStorage.getItem('advisor_bridge_role') as UserRole | null;
+  // ── Role resolution (Allowlist > DB > JWT-optimistic > Cache) ─────────────
+  const resolveRole = useCallback((u: User | null, dbProfile: Profile | null) => {
+    const email = u?.email?.toLowerCase();
+    const jwtRole = u?.user_metadata?.role;
+    const dbRole = dbProfile?.role;
+    const cachedRole = localStorage.getItem('advisor_bridge_role');
 
     let finalRole: RoleState = 'unknown';
-    let actualSource = sourceHint;
+    let source = 'none';
 
-    // ─── Priority 1: Allowlist (Ultimate Authority) ──────────────────────────
-    if (userEmail && ADMIN_EMAILS.includes(userEmail)) {
+    // Priority 1 — Allowlist (ultimate authority for admin)
+    if (email && ADMIN_EMAILS.includes(email)) {
       finalRole = 'admin';
-      actualSource = 'allowlist';
-      if (dbRole && dbRole !== 'admin') {
-        console.warn(`[Auth][WARN] Role mismatch: DB says ${dbRole}, but user is in Admin Allowlist. Using admin.`);
-      }
+      source = 'allowlist';
     }
-    // ─── Priority 2: DB Profile (Authority for authenticated users) ──────────
-    else if (dbRole) {
+    // Priority 2 — DB profile role (authority for all roles)
+    else if (isValidRole(dbRole)) {
       finalRole = dbRole;
-      actualSource = 'db';
-      if (jwtRole && jwtRole !== dbRole) {
-        console.warn(`[Auth][WARN] role mismatch JWT=${jwtRole} DB=${dbRole} -> using DB`);
+      source = 'db';
+      if (isValidRole(jwtRole) && jwtRole !== dbRole) {
+        console.warn(`[Auth] role mismatch JWT=${jwtRole} DB=${dbRole} → using DB`);
       }
     }
-    // ─── Priority 3: JWT (Optimistic ONLY for non-admin) ──────────────────────
-    else if (jwtRole) {
+    // Priority 3 — JWT (optimistic, NEVER admin)
+    else if (isValidRole(jwtRole)) {
       if (jwtRole === 'admin') {
-        console.warn(`[Auth][SECURITY] JWT attempted to grant admin for ${userEmail}. Denied. Waiting for DB.`);
+        // Admin from JWT alone is denied — must come from DB or allowlist
         finalRole = 'unknown';
-        actualSource = 'security-lock';
+        source = 'jwt-denied-admin';
       } else {
         finalRole = jwtRole;
-        actualSource = 'jwt-optimistic';
+        source = 'jwt-optimistic';
       }
     }
-    // ─── Priority 4: Cache (UX fallback) ──────────────────────────────────────
-    else if (cachedRole) {
+    // Priority 4 — Cache (UX fallback)
+    else if (isValidRole(cachedRole)) {
       finalRole = cachedRole;
-      actualSource = 'cache-fallback';
+      source = 'cache';
     }
 
     if (finalRole !== roleRef.current) {
-      console.log(`[Auth] role resolved: ${finalRole} (source=${actualSource})`);
+      console.log(`[Auth] role resolved: ${finalRole} (source=${source})`);
       roleRef.current = finalRole;
       setRoleState(finalRole);
     }
   }, []);
 
-  const handleProfileFetch = async (uid: string): Promise<Profile | null> => {
-    if (!mountedRef.current) return null;
+  // ── Profile fetch with promise-based dedup ────────────────────────────────
+  const handleProfileFetch = useCallback((uid: string): Promise<Profile | null> => {
+    if (!mountedRef.current) return Promise.resolve(null);
 
-    // ─── In-flight Protection (Promise-based Deduplication) ──────────────────
-    if (fetchingUserIdRef.current === uid && fetchingPromiseRef.current) {
-      console.log(`[Auth] profile fetch already in-flight for ${uid}, reusing promise`);
+    // Reuse in-flight promise for same user
+    if (fetchingUidRef.current === uid && fetchingPromiseRef.current) {
+      console.log(`[Auth] profile fetch in-flight for ${uid}, reusing`);
       return fetchingPromiseRef.current;
     }
 
-    // New fetch starts
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    abortControllerRef.current = new AbortController();
-    fetchingUserIdRef.current = uid;
+    // Cancel any previous fetch
+    if (abortRef.current) abortRef.current.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    fetchingUidRef.current = uid;
 
     setProfileState('loading');
     setIsProfileFetching(true);
     console.log(`[Auth] profile fetch start (userId=${uid})`);
 
-    const promise = (async () => {
+    const promise = (async (): Promise<Profile | null> => {
       try {
-        const p = await fetchProfile(uid, abortControllerRef.current.signal);
-        if (!mountedRef.current) return null;
+        const p = await fetchProfileFromDB(uid, ac.signal);
+        if (!mountedRef.current || fetchingUidRef.current !== uid) return null;
 
         setProfile(p);
-        resolveRole(userRef.current, p, 'db');
+        resolveRole(userRef.current, p);
 
         if (!p) {
-          console.log('[Auth] profile state=missing');
+          console.log('[Auth] profileState=missing');
           setProfileState('missing');
         } else if (p.is_approved === false) {
-          console.log('[Auth] profile state=pending');
+          console.log('[Auth] profileState=pending');
           setProfileState('pending');
         } else {
-          console.log('[Auth] profile state=ready');
+          console.log('[Auth] profileState=ready');
           setProfileState('ready');
         }
         return p;
       } catch (e: any) {
         if (e.message === 'Aborted') return null;
         console.error('[Auth] profile fetch error:', e);
-        if (mountedRef.current) {
-          setProfileState('error');
-        }
+        if (mountedRef.current) setProfileState('error');
         return null;
       } finally {
-        if (mountedRef.current && fetchingUserIdRef.current === uid) {
-          fetchingUserIdRef.current = null;
+        if (fetchingUidRef.current === uid) {
+          fetchingUidRef.current = null;
           fetchingPromiseRef.current = null;
           setIsProfileFetching(false);
         }
@@ -207,72 +212,100 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     fetchingPromiseRef.current = promise;
     return promise;
-  };
+  }, [resolveRole, setProfile]);
 
-  const init = async () => {
+  // ── Full reset (used by signOut + SIGNED_OUT listener) ────────────────────
+  const fullReset = useCallback(() => {
+    console.log('[Auth] full reset');
+    _setUser(null);
+    _setSession(null);
+    _setProfile(null);
+    userRef.current = null;
+    sessionUidRef.current = null;
+    roleRef.current = 'unknown';
+
+    setSessionState('no-session');
+    setRoleState('unknown');
+    setProfileState('idle');
+    setIsProfileFetching(false);
+
+    // Cancel in-flight
+    if (abortRef.current) abortRef.current.abort();
+    fetchingUidRef.current = null;
+    fetchingPromiseRef.current = null;
+
+    // Clear all cache
+    clearAuthCache();
+  }, []);
+
+  // ── Bootstrap a session (shared between init + listener) ──────────────────
+  const bootstrapSession = useCallback((u: User, sess: Session) => {
+    _setSession(sess);
+    _setUser(u);
+    userRef.current = u;
+    sessionUidRef.current = u.id;
+
+    setSessionState('has-session');
+
+    // Optimistic role from cache/JWT (never admin from JWT alone)
+    resolveRole(u, null);
+
+    // Authoritative fetch from DB
+    handleProfileFetch(u.id);
+  }, [resolveRole, handleProfileFetch]);
+
+  // ── Init (runs once) ──────────────────────────────────────────────────────
+  const init = useCallback(async () => {
     console.log('[Auth] init start');
     try {
-      // 1. Read current session once
       const { data, error } = await supabase.auth.getSession();
       if (!mountedRef.current) return;
 
       if (error) {
         console.error('[Auth] getSession error:', error.message);
-        setSessionState('no-session');
+        fullReset();
         return;
       }
 
       const sess = data.session ?? null;
       const u = sess?.user ?? null;
 
-      _setSession(sess);
-      _setUser(u);
-      userRef.current = u;
-      sessionUserRef.current = u?.id ?? null;
-
-      if (!u) {
-        console.log('[Auth] session=no-session');
-        setSessionState('no-session');
-        setRoleState('unknown');
-        roleRef.current = 'unknown';
-
-        // 2. Clear state on "no session" to ensure clean start
-        localStorage.removeItem('advisor_bridge_role');
-        localStorage.removeItem('advisor_bridge_profile');
+      if (!u || !sess) {
+        console.log('[Auth] init → no-session');
+        fullReset();
       } else {
-        console.log('[Auth] session=has-session');
-        setSessionState('has-session');
-
-        // 2. Immediate optimistic role resolution
-        resolveRole(u, profile, 'cache');
-
-        // 3. Authority fetch
-        handleProfileFetch(u.id);
+        console.log('[Auth] init → has-session');
+        bootstrapSession(u, sess);
       }
-
-      // 4. Attach listener AFTER initial resolution
-      setupAuthListener();
-
     } catch (e) {
       console.error('[Auth] init exception:', e);
-      if (mountedRef.current) setSessionState('no-session');
+      if (mountedRef.current) fullReset();
     } finally {
-      console.log('[App] ready');
+      console.log('[Auth] init complete');
     }
-  };
+  }, [fullReset, bootstrapSession]);
 
-  const setupAuthListener = () => {
+  // ── Auth state change listener ────────────────────────────────────────────
+  useEffect(() => {
+    mountedRef.current = true;
+    if (initRanRef.current) return;
+    initRanRef.current = true;
+
+    // 1. Run init
+    init();
+
+    // 2. Attach listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mountedRef.current) return;
-        if (event === 'INITIAL_SESSION') return;
+        if (event === 'INITIAL_SESSION') return; // handled by init()
 
         const newUser = newSession?.user ?? null;
 
-        // Idempotency: skip if session user is the same and it's just a token refresh or minor event
+        // Token refresh for same user → update session ref only
         if (
           (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
-          newUser?.id === sessionUserRef.current
+          newUser?.id === sessionUidRef.current
         ) {
           _setSession(newSession);
           return;
@@ -280,66 +313,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         console.log(`[Auth] onAuthStateChange: event=${event}`);
 
-        _setSession(newSession);
-        _setUser(newUser);
-        userRef.current = newUser;
-        const oldUid = sessionUserRef.current;
-        sessionUserRef.current = newUser?.id ?? null;
-
+        // ── SIGNED_OUT ──────────────────────────────────────────────────
         if (!newUser || event === 'SIGNED_OUT') {
-          console.log('[Auth] clearing session state');
-          handleLogoutEffect();
+          fullReset();
           return;
         }
 
-        console.log('[Auth] session=has-session (listener update)');
-        setSessionState('has-session');
+        // ── SIGNED_IN or new user ───────────────────────────────────────
+        const isNewUser = newUser.id !== sessionUidRef.current;
 
-        // Immediate optimistic role resolution from JWT
-        resolveRole(newUser, null, 'jwt');
+        if (isNewUser || event === 'SIGNED_IN') {
+          // Reset previous user's state first if switching users
+          if (isNewUser && sessionUidRef.current) {
+            console.log('[Auth] user changed, resetting previous state');
+            if (abortRef.current) abortRef.current.abort();
+            fetchingUidRef.current = null;
+            fetchingPromiseRef.current = null;
+          }
 
-        // Only fetch if it's a new user or a SIGNED_IN event
-        if (newUser.id !== oldUid || event === 'SIGNED_IN') {
-          handleProfileFetch(newUser.id);
+          bootstrapSession(newUser, newSession!);
         }
       }
     );
 
-    return subscription;
-  };
-
-  const handleLogoutEffect = () => {
-    setSessionState('no-session');
-    setRoleState('unknown');
-    roleRef.current = 'unknown';
-    setProfile(null);
-    setProfileState('idle');
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    fetchingUserIdRef.current = null;
-    fetchingPromiseRef.current = null;
-    localStorage.removeItem('advisor_bridge_role');
-    localStorage.removeItem('advisor_bridge_profile');
-  };
-
-  const reFetchProfile = useCallback(async () => {
-    if (userRef.current) {
-      await handleProfileFetch(userRef.current.id);
-    }
-  }, []);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    if (initRanRef.current) return;
-    initRanRef.current = true;
-
-    init();
+    subscriptionRef.current = subscription;
 
     return () => {
       mountedRef.current = false;
-      if (abortControllerRef.current) abortControllerRef.current.abort();
+      subscription.unsubscribe();
+      if (abortRef.current) abortRef.current.abort();
     };
-  }, []); // Empty deps - init handles the rest
+  }, [init, fullReset, bootstrapSession]);
 
+  // ── signOut (with verification) ───────────────────────────────────────────
+  const signOut = useCallback(async () => {
+    console.log('[Auth] signOut requested');
+
+    // 1. Call Supabase signOut
+    await supabase.auth.signOut();
+
+    // 2. Immediate local reset
+    if (mountedRef.current) fullReset();
+
+    // 3. Sanity check: verify session is actually gone
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        console.error('[Auth] session still exists after signOut, retrying');
+        await supabase.auth.signOut();
+        if (mountedRef.current) fullReset();
+      }
+    } catch {
+      // Ignore errors during sanity check
+    }
+  }, [fullReset]);
+
+  // ── signIn ────────────────────────────────────────────────────────────────
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error as Error | null };
+  }, []);
+
+  // ── signUp ────────────────────────────────────────────────────────────────
   const signUp = useCallback(async (email: string, password: string, fullName: string, role: UserRole, company?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
@@ -349,30 +384,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error as Error | null };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error as Error | null };
-  }, []);
-
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    if (mountedRef.current) {
-      handleLogoutEffect();
+  // ── reFetchProfile ────────────────────────────────────────────────────────
+  const reFetchProfile = useCallback(async () => {
+    if (userRef.current) {
+      // Force a fresh fetch by clearing the dedup ref
+      fetchingUidRef.current = null;
+      fetchingPromiseRef.current = null;
+      await handleProfileFetch(userRef.current.id);
     }
-  }, []);
+  }, [handleProfileFetch]);
 
+  // ── Context value ─────────────────────────────────────────────────────────
   const value: AuthContextValue = {
-    user,
-    session,
-    sessionState,
-    roleState,
-    profileState,
-    profile,
-    isProfileFetching,
-    signUp,
-    signIn,
-    signOut,
-    reFetchProfile,
+    user, session, sessionState, roleState, profileState, profile, isProfileFetching,
+    signUp, signIn, signOut, reFetchProfile,
   };
 
   return (
@@ -381,9 +406,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         <div className="min-h-screen flex items-center justify-center bg-background">
           <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
         </div>
-      ) : (
-        children
-      )}
+      ) : children}
     </AuthContext.Provider>
   );
 };

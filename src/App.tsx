@@ -7,7 +7,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 
 import { AuthProvider } from "@/hooks/useAuth";
-import { useAuth } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import AuthPage from "./pages/AuthPage";
@@ -31,38 +30,13 @@ document.documentElement.dir = 'rtl';
 document.documentElement.lang = 'he';
 
 // ─── ROOT ROUTE ───────────────────────────────────────────────────────────────
-// SINGLE source of truth for auth-based entry. 
-// It blocks only during initial session resolution (booting).
+// Renders the auth/landing page. Handles both no-session (form) and 
+// has-session (shows "already signed in" with Switch Account).
+// Booting state is handled by AuthProvider, so we never see it here.
 const RootRoute = () => {
-  const { sessionState, roleState } = useAuth();
   const [searchParams] = useSearchParams();
   const tab = searchParams.get('tab') === 'register' ? 'register' : 'login';
-
-  console.log(`[RootRoute] sessionState=${sessionState} roleState=${roleState}`);
-
-  if (sessionState === 'booting') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
-  if (sessionState === 'no-session') {
-    return <AuthPage defaultTab={tab} />;
-  }
-
-  if (sessionState === 'has-session') {
-    return <AuthPage defaultTab={tab} />;
-  }
-
-  // role unknown or resolving
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-      <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-      <p className="text-muted-foreground">מזהה הרשאות…</p>
-    </div>
-  );
+  return <AuthPage defaultTab={tab} />;
 };
 
 const App = () => (
