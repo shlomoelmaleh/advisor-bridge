@@ -17,7 +17,7 @@ import MatchesPage from './pages/Matches';
 import Chat from './pages/Chat';
 import AdminDashboard from './pages/AdminDashboard';
 import BankAppetite from './pages/BankAppetite';
-import BankChat from './pages/BankChat';
+import Conversations from './pages/Conversations';
 import NotFound from "./pages/NotFound";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
@@ -87,14 +87,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/bank/chat"
-              element={
-                <ProtectedRoute allowedRoles={['bank']} requireFinalRole>
-                  <BankChat />
-                </ProtectedRoute>
-              }
-            />
+            {/* Removed /bank/chat */}
 
             {/* Admin-only routes */}
             <Route
@@ -107,6 +100,16 @@ const App = () => (
             />
 
             {/* Shared authenticated routes */}
+            <Route
+              path="/conversations"
+              element={
+                <ProtectedRoute allowedRoles="any-authenticated">
+                  <AppLayout>
+                    <Conversations />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/matches"
               element={

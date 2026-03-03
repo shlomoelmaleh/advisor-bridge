@@ -113,12 +113,20 @@ const Navbar = () => {
                 )}
 
                 {roleState === 'advisor' && (
-                  <Link
-                    to="/advisor/submit-case"
-                    className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
-                  >
-                    הגש תיק
-                  </Link>
+                  <>
+                    <Link
+                      to="/advisor/submit-case"
+                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                    >
+                      הגש תיק
+                    </Link>
+                    <Link
+                      to="/conversations"
+                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                    >
+                      שיחות
+                    </Link>
+                  </>
                 )}
 
                 {roleState === 'bank' && (
@@ -130,7 +138,7 @@ const Navbar = () => {
                       תיאבון
                     </Link>
                     <Link
-                      to="/bank/chat"
+                      to="/conversations"
                       className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                     >
                       שיחות
@@ -205,13 +213,22 @@ const Navbar = () => {
                     )}
 
                     {roleState === 'advisor' && (
-                      <Link
-                        to="/advisor/submit-case"
-                        className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        הגש תיק
-                      </Link>
+                      <>
+                        <Link
+                          to="/advisor/submit-case"
+                          className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          הגש תיק
+                        </Link>
+                        <Link
+                          to="/conversations"
+                          className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          שיחות
+                        </Link>
+                      </>
                     )}
 
                     {roleState === 'bank' && (
@@ -224,7 +241,7 @@ const Navbar = () => {
                           תיאבון
                         </Link>
                         <Link
-                          to="/bank/chat"
+                          to="/conversations"
                           className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
