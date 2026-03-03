@@ -253,9 +253,9 @@ const BankMatchesView = () => {
 
 // ─── Main Switch Component ────────────────────────────────────────────────────
 const MatchesPage = () => {
-    const { profile, loading } = useAuth();
+    const { profile, sessionState, profileState } = useAuth();
 
-    if (loading) return null;
+    if (sessionState === 'booting' || profileState === 'loading') return null;
 
     return (
         <div className="container py-8 max-w-6xl">
