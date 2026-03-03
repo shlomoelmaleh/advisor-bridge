@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AuthForm from '@/components/auth/AuthForm';
-import { useAuth, getHomePathByRole } from '@/hooks/useAuth';
+import { useAuth, getHomePathByRole, isRoleFinalSource } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
@@ -10,36 +10,33 @@ interface AuthPageProps {
 }
 
 const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
-  const { sessionState, roleState, user, signOut, profileState } = useAuth();
+  const { sessionState, roleState, roleSource, user, signOut } = useAuth();
   const [isSwitching, setIsSwitching] = useState(false);
   const navigate = useNavigate();
 
-  // ── Role is "final" when DB has spoken (or failed) ────────────────────────
-  // profileState === 'loading' means the DB fetch is still in-flight,
-  // so the current roleState may be optimistic (JWT) and could change.
-  const isRoleFinal =
-    roleState !== 'unknown' &&
-    profileState !== 'loading';
+  // Role is "final" only when it came from DB or allowlist
+  const roleFinal = isRoleFinalSource(roleSource);
 
-  // ── Auto-Redirect: only when role is FINAL ────────────────────────────────
+  // ── Auto-Redirect: only when role is FINAL (came from DB or allowlist) ────
   useEffect(() => {
-    if (sessionState === 'has-session' && isRoleFinal && !isSwitching) {
+    if (sessionState === 'has-session' && roleFinal && !isSwitching) {
       const dest = getHomePathByRole(roleState);
-      console.log(`[Nav] redirecting to ${dest} (reason=role-final, role=${roleState})`);
+      console.log(`[Nav] redirecting to ${dest} (reason=role-final source=${roleSource})`);
       navigate(dest, { replace: true });
     }
-  }, [sessionState, roleState, isRoleFinal, navigate, isSwitching]);
+  }, [sessionState, roleState, roleSource, roleFinal, navigate, isSwitching]);
 
   // ── Switch Account ────────────────────────────────────────────────────────
   const handleSwitchAccount = async () => {
     setIsSwitching(true);
     await signOut();
+    // After signOut, sessionState becomes no-session → login form re-appears
   };
 
-  // ── Session exists, waiting for final role or redirecting ─────────────────
+  // ── Session exists → redirect pending or resolving ───────────────────────
   if (sessionState === 'has-session' && !isSwitching) {
-    // Role final → show brief redirect spinner (useEffect navigates away)
-    if (isRoleFinal) {
+    // Role is final → show brief redirect spinner (useEffect navigates away immediately)
+    if (roleFinal) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-background">
           <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
@@ -48,7 +45,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
       );
     }
 
-    // Role NOT final → show "resolving" + option to switch
+    // Role NOT final yet → show resolving state + option to switch
     return (
       <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 bg-background" dir="rtl">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
@@ -74,7 +71,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
     );
   }
 
-  // ── No session → login form ───────────────────────────────────────────────
+  // ── No session (or switching) → login form ────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">

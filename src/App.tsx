@@ -56,7 +56,7 @@ const App = () => (
             <Route
               path="/advisor/dashboard"
               element={
-                <ProtectedRoute allowedRoles={['advisor']}>
+                <ProtectedRoute allowedRoles={['advisor']} requireFinalRole>
                   <AdvisorDashboard />
                 </ProtectedRoute>
               }
@@ -64,7 +64,7 @@ const App = () => (
             <Route
               path="/advisor/submit-case"
               element={
-                <ProtectedRoute allowedRoles={['advisor']}>
+                <ProtectedRoute allowedRoles={['advisor']} requireFinalRole>
                   <CaseSubmit />
                 </ProtectedRoute>
               }
@@ -74,7 +74,7 @@ const App = () => (
             <Route
               path="/bank/dashboard"
               element={
-                <ProtectedRoute allowedRoles={['bank']}>
+                <ProtectedRoute allowedRoles={['bank']} requireFinalRole>
                   <BankDashboard />
                 </ProtectedRoute>
               }
@@ -82,7 +82,7 @@ const App = () => (
             <Route
               path="/bank/appetite"
               element={
-                <ProtectedRoute allowedRoles={['bank']}>
+                <ProtectedRoute allowedRoles={['bank']} requireFinalRole>
                   <BankAppetite />
                 </ProtectedRoute>
               }
@@ -90,7 +90,7 @@ const App = () => (
             <Route
               path="/bank/chat"
               element={
-                <ProtectedRoute allowedRoles={['bank']}>
+                <ProtectedRoute allowedRoles={['bank']} requireFinalRole>
                   <BankChat />
                 </ProtectedRoute>
               }
@@ -100,7 +100,7 @@ const App = () => (
             <Route
               path="/admin/dashboard"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['admin']} requireFinalRole>
                   <AdminDashboard />
                 </ProtectedRoute>
               }

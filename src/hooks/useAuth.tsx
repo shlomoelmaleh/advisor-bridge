@@ -8,7 +8,12 @@ export type UserRole = 'advisor' | 'bank' | 'admin';
 
 export type SessionState = 'booting' | 'no-session' | 'has-session';
 export type RoleState = UserRole | 'unknown';
+export type RoleSource = 'none' | 'allowlist' | 'db' | 'jwt-optimistic' | 'cache';
 export type ProfileState = 'idle' | 'loading' | 'ready' | 'missing' | 'pending' | 'error';
+
+// A role is "final" only when it came from DB or allowlist (never JWT-optimistic / cache)
+export const isRoleFinalSource = (src: RoleSource): boolean =>
+  src === 'db' || src === 'allowlist';
 
 export interface Profile {
   user_id: string;
@@ -35,6 +40,7 @@ interface AuthContextValue {
   session: Session | null;
   sessionState: SessionState;
   roleState: RoleState;
+  roleSource: RoleSource;
   profileState: ProfileState;
   profile: Profile | null;
   isProfileFetching: boolean;
@@ -91,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [sessionState, setSessionState] = useState<SessionState>('booting');
   const [roleState, setRoleState] = useState<RoleState>('unknown');
+  const [roleSource, setRoleSource] = useState<RoleSource>('none');
   const [profileState, setProfileState] = useState<ProfileState>('idle');
   const [profile, _setProfile] = useState<Profile | null>(null);
   const [isProfileFetching, setIsProfileFetching] = useState(false);
@@ -129,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cachedRole = localStorage.getItem('advisor_bridge_role');
 
     let finalRole: RoleState = 'unknown';
-    let source = 'none';
+    let source: RoleSource = 'none';
 
     // Priority 1 — Allowlist (ultimate authority for admin)
     if (email && ADMIN_EMAILS.includes(email)) {
@@ -149,19 +156,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (jwtRole === 'admin') {
         // Admin from JWT alone is denied — must come from DB or allowlist
         finalRole = 'unknown';
-        source = 'jwt-denied-admin';
+        source = 'none';
       } else if (email && ADMIN_EMAILS.includes(email)) {
         // User is in Admin allowlist — don't use optimistic advisor role, wait for DB
         finalRole = 'unknown';
-        source = 'jwt-admin-waiting-db';
+        source = 'none';
       } else {
         finalRole = jwtRole;
         source = 'jwt-optimistic';
       }
     }
-    // Priority 4 — Cache (UX fallback)
-    else if (isValidRole(cachedRole)) {
-      finalRole = cachedRole;
+    // Priority 4 — Cache (UX fallback, non-admin-allowlisted users only)
+    else if (isValidRole(cachedRole) && !(email && ADMIN_EMAILS.includes(email))) {
+      finalRole = cachedRole as UserRole;
       source = 'cache';
     }
 
@@ -169,6 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log(`[Auth] role resolved: ${finalRole} (source=${source})`);
       roleRef.current = finalRole;
       setRoleState(finalRole);
+      setRoleSource(source);
     }
   }, []);
 
@@ -241,6 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setSessionState('no-session');
     setRoleState('unknown');
+    setRoleSource('none');
     setProfileState('idle');
     setIsProfileFetching(false);
 
@@ -420,7 +429,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Context value ─────────────────────────────────────────────────────────
   const value: AuthContextValue = {
-    user, session, sessionState, roleState, profileState, profile, isProfileFetching,
+    user, session, sessionState, roleState, roleSource, profileState, profile, isProfileFetching,
     signUp, signIn, signOut, reFetchProfile,
   };
 
