@@ -1,94 +1,108 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth, UserRole, getHomePathByRole, isFinalForNavigation, isFinalForSecurity } from '@/hooks/useAuth';
+import { useAuth, UserRole, getHomePathByRole, isFinalForSecurity } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+
+const SESSION_REDIRECT_KEY = 'postLoginRedirect';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
     allowedRoles: UserRole[] | 'any-authenticated' | 'any';
     /**
-     * When true, requires a security-final role (DB or allowlist) before granting access.
-     * Use for /admin/* routes to prevent jwt-optimistic advisor from transiently entering admin.
-     * Default: false — advisor/bank routes navigate as soon as jwt-optimistic role is set.
+     * When true, role must be security-final (DB or allowlist) before granting access.
+     * Set on /admin/* routes. Default: false — advisor/bank navigate from jwt-optimistic.
      */
     requireFinalRole?: boolean;
 }
 
 /**
  * Route guard for authenticated pages.
- * - Never inspects profileState or approval status — those are UI-only concerns.
- * - Shows a lightweight spinner while role is resolving.
- * - 5s safety timeout to avoid infinite hangs.
+ *
+ * Decision tree:
+ * 1. booting       → null (global spinner from AuthProvider)
+ * 2. no-session    → store current path → redirect to / (login)
+ * 3. any-authenticated → render immediately
+ * 4. roleState === unknown
+ *    a. profileState === loading → show spinner (DB fetch in-flight)
+ *    b. otherwise               → show "Unable to resolve role" + Sign Out (no auto-redirect loop)
+ * 5. requireFinalRole && !securityFinal → spinner (admin waiting for DB)
+ * 6. role in allowedRoles → render
+ * 7. role NOT in allowedRoles → redirect to that role's dashboard (never to /)
+ *
+ * NEVER inspects profileState for access. NEVER has a timeout redirect.
  */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     children,
     allowedRoles,
     requireFinalRole = false,
 }) => {
-    const { sessionState, roleState, roleSource } = useAuth();
+    const { sessionState, roleState, roleSource, profileState, signOut } = useAuth();
     const location = useLocation();
-    const [timedOut, setTimedOut] = useState(false);
 
-    // Whether to show the "resolving" spinner:
-    // - always wait when roleState is unknown
-    // - for requireFinalRole routes: also wait while role isn't security-final
-    const isWaitingForRole =
-        sessionState === 'has-session' &&
-        (roleState === 'unknown' ||
-            (requireFinalRole && !isFinalForSecurity(roleSource)));
-
-    // Reset timeout whenever role state improves
-    useEffect(() => {
-        setTimedOut(false);
-    }, [roleState, roleSource, sessionState]);
-
-    // Safety timeout: 5s to resolve, then fail-closed
-    useEffect(() => {
-        if (!isWaitingForRole) return;
-        const timer = setTimeout(() => {
-            console.warn(`[RouteGuard] role resolution timed out on ${location.pathname}`);
-            setTimedOut(true);
-        }, 5000);
-        return () => clearTimeout(timer);
-    }, [isWaitingForRole, location.pathname]);
-
-    // ── 1. Booting → nothing (AuthProvider shows global spinner) ─────────────
+    // ── 1. Booting ────────────────────────────────────────────────────────────
     if (sessionState === 'booting') return null;
 
-    // ── 2. No session → login page ────────────────────────────────────────────
+    // ── 2. No session → remember path + go to login ──────────────────────────
     if (sessionState === 'no-session') {
+        const path = location.pathname + location.search;
+        if (path !== '/') {
+            sessionStorage.setItem(SESSION_REDIRECT_KEY, path);
+        }
         return <Navigate to="/" state={{ from: location }} replace />;
     }
 
-    // ── 3. Any-authenticated routes (e.g. /matches, /chat) ───────────────────
+    // ── 3. Any-authenticated routes ───────────────────────────────────────────
     if (allowedRoles === 'any-authenticated' || allowedRoles === 'any') {
         return <>{children}</>;
     }
 
-    // ── 4. Waiting for role to resolve ────────────────────────────────────────
-    if (isWaitingForRole) {
-        if (timedOut) {
-            console.error('[RouteGuard] timed out → redirecting to /');
-            return <Navigate to="/" replace />;
+    // ── 4. Role unknown ───────────────────────────────────────────────────────
+    if (roleState === 'unknown') {
+        // Still fetching from DB → show spinner
+        if (profileState === 'loading') {
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+                    <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                    <p className="text-sm text-muted-foreground">מזהה הרשאות...</p>
+                </div>
+            );
         }
+
+        // DB fetch done but role still unknown → show error (no redirect loop)
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-                <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                <p className="text-sm text-muted-foreground">מזהה הרשאות...</p>
+            <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background" dir="rtl">
+                <p className="text-lg font-semibold">לא ניתן לזהות את ההרשאות שלך</p>
+                <p className="text-sm text-muted-foreground">אנא צור קשר עם התמיכה או נסה להתנתק ולהתחבר מחדש.</p>
+                <Button variant="outline" onClick={() => signOut()}>התנתק</Button>
             </div>
         );
     }
 
-    // ── 5. Role is ready — check if it's in the allowed list ─────────────────
-    // For routes with requireFinalRole: role is guaranteed security-final here.
-    // For routes without it: jwt-optimistic is accepted.
-    if (roleState !== 'unknown' && allowedRoles.includes(roleState as UserRole)) {
+    // ── 5. requireFinalRole: wait for DB authority (admin routes) ─────────────
+    if (requireFinalRole && !isFinalForSecurity(roleSource)) {
+        // Still fetching → spinner
+        if (profileState === 'loading') {
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+                    <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                    <p className="text-sm text-muted-foreground">מזהה הרשאות...</p>
+                </div>
+            );
+        }
+        // profileState not loading but role not security-final → role mismatch
+        // Fall through to step 7 (role-based redirect)
+    }
+
+    // ── 6. Role in allowedRoles → grant access ────────────────────────────────
+    if (allowedRoles.includes(roleState as UserRole)) {
         return <>{children}</>;
     }
 
-    // ── 6. Role doesn't match → redirect to that user's dashboard ────────────
-    console.log(`[RouteGuard] path=${location.pathname} role=${roleState}(${roleSource}) denied → redirecting`);
+    // ── 7. Wrong role → redirect to the correct dashboard ────────────────────
+    console.log(`[RouteGuard] path=${location.pathname} role=${roleState}(${roleSource}) denied → redirecting to home`);
     const dest = getHomePathByRole(roleState);
     return <Navigate to={dest} replace />;
 };
 
+export { SESSION_REDIRECT_KEY };
 export default ProtectedRoute;

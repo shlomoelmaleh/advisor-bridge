@@ -11,24 +11,6 @@ export type RoleState = UserRole | 'unknown';
 export type RoleSource = 'none' | 'allowlist' | 'db' | 'jwt-optimistic' | 'cache';
 export type ProfileState = 'idle' | 'loading' | 'ready' | 'missing' | 'pending' | 'error';
 
-// A role is "final for navigation" when routing is safe to proceed:
-// - advisor/bank: jwt-optimistic, cache, db, or allowlist are all OK
-// - admin: ONLY db or allowlist (never optimistic/cache alone)
-export const isFinalForNavigation = (role: RoleState, src: RoleSource): boolean => {
-  if (role === 'unknown') return false;
-  if (role === 'admin') return src === 'db' || src === 'allowlist';
-  // advisor / bank: any non-'none' source is good enough
-  return src !== 'none';
-};
-
-// A role is "final for security" only when it came from DB or allowlist.
-// Use this for admin authorization and requireFinalRole guards.
-export const isFinalForSecurity = (src: RoleSource): boolean =>
-  src === 'db' || src === 'allowlist';
-
-// Keep backward-compat alias
-export const isRoleFinalSource = isFinalForSecurity;
-
 export interface Profile {
   user_id: string;
   full_name: string | null;
@@ -37,6 +19,29 @@ export interface Profile {
   is_approved?: boolean;
   created_at?: string;
 }
+
+// ─── Role finality helpers ─────────────────────────────────────────────────────
+
+/**
+ * Returns true when the role is "final" for navigation purposes:
+ * - admin: ONLY db or allowlist (never optimistic/cache)
+ * - advisor / bank: any non-'none' source qualifies (jwt-optimistic included)
+ */
+export const isFinalForNavigation = (role: RoleState, src: RoleSource): boolean => {
+  if (role === 'unknown') return false;
+  if (role === 'admin') return src === 'db' || src === 'allowlist';
+  return src !== 'none';
+};
+
+/**
+ * Returns true when the role is authoritative from a security standpoint.
+ * Use for admin authorization and requireFinalRole guards.
+ */
+export const isFinalForSecurity = (src: RoleSource): boolean =>
+  src === 'db' || src === 'allowlist';
+
+// Keep backward-compat alias
+export const isRoleFinalSource = isFinalForSecurity;
 
 // ─── Routing Helpers ──────────────────────────────────────────────────────────
 
@@ -49,12 +54,16 @@ export const getHomePathByRole = (role: RoleState): string => {
   }
 };
 
+// ─── Context ──────────────────────────────────────────────────────────────────
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   sessionState: SessionState;
   roleState: RoleState;
   roleSource: RoleSource;
+  /** True when the role is final enough to navigate (role-aware). */
+  roleFinal: boolean;
   profileState: ProfileState;
   profile: Profile | null;
   isProfileFetching: boolean;
@@ -64,18 +73,19 @@ interface AuthContextValue {
   reFetchProfile: () => Promise<void>;
 }
 
-// ─── Context ──────────────────────────────────────────────────────────────────
-
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Constants & pure helpers ─────────────────────────────────────────────────
 
 const VALID_ROLES: UserRole[] = ['advisor', 'bank', 'admin'];
 const isValidRole = (r: unknown): r is UserRole => VALID_ROLES.includes(r as UserRole);
 
-const safeParseJSON = (str: string | null) => {
-  if (!str) return null;
-  try { return JSON.parse(str); } catch { return null; }
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mortgagebridge.co.il')
+  .split(',').map((e: string) => e.trim().toLowerCase());
+
+const clearAuthCache = () => {
+  localStorage.removeItem('advisor_bridge_profile');
+  localStorage.removeItem('advisor_bridge_role');
 };
 
 const fetchProfileFromDB = async (userId: string, signal?: AbortSignal): Promise<Profile | null> => {
@@ -87,20 +97,10 @@ const fetchProfileFromDB = async (userId: string, signal?: AbortSignal): Promise
 
   if (signal?.aborted) throw new Error('Aborted');
   if (error) {
-    if (error.code === 'PGRST116') return null; // no rows
+    if (error.code === 'PGRST116') return null; // no rows — not an error
     throw error;
   }
   return data as unknown as Profile;
-};
-
-const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mortgagebridge.co.il')
-  .split(',').map((e: string) => e.trim().toLowerCase());
-
-// ─── Cache helpers (user-scoped) ──────────────────────────────────────────────
-
-const clearAuthCache = () => {
-  localStorage.removeItem('advisor_bridge_profile');
-  localStorage.removeItem('advisor_bridge_role');
 };
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
@@ -118,18 +118,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const mountedRef = useRef(true);
   const initRanRef = useRef(false);
+  const listenerAttachedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Deduplication: userId currently being fetched + the promise for it
+  // Strict single-fetch deduplication per userId
   const fetchingUidRef = useRef<string | null>(null);
   const fetchingPromiseRef = useRef<Promise<Profile | null> | null>(null);
 
   const sessionUidRef = useRef<string | null>(null);
   const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
 
-  // Refs to avoid closure staleness
   const userRef = useRef<User | null>(null);
   const roleRef = useRef<RoleState>('unknown');
+  const roleSourceRef = useRef<RoleSource>('none');
 
   // ── Persist profile to cache ──────────────────────────────────────────────
   const setProfile = useCallback((p: Profile | null) => {
@@ -142,69 +143,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // ── Role resolution (Allowlist > DB > JWT-optimistic > Cache) ─────────────
-  const resolveRole = useCallback((u: User | null, dbProfile: Profile | null) => {
-    const email = u?.email?.toLowerCase();
-    const jwtRole = u?.user_metadata?.role;
-    const dbRole = dbProfile?.role;
-    const cachedRole = localStorage.getItem('advisor_bridge_role');
-
-    let finalRole: RoleState = 'unknown';
-    let source: RoleSource = 'none';
-
-    // Priority 1 — Allowlist (ultimate authority for admin)
-    if (email && ADMIN_EMAILS.includes(email)) {
-      finalRole = 'admin';
-      source = 'allowlist';
-    }
-    // Priority 2 — DB profile role (authority for all roles)
-    else if (isValidRole(dbRole)) {
-      finalRole = dbRole;
-      source = 'db';
-      if (isValidRole(jwtRole) && jwtRole !== dbRole) {
-        console.log(`[Auth] role correction: JWT=${jwtRole} DB=${dbRole} → following DB`);
-      }
-    }
-    // Priority 3 — JWT (optimistic, NEVER admin)
-    else if (isValidRole(jwtRole)) {
-      if (jwtRole === 'admin') {
-        // Admin from JWT alone is denied — must come from DB or allowlist
-        finalRole = 'unknown';
-        source = 'none';
-      } else if (email && ADMIN_EMAILS.includes(email)) {
-        // User is in Admin allowlist — don't use optimistic advisor role, wait for DB
-        finalRole = 'unknown';
-        source = 'none';
-      } else {
-        finalRole = jwtRole;
-        source = 'jwt-optimistic';
-      }
-    }
-    // Priority 4 — Cache (UX fallback, non-admin-allowlisted users only)
-    else if (isValidRole(cachedRole) && !(email && ADMIN_EMAILS.includes(email))) {
-      finalRole = cachedRole as UserRole;
-      source = 'cache';
-    }
-
-    if (finalRole !== roleRef.current) {
-      console.log(`[Auth] role resolved: ${finalRole} (source=${source})`);
-      roleRef.current = finalRole;
-      setRoleState(finalRole);
-      setRoleSource(source);
+  // ── Update role state atomically ──────────────────────────────────────────
+  const applyRole = useCallback((role: RoleState, src: RoleSource) => {
+    if (role !== roleRef.current || src !== roleSourceRef.current) {
+      console.log(`[Auth] role resolved: ${role} (source=${src})`);
+      roleRef.current = role;
+      roleSourceRef.current = src;
+      setRoleState(role);
+      setRoleSource(src);
     }
   }, []);
 
-  // ── Profile fetch with promise-based dedup ────────────────────────────────
+  // ── Optimistic role from JWT / cache (called before DB responds) ──────────
+  const resolveOptimisticRole = useCallback((u: User) => {
+    const email = u.email?.toLowerCase();
+    const jwtRole = u.user_metadata?.role;
+    const cachedRole = localStorage.getItem('advisor_bridge_role');
+
+    // Admin allowlist → immediate authoritative role (no optimistic advisor risk)
+    if (email && ADMIN_EMAILS.includes(email)) {
+      applyRole('admin', 'allowlist');
+      return;
+    }
+
+    // JWT optimistic (non-admin only)
+    if (isValidRole(jwtRole) && jwtRole !== 'admin') {
+      applyRole(jwtRole, 'jwt-optimistic');
+      return;
+    }
+
+    // Cache fallback (non-admin only)
+    if (isValidRole(cachedRole) && cachedRole !== 'admin') {
+      applyRole(cachedRole as UserRole, 'cache');
+      return;
+    }
+
+    // No optimistic role available — stay unknown
+    applyRole('unknown', 'none');
+  }, [applyRole]);
+
+  // ── Authoritative role from DB profile ────────────────────────────────────
+  const resolveRoleFromDB = useCallback((u: User, dbProfile: Profile | null) => {
+    const email = u.email?.toLowerCase();
+
+    if (dbProfile && isValidRole(dbProfile.role)) {
+      const dbRole = dbProfile.role;
+      const prevOptimistic = roleRef.current;
+      // Log quietly only if there was an actual correction
+      if (isValidRole(prevOptimistic) && prevOptimistic !== dbRole) {
+        console.log(`[Auth] role correction: JWT=${prevOptimistic} DB=${dbRole} → following DB`);
+      }
+      // Allowlist still wins for admin email (belt and suspenders)
+      if (email && ADMIN_EMAILS.includes(email) && dbRole !== 'admin') {
+        console.warn(`[Auth] allowlisted admin has non-admin DB role (${dbRole}); using allowlist`);
+        applyRole('admin', 'allowlist');
+      } else {
+        applyRole(dbRole, 'db');
+      }
+      return;
+    }
+
+    // Profile missing: for admin allowlist, that's suspicious
+    if (email && ADMIN_EMAILS.includes(email)) {
+      console.warn('[Auth] admin allowlist user has no DB profile — keeping unknown until profile is created');
+      applyRole('unknown', 'none');
+      return;
+    }
+
+    // Profile missing for non-admin: use JWT/cache if available (user can still operate with banner)
+    const currentRole = roleRef.current;
+    if (currentRole !== 'unknown') {
+      // Already have an optimistic role → keep it, mark as final (profile just missing)
+      applyRole(currentRole, roleSourceRef.current);
+    }
+    // else: remains unknown (new user with no profile yet?)
+  }, [applyRole]);
+
+  // ── Profile fetch with strict single-fetch dedup ──────────────────────────
   const handleProfileFetch = useCallback((uid: string): Promise<Profile | null> => {
     if (!mountedRef.current) return Promise.resolve(null);
 
-    // Reuse in-flight promise for same user
+    // Same user already in-flight → reuse promise
     if (fetchingUidRef.current === uid && fetchingPromiseRef.current) {
-      console.log(`[Auth] profile fetch in-flight for ${uid}, reusing`);
+      console.log(`[Auth] profile fetch already in-flight for ${uid}, skipping`);
       return fetchingPromiseRef.current;
     }
 
-    // Cancel any previous fetch
+    // Cancel any previous (different user) fetch
     if (abortRef.current) abortRef.current.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -220,17 +245,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!mountedRef.current || fetchingUidRef.current !== uid) return null;
 
         setProfile(p);
-        resolveRole(userRef.current, p);
+
+        // Always upgrade roleSource to 'db' now (critical for finality)
+        resolveRoleFromDB(userRef.current!, p);
 
         if (!p) {
-          console.log('[Auth] profileState=missing');
           setProfileState('missing');
+          console.log('[Auth] profileState=missing');
         } else if (p.is_approved === false) {
-          console.log('[Auth] profileState=pending');
           setProfileState('pending');
+          console.log('[Auth] profileState=pending');
         } else {
-          console.log('[Auth] profileState=ready');
           setProfileState('ready');
+          console.log('[Auth] profileState=ready');
         }
         return p;
       } catch (e: any) {
@@ -249,9 +276,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     fetchingPromiseRef.current = promise;
     return promise;
-  }, [resolveRole, setProfile]);
+  }, [setProfile, resolveRoleFromDB]);
 
-  // ── Full reset (used by signOut + SIGNED_OUT listener) ────────────────────
+  // ── Full reset ─────────────────────────────────────────────────────────────
   const fullReset = useCallback(() => {
     console.log('[Auth] full reset');
     _setUser(null);
@@ -260,6 +287,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userRef.current = null;
     sessionUidRef.current = null;
     roleRef.current = 'unknown';
+    roleSourceRef.current = 'none';
 
     setSessionState('no-session');
     setRoleState('unknown');
@@ -267,32 +295,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfileState('idle');
     setIsProfileFetching(false);
 
-    // Cancel in-flight
     if (abortRef.current) abortRef.current.abort();
     fetchingUidRef.current = null;
     fetchingPromiseRef.current = null;
 
-    // Clear all cache
     clearAuthCache();
   }, []);
 
-  // ── Bootstrap a session (shared between init + listener) ──────────────────
+  // ── Bootstrap a session ───────────────────────────────────────────────────
   const bootstrapSession = useCallback((u: User, sess: Session) => {
+    // Prevent double-bootstrap for same user
+    if (sessionUidRef.current === u.id) {
+      console.log('[Auth] bootstrap skipped: same user already active');
+      return;
+    }
+
     _setSession(sess);
     _setUser(u);
     userRef.current = u;
     sessionUidRef.current = u.id;
 
     setSessionState('has-session');
-    // Set loading early so isRoleFinal stays false until DB fetch completes
-    setProfileState('loading');
 
-    // Optimistic role from cache/JWT (never admin from JWT alone)
-    resolveRole(u, null);
+    // Set optimistic role immediately (unblocks advisor/bank instantly)
+    resolveOptimisticRole(u);
 
-    // Authoritative fetch from DB
+    // Authoritative fetch (always runs and always upgrades roleSource to 'db')
     handleProfileFetch(u.id);
-  }, [resolveRole, handleProfileFetch]);
+  }, [resolveOptimisticRole, handleProfileFetch]);
 
   // ── Init (runs once) ──────────────────────────────────────────────────────
   const init = useCallback(async () => {
@@ -311,21 +341,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const u = sess?.user ?? null;
 
       if (!u || !sess) {
-        console.log('[Auth] init → no-session');
-        fullReset();
+        console.log('[Auth] session=no-session');
+        // transition out of booting
+        setSessionState('no-session');
       } else {
-        console.log('[Auth] init → has-session');
+        console.log(`[Auth] session=has-session userId=${u.id}`);
         bootstrapSession(u, sess);
       }
     } catch (e) {
       console.error('[Auth] init exception:', e);
       if (mountedRef.current) fullReset();
-    } finally {
-      console.log('[Auth] init complete');
     }
   }, [fullReset, bootstrapSession]);
-
-  const listenerAttachedRef = useRef(false);
 
   // ── Auth state change listener ────────────────────────────────────────────
   useEffect(() => {
@@ -333,21 +360,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (initRanRef.current) return;
     initRanRef.current = true;
 
-    // 1. Run init
     init();
 
-    // 2. Attach listener (once)
     if (listenerAttachedRef.current) return;
     listenerAttachedRef.current = true;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mountedRef.current) return;
-        if (event === 'INITIAL_SESSION') return;
+        if (event === 'INITIAL_SESSION') return; // handled by init()
 
         const newUser = newSession?.user ?? null;
 
-        // Idempotency: skip if session user is the same and it's just a token refresh
+        // Token refresh / metadata update for same user → just update session obj
         if (
           (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
           newUser?.id === sessionUidRef.current
@@ -356,25 +381,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        console.log(`[Auth] onAuthStateChange: event=${event}`);
+        console.log(`[Auth] onAuthStateChange event=${event}`);
 
-        // ── SIGNED_OUT ──────────────────────────────────────────────────
         if (!newUser || event === 'SIGNED_OUT') {
           fullReset();
           return;
         }
 
-        // ── SIGNED_IN or new user ───────────────────────────────────────
-        const isNewUser = newUser.id !== sessionUidRef.current;
-
-        // Prevent redundant boot if already in correct state
-        if (event === 'SIGNED_IN' || isNewUser) {
-          if (isNewUser && sessionUidRef.current) {
-            console.log('[Auth] user switch detected, resetting state');
-            if (abortRef.current) abortRef.current.abort();
-            fetchingUidRef.current = null;
-            fetchingPromiseRef.current = null;
-          }
+        // SIGNED_IN for a new user → bootstrap (guard in bootstrapSession prevents dupe)
+        if (event === 'SIGNED_IN' || newUser.id !== sessionUidRef.current) {
           bootstrapSession(newUser, newSession!);
         }
       }
@@ -384,35 +399,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       mountedRef.current = false;
-      if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
-        subscriptionRef.current = null;
-      }
-      if (abortRef.current) abortRef.current.abort();
+      subscriptionRef.current?.unsubscribe();
+      subscriptionRef.current = null;
+      abortRef.current?.abort();
     };
   }, [init, fullReset, bootstrapSession]);
 
-  // ── signOut (with verification) ───────────────────────────────────────────
+  // ── signOut ───────────────────────────────────────────────────────────────
   const signOut = useCallback(async () => {
     console.log('[Auth] signOut requested');
-
-    // 1. Call Supabase signOut
     await supabase.auth.signOut();
-
-    // 2. Immediate local reset
     if (mountedRef.current) fullReset();
 
-    // 3. Sanity check: verify session is actually gone
+    // Sanity check
     try {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        console.error('[Auth] session still exists after signOut, retrying');
+        console.error('[Auth] session persisted after signOut, retrying');
         await supabase.auth.signOut();
         if (mountedRef.current) fullReset();
       }
-    } catch {
-      // Ignore errors during sanity check
-    }
+    } catch { /* ignore */ }
   }, [fullReset]);
 
   // ── signIn ────────────────────────────────────────────────────────────────
@@ -422,10 +429,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // ── signUp ────────────────────────────────────────────────────────────────
-  const signUp = useCallback(async (email: string, password: string, fullName: string, role: UserRole, company?: string) => {
+  const signUp = useCallback(async (
+    email: string, password: string, fullName: string, role: UserRole, company?: string
+  ) => {
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email, password,
       options: { data: { full_name: fullName, role, company: company ?? null } },
     });
     return { error: error as Error | null };
@@ -434,16 +442,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── reFetchProfile ────────────────────────────────────────────────────────
   const reFetchProfile = useCallback(async () => {
     if (userRef.current) {
-      // Force a fresh fetch by clearing the dedup ref
       fetchingUidRef.current = null;
       fetchingPromiseRef.current = null;
       await handleProfileFetch(userRef.current.id);
     }
   }, [handleProfileFetch]);
 
+  // ── Derived: roleFinal ────────────────────────────────────────────────────
+  const roleFinal = isFinalForNavigation(roleState, roleSource);
+
   // ── Context value ─────────────────────────────────────────────────────────
   const value: AuthContextValue = {
-    user, session, sessionState, roleState, roleSource, profileState, profile, isProfileFetching,
+    user, session, sessionState, roleState, roleSource, roleFinal,
+    profileState, profile, isProfileFetching,
     signUp, signIn, signOut, reFetchProfile,
   };
 
