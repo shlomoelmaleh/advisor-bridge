@@ -64,7 +64,7 @@ const AdminDashboard = () => {
                 <div className="flex justify-between items-end flex-row-reverse">
                     <div>
                         <h1 className="text-3xl font-bold flex items-center justify-end gap-2">
-                            لوח בקרה - ניהול מערכת
+                            לוח בקרה - ניהול מערכת
                             <ShieldAlert className="h-8 w-8 text-primary" />
                         </h1>
                         <p className="text-muted-foreground mt-2 text-right">פיקוח על משתמשים, תיקים ופעילות המערכת.</p>
