@@ -40,6 +40,7 @@ const BankAppetite = () => {
     const { user, profile, profileState } = useAuth();
     const queryClient = useQueryClient();
     const [isAdding, setIsAdding] = useState(false);
+    const [appetiteLevel, setAppetiteLevel] = useState<'low' | 'medium' | 'high'>('medium');
 
     // ─── Data Fetching ────────────────────────────────────────────────────────
     const { data: appetites, isLoading, error } = useQuery({
@@ -175,7 +176,7 @@ const BankAppetite = () => {
                                     max_ltv: Number(formData.get('ltv')),
                                     min_loan_amount: Number(formData.get('min_loan')),
                                     sla_days: Number(formData.get('sla')),
-                                    appetite_level: 'high'
+                                    appetite_level: appetiteLevel
                                 });
                             }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <div className="space-y-2">
@@ -193,6 +194,27 @@ const BankAppetite = () => {
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">זמן תגובה מובטח (ימים)</label>
                                     <Input name="sla" type="number" placeholder="3" required />
+                                </div>
+                                <div className="space-y-4 md:col-span-2 lg:col-span-4">
+                                    <label className="text-sm font-medium">רמת תיאבון (כמה אתה מחפש עסקאות כרגע?)</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {[
+                                            { id: 'low', label: 'נמוך', color: 'border-red-500 bg-red-50', icon: '🔴', desc: 'הסניף עמוס, פחות עסקאות' },
+                                            { id: 'medium', label: 'בינוני', color: 'border-yellow-500 bg-yellow-50', icon: '🟡', desc: 'עסק כרגיל' },
+                                            { id: 'high', label: 'גבוה', color: 'border-green-500 bg-green-50', icon: '🟢', desc: 'רעבים לעסקאות חדשות' }
+                                        ].map((level) => (
+                                            <div
+                                                key={level.id}
+                                                onClick={() => setAppetiteLevel(level.id as any)}
+                                                className={`cursor-pointer border-2 rounded-xl p-4 transition-all hover:shadow-md flex flex-col items-center text-center gap-1 ${appetiteLevel === level.id ? `${level.color} shadow-sm scale-[1.02]` : 'border-muted bg-card hover:border-muted-foreground/30'
+                                                    }`}
+                                            >
+                                                <span className="text-xl mb-1">{level.icon}</span>
+                                                <span className={`font-bold ${appetiteLevel === level.id ? 'text-foreground' : 'text-muted-foreground'}`}>{level.label}</span>
+                                                <span className="text-xs text-muted-foreground opacity-80">{level.desc}</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                                 <div className="md:col-span-2 lg:col-span-4 flex justify-end gap-3 mt-4">
                                     <Button type="button" variant="outline" onClick={() => setIsAdding(false)}>ביטול</Button>
@@ -297,6 +319,27 @@ const AppetiteItem = ({ item, onUpdate, onDelete, isReadOnly }: {
                                 value={tempData.sla_days || ''}
                                 onChange={(e) => setTempData({ ...tempData, sla_days: Number(e.target.value) })}
                             />
+                        </div>
+                        <div className="sm:col-span-3 space-y-3 mt-2">
+                            <label className="text-sm font-medium">עדכון רמת תיאבון</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {[
+                                    { id: 'low', label: 'נמוך', color: 'border-red-500 bg-red-50', icon: '🔴', desc: 'עמוס' },
+                                    { id: 'medium', label: 'בינוני', color: 'border-yellow-500 bg-yellow-50', icon: '🟡', desc: 'רגיל' },
+                                    { id: 'high', label: 'גבוה', color: 'border-green-500 bg-green-50', icon: '🟢', desc: 'רעב' }
+                                ].map((level) => (
+                                    <div
+                                        key={level.id}
+                                        onClick={() => setTempData({ ...tempData, appetite_level: level.id })}
+                                        className={`cursor-pointer border-2 rounded-lg p-3 transition-all flex flex-col items-center text-center gap-0.5 ${tempData.appetite_level === level.id ? `${level.color} scale-[1.03]` : 'border-muted bg-card opacity-60'
+                                            }`}
+                                    >
+                                        <span className="text-base">{level.icon}</span>
+                                        <span className="text-xs font-bold">{level.label}</span>
+                                        <span className="text-[10px] opacity-70">{level.desc}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 ) : (
