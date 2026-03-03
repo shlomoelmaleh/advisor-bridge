@@ -73,7 +73,7 @@ const Chat = () => {
                     throw new Error("הצ'אט נפתח רק לאחר שידוך הדדי (סטטוס סגור)");
                 }
 
-                // Security check: ensure user is part of the match
+                // UX guard only — actual access enforced by RLS "Match participants see messages" policy
                 if (profile.role === 'advisor' && matchData.case.advisor_id !== user.id) {
                     throw new Error('Access denied');
                 }
