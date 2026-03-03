@@ -175,7 +175,7 @@ const BankAppetite = () => {
                                     max_ltv: Number(formData.get('ltv')),
                                     min_loan_amount: Number(formData.get('min_loan')),
                                     sla_days: Number(formData.get('sla')),
-                                    appetite_level: 'High'
+                                    appetite_level: 'high'
                                 });
                             }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <div className="space-y-2">
