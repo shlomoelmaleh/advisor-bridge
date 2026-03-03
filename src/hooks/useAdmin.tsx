@@ -29,6 +29,7 @@ export const useAdmin = () => {
     });
     const [loading, setLoading] = useState(true);
 
+    // UX guard only — actual authorization enforced by RLS policies (is_admin() SECURITY DEFINER function)
     const checkAdmin = () => {
         if (profile?.role !== 'admin') {
             console.warn('Unauthorized: useAdmin hook requires admin role.');

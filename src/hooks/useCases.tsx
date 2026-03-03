@@ -34,11 +34,10 @@ export const useCases = (): UseCasesReturn => {
             .select('*')
             .order('created_at', { ascending: false });
 
+        // UX query optimization only — actual row filtering enforced by RLS policies on the cases table
         if (profile.role === 'advisor') {
-            // Advisors see only their own cases
             query = query.eq('advisor_id', user.id);
         } else {
-            // Bankers see all open cases
             query = query.eq('status', 'open');
         }
 

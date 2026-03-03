@@ -58,6 +58,7 @@ export const useMatches = (): UseMatchesReturn => {
 
             let filteredData = (data as unknown as MatchWithDetails[]) || [];
 
+            // UX filter only — actual access enforced by RLS "Match participants see matches" policy
             if (profile.role === 'advisor') {
                 filteredData = filteredData.filter((m) => m.case?.advisor_id === user.id);
             } else if (profile.role === 'bank') {
@@ -94,7 +95,7 @@ export const useMatches = (): UseMatchesReturn => {
         if (!profile) return { error: 'Not authenticated' };
 
         try {
-            // Use role-specific column to prevent race conditions
+            // UX optimization — validate_match_update trigger enforces cross-role protection server-side
             const column = profile.role === 'advisor' ? 'advisor_status' : 'banker_status';
             const { error } = await supabase
                 .from('matches')
