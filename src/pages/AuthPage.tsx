@@ -19,7 +19,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
   // advisor/bank: roleFinal as soon as jwt-optimistic is set
   // admin: roleFinal only after DB/allowlist confirms
   useEffect(() => {
-    if (sessionState === 'has-session' && roleFinal && !isSwitching && roleSource !== 'jwt-optimistic') {
+    const isAdminRole = roleState === 'admin';
+    const canNavigate = sessionState === 'has-session' &&
+      roleFinal &&
+      !isSwitching &&
+      (!isAdminRole || roleSource !== 'jwt-optimistic');
+
+    if (canNavigate) {
       // Consume the stored post-login redirect if valid
       const stored = sessionStorage.getItem(SESSION_REDIRECT_KEY);
       sessionStorage.removeItem(SESSION_REDIRECT_KEY);
