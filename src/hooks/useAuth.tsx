@@ -64,6 +64,8 @@ interface AuthContextValue {
   roleSource: RoleSource;
   /** True when the role is final enough to navigate (role-aware). */
   roleFinal: boolean;
+  /** True while the app is still booting (sessionState === 'booting'). */
+  loading: boolean;
   profileState: ProfileState;
   profile: Profile | null;
   isProfileFetching: boolean;
@@ -448,12 +450,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [handleProfileFetch]);
 
-  // ── Derived: roleFinal ────────────────────────────────────────────────────
+  // ── Derived: roleFinal, loading ───────────────────────────────────────────
   const roleFinal = isFinalForNavigation(roleState, roleSource);
+  const loading = sessionState === 'booting';
 
   // ── Context value ─────────────────────────────────────────────────────────
   const value: AuthContextValue = {
-    user, session, sessionState, roleState, roleSource, roleFinal,
+    user, session, sessionState, roleState, roleSource, roleFinal, loading,
     profileState, profile, isProfileFetching,
     signUp, signIn, signOut, reFetchProfile,
   };
