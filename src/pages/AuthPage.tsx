@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AuthForm from '@/components/auth/AuthForm';
-import { useAuth, getHomePathByRole, isRoleFinalSource } from '@/hooks/useAuth';
+import { useAuth, getHomePathByRole, isFinalForNavigation } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
@@ -14,29 +14,30 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
   const [isSwitching, setIsSwitching] = useState(false);
   const navigate = useNavigate();
 
-  // Role is "final" only when it came from DB or allowlist
-  const roleFinal = isRoleFinalSource(roleSource);
+  // "Final for navigation" means:
+  // - advisor/bank: any non-'none' roleSource is enough (jwt-optimistic qualifies)
+  // - admin: ONLY db or allowlist (never optimistic)
+  const readyToNavigate = isFinalForNavigation(roleState, roleSource);
 
-  // ── Auto-Redirect: only when role is FINAL (came from DB or allowlist) ────
+  // ── Auto-Redirect once navigation is ready ────────────────────────────────
   useEffect(() => {
-    if (sessionState === 'has-session' && roleFinal && !isSwitching) {
+    if (sessionState === 'has-session' && readyToNavigate && !isSwitching) {
       const dest = getHomePathByRole(roleState);
-      console.log(`[Nav] redirecting to ${dest} (reason=role-final source=${roleSource})`);
+      console.log(`[Nav] redirecting to ${dest} (role=${roleState} source=${roleSource})`);
       navigate(dest, { replace: true });
     }
-  }, [sessionState, roleState, roleSource, roleFinal, navigate, isSwitching]);
+  }, [sessionState, roleState, roleSource, readyToNavigate, navigate, isSwitching]);
 
   // ── Switch Account ────────────────────────────────────────────────────────
   const handleSwitchAccount = async () => {
     setIsSwitching(true);
     await signOut();
-    // After signOut, sessionState becomes no-session → login form re-appears
   };
 
-  // ── Session exists → redirect pending or resolving ───────────────────────
+  // ── Session exists ────────────────────────────────────────────────────────
   if (sessionState === 'has-session' && !isSwitching) {
-    // Role is final → show brief redirect spinner (useEffect navigates away immediately)
-    if (roleFinal) {
+    // Ready to navigate → show brief spinner (effect fires immediately)
+    if (readyToNavigate) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-background">
           <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
@@ -45,23 +46,20 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
       );
     }
 
-    // Role NOT final yet → show resolving state + option to switch
+    // Not ready yet (role=unknown, or admin waiting for DB) → resolving UI
     return (
       <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 bg-background" dir="rtl">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
           <div className="w-16 h-16 mx-auto bg-primary rounded-2xl flex items-center justify-center shadow-lg mb-6">
             <span className="text-primary-foreground font-bold text-2xl">MB</span>
           </div>
-
           <p className="text-muted-foreground mb-2">
             מחובר כ-<strong>{user?.email}</strong>
           </p>
-
           <div className="bg-muted/50 p-6 rounded-xl mb-6 flex flex-col items-center gap-3">
             <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
             <p className="text-sm font-medium">מזהה הרשאות ותפקיד...</p>
           </div>
-
           <Button size="lg" variant="outline" className="w-full gap-2" onClick={handleSwitchAccount}>
             <LogOut className="h-4 w-4" />
             התנתק / החלף חשבון

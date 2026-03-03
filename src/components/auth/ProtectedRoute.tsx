@@ -1,24 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth, UserRole, getHomePathByRole, isRoleFinalSource } from '@/hooks/useAuth';
+import { useAuth, UserRole, getHomePathByRole, isFinalForNavigation, isFinalForSecurity } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
     allowedRoles: UserRole[] | 'any-authenticated' | 'any';
     /**
-     * When true, role must be authoritative (from DB or allowlist) before granting access.
-     * Use for role-specific dashboards to prevent transient optimistic-role access.
-     * Default: false (only checks sessionState + roleState match).
+     * When true, requires a security-final role (DB or allowlist) before granting access.
+     * Use for /admin/* routes to prevent jwt-optimistic advisor from transiently entering admin.
+     * Default: false — advisor/bank routes navigate as soon as jwt-optimistic role is set.
      */
     requireFinalRole?: boolean;
 }
 
 /**
  * Route guard for authenticated pages.
- * - Gates on SessionState + RoleState (+ roleSource when requireFinalRole=true).
- * - NEVER gates on ProfileState or approval status.
- * - Shows a lightweight "Resolving role..." placeholder while waiting for final role.
- * - Has a 5s safety timeout that redirects to / to prevent infinite hangs.
+ * - Never inspects profileState or approval status — those are UI-only concerns.
+ * - Shows a lightweight spinner while role is resolving.
+ * - 5s safety timeout to avoid infinite hangs.
  */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     children,
@@ -29,19 +28,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const location = useLocation();
     const [timedOut, setTimedOut] = useState(false);
 
-    const roleFinal = isRoleFinalSource(roleSource);
-
-    // Determine whether we're actively waiting for role resolution
+    // Whether to show the "resolving" spinner:
+    // - always wait when roleState is unknown
+    // - for requireFinalRole routes: also wait while role isn't security-final
     const isWaitingForRole =
         sessionState === 'has-session' &&
-        (roleState === 'unknown' || (requireFinalRole && !roleFinal));
+        (roleState === 'unknown' ||
+            (requireFinalRole && !isFinalForSecurity(roleSource)));
 
-    // Reset timeout whenever role state changes
+    // Reset timeout whenever role state improves
     useEffect(() => {
         setTimedOut(false);
     }, [roleState, roleSource, sessionState]);
 
-    // Safety timeout: 5s to resolve role, then fail-closed
+    // Safety timeout: 5s to resolve, then fail-closed
     useEffect(() => {
         if (!isWaitingForRole) return;
         const timer = setTimeout(() => {
@@ -64,7 +64,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <>{children}</>;
     }
 
-    // ── 4. Still waiting for role to resolve or finalize ─────────────────────
+    // ── 4. Waiting for role to resolve ────────────────────────────────────────
     if (isWaitingForRole) {
         if (timedOut) {
             console.error('[RouteGuard] timed out → redirecting to /');
@@ -78,13 +78,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         );
     }
 
-    // ── 5. Role known + allowed → grant access ────────────────────────────────
+    // ── 5. Role is ready — check if it's in the allowed list ─────────────────
+    // For routes with requireFinalRole: role is guaranteed security-final here.
+    // For routes without it: jwt-optimistic is accepted.
     if (roleState !== 'unknown' && allowedRoles.includes(roleState as UserRole)) {
         return <>{children}</>;
     }
 
-    // ── 6. Role known but NOT in allowedRoles → redirect to their dashboard ──
-    console.log(`[RouteGuard] path=${location.pathname} role=${roleState} not in [${allowedRoles}] → redirecting`);
+    // ── 6. Role doesn't match → redirect to that user's dashboard ────────────
+    console.log(`[RouteGuard] path=${location.pathname} role=${roleState}(${roleSource}) denied → redirecting`);
     const dest = getHomePathByRole(roleState);
     return <Navigate to={dest} replace />;
 };

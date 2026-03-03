@@ -11,9 +11,23 @@ export type RoleState = UserRole | 'unknown';
 export type RoleSource = 'none' | 'allowlist' | 'db' | 'jwt-optimistic' | 'cache';
 export type ProfileState = 'idle' | 'loading' | 'ready' | 'missing' | 'pending' | 'error';
 
-// A role is "final" only when it came from DB or allowlist (never JWT-optimistic / cache)
-export const isRoleFinalSource = (src: RoleSource): boolean =>
+// A role is "final for navigation" when routing is safe to proceed:
+// - advisor/bank: jwt-optimistic, cache, db, or allowlist are all OK
+// - admin: ONLY db or allowlist (never optimistic/cache alone)
+export const isFinalForNavigation = (role: RoleState, src: RoleSource): boolean => {
+  if (role === 'unknown') return false;
+  if (role === 'admin') return src === 'db' || src === 'allowlist';
+  // advisor / bank: any non-'none' source is good enough
+  return src !== 'none';
+};
+
+// A role is "final for security" only when it came from DB or allowlist.
+// Use this for admin authorization and requireFinalRole guards.
+export const isFinalForSecurity = (src: RoleSource): boolean =>
   src === 'db' || src === 'allowlist';
+
+// Keep backward-compat alias
+export const isRoleFinalSource = isFinalForSecurity;
 
 export interface Profile {
   user_id: string;
