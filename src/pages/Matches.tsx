@@ -115,22 +115,35 @@ const AdvisorMatchesView = () => {
                                                     </div>
 
                                                     <div className="flex items-center gap-2">
-                                                        {m.status === 'pending' && (
-                                                            <Button
-                                                                onClick={() => handleInterest(m.id)}
-                                                                disabled={actingOn === m.id}
-                                                            >
-                                                                מעוניין להגיש
-                                                            </Button>
+                                                        {/* Banker already interested — advisor needs to respond */}
+                                                        {m.banker_status === 'interested' && m.advisor_status === 'pending' && (
+                                                            <div className="flex flex-col items-end gap-2">
+                                                                <Badge className="bg-blue-500 text-white p-2">
+                                                                    🏦 בנק מעוניין! האם אתה מעוניין?
+                                                                </Badge>
+                                                                <Button
+                                                                    onClick={() => handleInterest(m.id)}
+                                                                    disabled={actingOn === m.id}
+                                                                    className="bg-green-600 hover:bg-green-700"
+                                                                >
+                                                                    כן, מעוניין לסגור עסקה
+                                                                </Button>
+                                                            </div>
                                                         )}
-                                                        {m.advisor_status === 'interested' && m.banker_status !== 'interested' && (
+
+                                                        {/* Advisor already interested — waiting for banker */}
+                                                        {m.advisor_status === 'interested' && m.banker_status === 'pending' && (
                                                             <Badge className="bg-amber-500 hover:bg-amber-600 text-white p-2">
                                                                 ✅ הבעת עניין - ממתין לאישור בנק
                                                             </Badge>
                                                         )}
+
+                                                        {/* Both interested — match closed */}
                                                         {m.status === 'closed' && (
                                                             <div className="flex flex-col items-end gap-2">
-                                                                <Badge className="bg-green-600 hover:bg-green-700 p-2">🎉 שידוך הושלם!</Badge>
+                                                                <Badge className="bg-green-600 hover:bg-green-700 p-2">
+                                                                    🎉 שידוך הושלם!
+                                                                </Badge>
                                                                 <Button
                                                                     variant="link"
                                                                     className="p-0 h-auto"
@@ -140,6 +153,18 @@ const AdvisorMatchesView = () => {
                                                                 </Button>
                                                             </div>
                                                         )}
+
+                                                        {/* No action yet — advisor can initiate */}
+                                                        {m.advisor_status === 'pending' && m.banker_status === 'pending' && (
+                                                            <Button
+                                                                onClick={() => handleInterest(m.id)}
+                                                                disabled={actingOn === m.id}
+                                                            >
+                                                                מעוניין להגיש
+                                                            </Button>
+                                                        )}
+
+                                                        {/* Rejected */}
                                                         {(m.advisor_status === 'rejected' || m.banker_status === 'rejected') && (
                                                             <Badge variant="outline" className="text-muted-foreground">נדחה</Badge>
                                                         )}
