@@ -132,7 +132,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
         <TabsContent value="login">
           <form onSubmit={handleLogin}>
             <CardHeader>
-              <CardTitle>ברוך הבא</CardTitle>
+              <h2 className="text-2xl font-semibold leading-none tracking-tight">ברוך הבא</h2>
               <CardDescription>הזן את פרטיך כדי להתחבר לחשבונך</CardDescription>
             </CardHeader>
 
@@ -178,7 +178,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
           {registerSuccess ? (
             <CardContent className="py-10 text-center space-y-3">
               <div className="text-4xl">📬</div>
-              <CardTitle>בדוק את המייל שלך</CardTitle>
+              <h2 className="text-2xl font-semibold leading-none tracking-tight">בדוק את המייל שלך</h2>
               <CardDescription>
                 שלחנו לך לינק לאישור ההרשמה. לאחר האישור תוכל להתחבר.
               </CardDescription>
@@ -186,7 +186,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
           ) : (
             <form onSubmit={handleRegister}>
               <CardHeader>
-                <CardTitle>יצירת חשבון</CardTitle>
+                <h2 className="text-2xl font-semibold leading-none tracking-tight">יצירת חשבון</h2>
                 <CardDescription>בחר את סוג החשבון שלך ומלא את הפרטים</CardDescription>
               </CardHeader>
 
