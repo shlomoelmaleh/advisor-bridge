@@ -54,7 +54,7 @@ const BankMarket = () => {
             const { data: appetiteMatches } = await supabase
                 .from('matches')
                 .select('case_id, appetite:branch_appetites!inner(banker_id)')
-                .eq('branch_appetites.banker_id', user.id);
+                .filter('appetite.banker_id', 'eq', user.id);
 
             const existingCaseIds = Array.from(new Set([
                 ...(directMatches?.map(m => m.case_id) ?? []),
