@@ -31,43 +31,25 @@ const Navbar = () => {
 
   useEffect(() => {
     const fetchUnread = async () => {
-      if (!user) return;
+      if (!user?.id) return;
 
-      // Query 1: matches where user is banker (direct)
-      const { data: bankerMatches } = await supabase
-        .from('matches')
-        .select('id')
-        .eq('banker_id', user.id);
+      console.log('[Navbar] fetchUnread for user:', user.id, 'role:', roleState);
 
-      // Query 2: matches where user is advisor
-      const { data: advisorMatches } = await supabase
-        .from('matches')
-        .select('id, case:cases!inner(advisor_id)')
-        .eq('cases.advisor_id', user.id);
-
-      const matchIds = [
-        ...(bankerMatches ?? []).map(m => m.id),
-        ...(advisorMatches ?? []).map(m => m.id),
-      ];
-
-      if (matchIds.length === 0) {
-        setTotalUnread(0);
-        return;
-      }
-
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from('messages')
         .select('*', { count: 'exact', head: true })
-        .in('match_id', matchIds)
         .neq('sender_id', user.id)
         .is('read_at', null);
 
+      console.log('[Navbar] unread count:', count, 'error:', error);
       setTotalUnread(count ?? 0);
     };
+
+    if (!user?.id || roleState === 'unknown') return;
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user?.id, roleState]);
 
   const handleLogout = async () => {
     await signOut();
