@@ -9,12 +9,13 @@ import {
     Briefcase,
     DollarSign,
     MapPin,
-    PropertyCircle,
+    Building2,
     Clock,
     ChevronRight,
     ShieldCheck,
     Search,
-    AlertCircle
+    AlertCircle,
+    Activity
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 
@@ -44,12 +45,12 @@ const BankMarket = () => {
         setLoading(true);
         try {
             // 1. Fetch cases already matched with this banker to filter them out
-            const { data: matchedData, error: matchError } = await supabase
+            const { data: existingMatches } = await supabase
                 .from('matches')
-                .select('case_id')
-                .eq('appetite.banker_id', user.id);
+                .select('case_id, appetite:branch_appetites!inner(banker_id)')
+                .eq('branch_appetites.banker_id', user.id);
 
-            const matchedIds = matchedData?.map(m => m.case_id) || [];
+            const existingCaseIds = existingMatches?.map(m => m.case_id) ?? [];
 
             // 2. Fetch all approved open cases
             let query = supabase
@@ -59,8 +60,8 @@ const BankMarket = () => {
                 .eq('is_approved', true)
                 .order('created_at', { ascending: false });
 
-            if (matchedIds.length > 0) {
-                query = query.not('id', 'in', `(${matchedIds.join(',')})`);
+            if (existingCaseIds.length > 0) {
+                query = query.not('id', 'in', `(${existingCaseIds.join(',')})`);
             }
 
             const { data, error } = await query;
@@ -234,7 +235,7 @@ const CaseMarketCard = ({ caseData, onExpress, isSubmitting }: {
             </CardContent>
             <CardFooter className="bg-muted/20 border-t pt-4">
                 <Button
-                    variant="primary"
+                    variant="default"
                     className="w-full gap-2"
                     onClick={() => onExpress(caseData.id)}
                     disabled={isSubmitting}
