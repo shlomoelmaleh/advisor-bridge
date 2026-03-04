@@ -32,11 +32,27 @@ const Navbar = () => {
   useEffect(() => {
     const fetchUnread = async () => {
       if (!user) return;
+
+      // Get all match IDs the user is part of
+      const { data: userMatches } = await supabase
+        .from('matches')
+        .select('id, case:cases!inner(advisor_id), banker_id, appetite:branch_appetites(banker_id)')
+        .or(`banker_id.eq.${user.id},cases.advisor_id.eq.${user.id}`);
+
+      if (!userMatches || userMatches.length === 0) {
+        setTotalUnread(0);
+        return;
+      }
+
+      const matchIds = userMatches.map(m => m.id);
+
       const { count } = await supabase
         .from('messages')
         .select('*', { count: 'exact', head: true })
+        .in('match_id', matchIds)
         .neq('sender_id', user.id)
         .is('read_at', null);
+
       setTotalUnread(count ?? 0);
     };
     fetchUnread();
