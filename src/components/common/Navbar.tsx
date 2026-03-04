@@ -132,6 +132,12 @@ const Navbar = () => {
                 {roleState === 'bank' && (
                   <>
                     <Link
+                      to="/bank/market"
+                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                    >
+                      שוק פתוח
+                    </Link>
+                    <Link
                       to="/bank/appetite"
                       className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                     >
@@ -233,6 +239,13 @@ const Navbar = () => {
 
                     {roleState === 'bank' && (
                       <>
+                        <Link
+                          to="/bank/market"
+                          className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          שוק פתוח
+                        </Link>
                         <Link
                           to="/bank/appetite"
                           className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"

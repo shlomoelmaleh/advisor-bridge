@@ -17,6 +17,7 @@ import MatchesPage from './pages/Matches';
 import Chat from './pages/Chat';
 import AdminDashboard from './pages/AdminDashboard';
 import BankAppetite from './pages/BankAppetite';
+import BankMarket from './pages/BankMarket';
 import Conversations from './pages/Conversations';
 import NotFound from "./pages/NotFound";
 import Navbar from "@/components/common/Navbar";
@@ -76,6 +77,16 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['bank']} requireFinalRole>
                   <BankDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bank/market"
+              element={
+                <ProtectedRoute allowedRoles={['bank']} requireFinalRole>
+                  <AppLayout>
+                    <BankMarket />
+                  </AppLayout>
                 </ProtectedRoute>
               }
             />
