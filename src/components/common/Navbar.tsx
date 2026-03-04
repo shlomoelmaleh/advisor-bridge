@@ -149,12 +149,12 @@ const Navbar = () => {
                     </Link>
                     <Link
                       to="/conversations"
-                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1"
+                      className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                     >
                       שיחות
                       {totalUnread > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold leading-none shrink-0">
-                          {totalUnread}
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                          {totalUnread > 9 ? '9+' : totalUnread}
                         </span>
                       )}
                     </Link>
@@ -177,9 +177,14 @@ const Navbar = () => {
                     </Link>
                     <Link
                       to="/conversations"
-                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                      className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                     >
                       שיחות
+                      {totalUnread > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                          {totalUnread > 9 ? '9+' : totalUnread}
+                        </span>
+                      )}
                     </Link>
                   </>
                 )}
@@ -274,12 +279,12 @@ const Navbar = () => {
                           className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
+                          שיחות
                           {totalUnread > 0 && (
-                            <span className="mr-2 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold leading-none shrink-0">
-                              {totalUnread}
+                            <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                              {totalUnread > 9 ? '9+' : totalUnread}
                             </span>
                           )}
-                          שיחות
                         </Link>
                       </>
                     )}
@@ -306,6 +311,11 @@ const Navbar = () => {
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           שיחות
+                          {totalUnread > 0 && (
+                            <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                              {totalUnread > 9 ? '9+' : totalUnread}
+                            </span>
+                          )}
                         </Link>
                       </>
                     )}
