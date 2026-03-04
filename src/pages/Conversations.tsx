@@ -64,40 +64,49 @@ const ConversationCard = ({ match, isAdvisor, onClick }: {
 }) => {
     // Determine display name
     const displayName = isAdvisor
-        ? `${match.appetite?.bank_name} - ${match.appetite?.branch_name || 'סניף כללי'}`
-        : 'יועץ אנונימי';
-
-    // Formatter
-    const amount = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 })
-        .format(match.case?.loan_amount_max || 0);
+        ? (match.appetite
+            ? `${match.appetite.bank_name} - ${match.appetite.branch_name}`
+            : match.banker?.company || 'בנקאי')
+        : `תיק: ₪${(match.case.loan_amount_min / 1_000).toLocaleString()}K-₪${(match.case.loan_amount_max / 1_000).toLocaleString()}K`;
 
     return (
         <Card
             className="p-4 sm:p-5 transition-all hover:shadow-md cursor-pointer border-l-4 border-l-primary flex flex-col sm:flex-row gap-4 sm:items-center justify-between"
             onClick={onClick}
         >
-            <div className="flex items-start sm:items-center gap-4">
+            <div className="flex items-start sm:items-center gap-4 flex-1">
                 <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <MessageCircle className="h-6 w-6 text-primary" />
                 </div>
 
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-semibold text-lg">{displayName}</h3>
-                        {!isAdvisor && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 h-5">
-                                {amount} | {match.case?.ltv}% LTV
+                        {!match.appetite_id && (
+                            <Badge variant="outline" className="text-blue-600 text-[10px] h-5 px-1.5 shrink-0">
+                                {isAdvisor ? 'פנייה ישירה' : 'שוק פתוח'}
                             </Badge>
                         )}
                     </div>
 
-                    <p className="text-sm text-muted-foreground line-clamp-1">
-                        היכנס לשיחה כדי לצפות בהודעות...
-                    </p>
+                    <div className="text-sm text-muted-foreground space-y-0.5">
+                        {isAdvisor ? (
+                            <p>
+                                ₪{(match.case.loan_amount_min / 1_000).toLocaleString()}K – ₪{(match.case.loan_amount_max / 1_000).toLocaleString()}K | LTV {match.case.ltv}%
+                            </p>
+                        ) : (
+                            <p>
+                                LTV {match.case.ltv}% | אזור: {match.case.region} | {match.case.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
+                            </p>
+                        )}
+                        <p className="line-clamp-1 opacity-60 italic mt-1">
+                            היכנס לשיחה כדי לצפות בהודעות...
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/50 w-full sm:w-auto">
+            <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/50 w-full sm:w-auto shrink-0">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" />
                     <span>עודכן לאחרונה</span>

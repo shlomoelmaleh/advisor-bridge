@@ -62,7 +62,12 @@ const Chat = () => {
                     .select(`
             *,
             case:cases(*),
-            appetite:branch_appetites(*)
+            appetite:branch_appetites(*),
+            banker:profiles!matches_banker_id_fkey(
+              user_id,
+              full_name,
+              company
+            )
           `)
                     .eq('id', matchId)
                     .single();
@@ -73,15 +78,18 @@ const Chat = () => {
                     throw new Error("הצ'אט נפתח רק לאחר שידוך הדדי (סטטוס סגור)");
                 }
 
+                const matchDetails = matchData as unknown as MatchWithDetails;
+                if (isMounted) setMatch(matchDetails);
+
                 // UX guard only — actual access enforced by RLS "Match participants see messages" policy
-                if (profile.role === 'advisor' && matchData.case.advisor_id !== user.id) {
-                    throw new Error('Access denied');
-                }
-                if (profile.role === 'bank' && matchData.appetite.banker_id !== user.id) {
+                if (profile.role === 'advisor' && matchDetails.case.advisor_id !== user.id) {
                     throw new Error('Access denied');
                 }
 
-                if (isMounted) setMatch(matchData as unknown as MatchWithDetails);
+                const isBankerMatch = matchDetails.banker_id === user.id || matchDetails.appetite?.banker_id === user.id;
+                if (profile.role === 'bank' && !isBankerMatch) {
+                    throw new Error('Access denied');
+                }
 
                 // 2. Fetch history
                 const { data: messagesData, error: messagesError } = await supabase
@@ -197,18 +205,42 @@ const Chat = () => {
     return (
         <div className="container max-w-4xl py-6 animate-fade-in flex flex-col h-[calc(100vh-5rem)]">
 
-            {/* Header */}
-            <div className="bg-card border rounded-t-xl p-4 flex items-center gap-4 shadow-sm z-10 shrink-0">
-                <Button variant="ghost" size="icon" onClick={() => navigate('/matches')} className="rounded-full">
-                    <ArrowRight className="h-5 w-5" />
-                </Button>
-                <div className="flex-1">
-                    <h1 className="font-bold text-lg">{chatTitle}</h1>
-                    <p className="text-xs text-muted-foreground flex items-center gap-2">
-                        <span>שידוך מאושר על ידי שני הצדדים</span>
-                        <span>•</span>
-                        <span className="text-green-600 font-medium">{match.score}% התאמה</span>
-                    </p>
+            {/* Context Header */}
+            <div className="border-b pb-4 mb-4 bg-muted/30 rounded-lg p-4 shrink-0">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <Button variant="ghost" size="icon" onClick={() => navigate('/matches')} className="h-8 w-8 rounded-full">
+                                <ArrowRight className="h-4 w-4" />
+                            </Button>
+                            <h2 className="font-bold text-lg">
+                                {profile?.role === 'advisor'
+                                    ? match.appetite?.bank_name || match.banker?.company || 'בנקאי'
+                                    : `תיק: ₪${(match.case?.loan_amount_min / 1_000_000).toFixed(1)}M`
+                                }
+                            </h2>
+                        </div>
+                        <div className="text-sm text-muted-foreground space-y-1 mt-1 pr-10">
+                            <p>סכום: ₪{(match.case?.loan_amount_min / 1_000).toLocaleString()}K
+                                – ₪{(match.case?.loan_amount_max / 1_000).toLocaleString()}K</p>
+                            <p>LTV: {match.case?.ltv}% |
+                                אזור: {match.case?.region} |
+                                {match.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
+                            {match.appetite && (
+                                <p>סניף: {match.appetite.branch_name} |
+                                    תיאבון: {match.appetite.appetite_level}</p>
+                            )}
+                            {!match.appetite && (
+                                <Badge variant="outline" className="text-blue-600 text-xs">
+                                    פנייה ישירה מהשוק הפתוח
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
+                    <Badge className={match.status === 'closed'
+                        ? 'bg-green-600' : 'bg-amber-500'}>
+                        {match.status === 'closed' ? 'שידוך פעיל' : 'ממתין'}
+                    </Badge>
                 </div>
             </div>
 
@@ -237,8 +269,8 @@ const Chat = () => {
                                 )}
                                 <div
                                     className={`max-w-[75%] rounded-2xl px-4 py-2 relative shadow-sm ${isMe
-                                            ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                                            : 'bg-card border text-card-foreground rounded-tl-sm'
+                                        ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                                        : 'bg-card border text-card-foreground rounded-tl-sm'
                                         }`}
                                 >
                                     <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
