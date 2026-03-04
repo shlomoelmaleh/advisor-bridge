@@ -50,6 +50,11 @@ export const useMatches = (): UseMatchesReturn => {
             branch_name,
             appetite_level,
             sla_days
+          ),
+          banker:profiles!matches_banker_id_fkey (
+            user_id,
+            full_name,
+            company
           )
         `)
                 .order('score', { ascending: false });

@@ -28,5 +28,10 @@ export interface MatchWithDetails extends DbMatch {
     appetite: Pick<
         BranchAppetite,
         'bank_name' | 'branch_name' | 'appetite_level' | 'sla_days' | 'banker_id'
-    >;
+    > | null;
+    banker?: {
+        user_id: string;
+        full_name: string | null;
+        company: string | null;
+    } | null;
 }

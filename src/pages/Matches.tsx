@@ -105,12 +105,30 @@ const AdvisorMatchesView = () => {
                                                     <div className="space-y-2">
                                                         <div className="flex items-center gap-3">
                                                             <ScoreBadge score={m.score} />
-                                                            <h4 className="font-semibold">{m.appetite?.bank_name} - {m.appetite?.branch_name}</h4>
+                                                            <h4 className="font-semibold">
+                                                                {m.appetite
+                                                                    ? `${m.appetite.bank_name} - ${m.appetite.branch_name}`
+                                                                    : m.banker?.company
+                                                                        ? `${m.banker.company}`
+                                                                        : 'בנקאי ללא פרופיל appetite'
+                                                                }
+                                                            </h4>
+                                                            {!m.appetite && m.banker && (
+                                                                <Badge variant="outline" className="text-blue-600">
+                                                                    פנייה ישירה מהשוק הפתוח
+                                                                </Badge>
+                                                            )}
                                                         </div>
                                                         <div className="flex gap-2 text-sm text-muted-foreground">
-                                                            <Badge variant="secondary">רמת תיאבון בסניף: {m.appetite?.appetite_level}</Badge>
-                                                            <span>•</span>
-                                                            <span>זמני טיפול: <strong>{m.appetite?.sla_days} ימים</strong></span>
+                                                            {m.appetite ? (
+                                                                <>
+                                                                    <Badge variant="secondary">רמת תיאבון בסניף: {m.appetite.appetite_level}</Badge>
+                                                                    <span>•</span>
+                                                                    <span>זמני טיפול: <strong>{m.appetite.sla_days} ימים</strong></span>
+                                                                </>
+                                                            ) : (
+                                                                <span>{m.banker?.full_name || 'בנקאי'} (פנייה ישירה)</span>
+                                                            )}
                                                         </div>
                                                     </div>
 
