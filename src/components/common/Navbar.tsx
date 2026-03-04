@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,12 +20,29 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { user, profile, roleState, profileState, sessionState, signOut, reFetchProfile } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isProfileUpdateOpen, setIsProfileUpdateOpen] = React.useState(false);
+  const [totalUnread, setTotalUnread] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      if (!user) return;
+      const { count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .neq('sender_id', user.id)
+        .is('read_at', null);
+      setTotalUnread(count ?? 0);
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleLogout = async () => {
     await signOut();
@@ -125,9 +142,14 @@ const Navbar = () => {
                     </Link>
                     <Link
                       to="/conversations"
-                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1"
                     >
                       שיחות
+                      {totalUnread > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold leading-none shrink-0">
+                          {totalUnread}
+                        </span>
+                      )}
                     </Link>
                   </>
                 )}
@@ -245,6 +267,11 @@ const Navbar = () => {
                           className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
+                          {totalUnread > 0 && (
+                            <span className="mr-2 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold leading-none shrink-0">
+                              {totalUnread}
+                            </span>
+                          )}
                           שיחות
                         </Link>
                       </>

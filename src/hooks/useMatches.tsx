@@ -12,6 +12,7 @@ interface UseMatchesReturn {
     expressInterest: (matchId: string) => Promise<{ error: string | null }>;
     rejectMatch: (matchId: string) => Promise<{ error: string | null }>;
     refreshMatches: () => Promise<void>;
+    getUnreadCount: (matchId: string) => Promise<number>;
 }
 
 export const useMatches = (): UseMatchesReturn => {
@@ -55,8 +56,14 @@ export const useMatches = (): UseMatchesReturn => {
             user_id,
             full_name,
             company
+          ),
+          messages (
+            content,
+            created_at
           )
         `)
+                .order('created_at', { foreignTable: 'messages', ascending: false })
+                .limit(1, { foreignTable: 'messages' })
                 .order('score', { ascending: false });
 
             if (fetchError) throw fetchError;
@@ -81,6 +88,16 @@ export const useMatches = (): UseMatchesReturn => {
     useEffect(() => {
         fetchMatches();
     }, [fetchMatches]);
+
+    const getUnreadCount = useCallback(async (matchId: string): Promise<number> => {
+        const { count } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('match_id', matchId)
+            .neq('sender_id', user?.id)
+            .is('read_at', null);
+        return count ?? 0;
+    }, [user?.id]);
 
     const runMatching = async (caseId: string): Promise<{ error: string | null }> => {
         try {
@@ -124,5 +141,6 @@ export const useMatches = (): UseMatchesReturn => {
         expressInterest: (id) => updateMatchStatus(id, 'interested'),
         rejectMatch: (id) => updateMatchStatus(id, 'rejected'),
         refreshMatches: fetchMatches,
+        getUnreadCount,
     };
 };

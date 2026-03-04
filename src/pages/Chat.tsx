@@ -38,6 +38,20 @@ const Chat = () => {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    const markAsRead = async () => {
+        if (!user || !matchId) return;
+        await supabase
+            .from('messages')
+            .update({ read_at: new Date().toISOString() })
+            .eq('match_id', matchId)
+            .neq('sender_id', user.id)
+            .is('read_at', null);
+    };
+
+    useEffect(() => {
+        markAsRead();
+    }, [matchId, user]);
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -144,6 +158,9 @@ const Chat = () => {
 
                     if (isMounted) {
                         setMessages((prev) => [...prev, newMsg]);
+                        if (payload.new.sender_id !== user?.id) {
+                            markAsRead();
+                        }
                     }
                 }
             )

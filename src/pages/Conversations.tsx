@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMatches } from '@/hooks/useMatches';
 import { useNavigate } from 'react-router-dom';
@@ -10,13 +10,36 @@ import type { MatchWithDetails } from '@/types/matches';
 
 const Conversations = () => {
     const { profile } = useAuth();
-    const { matches, loading } = useMatches();
+    const { matches, loading, getUnreadCount } = useMatches();
     const navigate = useNavigate();
+
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
     const isAdvisor = profile?.role === 'advisor';
 
     // We only want closed matches where the chat is active
-    const closedMatches = matches.filter(m => m.status === 'closed');
+    const closedMatches = matches.filter(m => m.status === 'closed')
+        .sort((a, b) => {
+            const unreadA = unreadCounts[a.id] || 0;
+            const unreadB = unreadCounts[b.id] || 0;
+            if (unreadA !== unreadB) return unreadB - unreadA;
+
+            const timeA = a.messages?.[0]?.created_at ? new Date(a.messages[0].created_at).getTime() : 0;
+            const timeB = b.messages?.[0]?.created_at ? new Date(b.messages[0].created_at).getTime() : 0;
+            return timeB - timeA;
+        });
+
+    useEffect(() => {
+        if (closedMatches.length === 0) return;
+        const fetchCounts = async () => {
+            const counts: Record<string, number> = {};
+            for (const match of closedMatches) {
+                counts[match.id] = await getUnreadCount(match.id);
+            }
+            setUnreadCounts(counts);
+        };
+        fetchCounts();
+    }, [matches, getUnreadCount]);
 
     if (loading) {
         return (
@@ -48,6 +71,7 @@ const Conversations = () => {
                             key={match.id}
                             match={match}
                             isAdvisor={isAdvisor}
+                            unreadCount={unreadCounts[match.id] || 0}
                             onClick={() => navigate(`/chat/${match.id}`)}
                         />
                     ))}
@@ -57,9 +81,10 @@ const Conversations = () => {
     );
 };
 
-const ConversationCard = ({ match, isAdvisor, onClick }: {
+const ConversationCard = ({ match, isAdvisor, unreadCount, onClick }: {
     match: MatchWithDetails,
     isAdvisor: boolean,
+    unreadCount: number,
     onClick: () => void
 }) => {
     // Determine display name
@@ -71,7 +96,7 @@ const ConversationCard = ({ match, isAdvisor, onClick }: {
 
     return (
         <Card
-            className="p-4 sm:p-5 transition-all hover:shadow-md cursor-pointer border-l-4 border-l-primary flex flex-col sm:flex-row gap-4 sm:items-center justify-between"
+            className={`p-4 sm:p-5 transition-all hover:shadow-md cursor-pointer border-l-4 border-l-primary flex flex-col sm:flex-row gap-4 sm:items-center justify-between ${unreadCount > 0 ? 'bg-blue-50 border-blue-200' : ''}`}
             onClick={onClick}
         >
             <div className="flex items-start sm:items-center gap-4 flex-1">
@@ -87,6 +112,11 @@ const ConversationCard = ({ match, isAdvisor, onClick }: {
                                 {isAdvisor ? 'פנייה ישירה' : 'שוק פתוח'}
                             </Badge>
                         )}
+                        {unreadCount > 0 && (
+                            <Badge className="bg-red-500 text-white shrink-0">
+                                {unreadCount}
+                            </Badge>
+                        )}
                     </div>
 
                     <div className="text-sm text-muted-foreground space-y-0.5">
@@ -99,8 +129,8 @@ const ConversationCard = ({ match, isAdvisor, onClick }: {
                                 LTV {match.case.ltv}% | אזור: {match.case.region} | {match.case.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
                             </p>
                         )}
-                        <p className="line-clamp-1 opacity-60 italic mt-1">
-                            היכנס לשיחה כדי לצפות בהודעות...
+                        <p className={`line-clamp-1 mt-1 ${unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground italic opacity-80'}`}>
+                            {match.messages?.[0]?.content || 'היכנס לשיחה כדי לצפות בהודעות...'}
                         </p>
                     </div>
                 </div>
@@ -109,7 +139,7 @@ const ConversationCard = ({ match, isAdvisor, onClick }: {
             <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/50 w-full sm:w-auto shrink-0">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" />
-                    <span>עודכן לאחרונה</span>
+                    <span>{match.messages?.[0]?.created_at ? new Date(match.messages[0].created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(match.messages[0].created_at).toLocaleDateString('he-IL') : 'עודכן לאחרונה'}</span>
                 </div>
                 <Button size="sm" onClick={(e) => { e.stopPropagation(); onClick(); }}>
                     כנס לשיחה

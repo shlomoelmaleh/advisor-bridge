@@ -34,4 +34,8 @@ export interface MatchWithDetails extends DbMatch {
         full_name: string | null;
         company: string | null;
     } | null;
+    messages?: {
+        content: string;
+        created_at: string;
+    }[];
 }
