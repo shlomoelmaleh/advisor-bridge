@@ -265,6 +265,10 @@ export type Database = {
         Args: { p_appetite_id: string; p_case_id: string }
         Returns: number
       }
+      express_interest_in_case: {
+        Args: { p_case_id: string }
+        Returns: undefined
+      }
       internal_compute_match_score: {
         Args: { p_appetite_id: string; p_case_id: string }
         Returns: number

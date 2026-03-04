@@ -89,37 +89,20 @@ const BankMarket = () => {
         if (!user) return;
         setSubmitting(caseId);
         try {
-            // 1. Check if a match already exists for this case + banker
-            const { data: existingMatch } = await supabase
-                .from('matches')
-                .select('id')
-                .eq('case_id', caseId)
-                .eq('banker_id', user.id)
-                .maybeSingle();
+            const { error } = await supabase.rpc('express_interest_in_case', {
+                p_case_id: caseId,
+            });
 
-            if (existingMatch) {
-                toast.info('כבר הבעת עניין בתיק זה');
-                setCases(prev => prev.filter(c => c.id !== caseId));
-                return;
+            if (error) {
+                if (error.message?.includes('Already expressed interest')) {
+                    toast.info('כבר הבעת עניין בתיק זה');
+                } else {
+                    throw error;
+                }
+            } else {
+                toast.success('התעניינות נשלחה ליועץ!');
             }
 
-            // 2. Insert match directly WITHOUT requiring appetite
-            const { error: matchError } = await supabase
-                .from('matches')
-                .insert({
-                    case_id: caseId,
-                    appetite_id: null,   // no appetite required
-                    score: 0,
-                    status: 'interested',
-                    advisor_status: 'pending',
-                    banker_status: 'interested',
-                    banker_id: user.id   // add this field if it exists on matches table
-                });
-
-            if (matchError) throw matchError;
-
-            toast.success('התעניינות נשלחה ליועץ!');
-            // Remove from list locally
             setCases(prev => prev.filter(c => c.id !== caseId));
         } catch (err) {
             console.error('Error expressing interest:', err);
