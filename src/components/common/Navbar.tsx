@@ -33,18 +33,27 @@ const Navbar = () => {
     const fetchUnread = async () => {
       if (!user) return;
 
-      // Get all match IDs the user is part of
-      const { data: userMatches } = await supabase
+      // Query 1: matches where user is banker (direct)
+      const { data: bankerMatches } = await supabase
         .from('matches')
-        .select('id, case:cases!inner(advisor_id), banker_id, appetite:branch_appetites(banker_id)')
-        .or(`banker_id.eq.${user.id},cases.advisor_id.eq.${user.id}`);
+        .select('id')
+        .eq('banker_id', user.id);
 
-      if (!userMatches || userMatches.length === 0) {
+      // Query 2: matches where user is advisor
+      const { data: advisorMatches } = await supabase
+        .from('matches')
+        .select('id, case:cases!inner(advisor_id)')
+        .eq('cases.advisor_id', user.id);
+
+      const matchIds = [
+        ...(bankerMatches ?? []).map(m => m.id),
+        ...(advisorMatches ?? []).map(m => m.id),
+      ];
+
+      if (matchIds.length === 0) {
         setTotalUnread(0);
         return;
       }
-
-      const matchIds = userMatches.map(m => m.id);
 
       const { count } = await supabase
         .from('messages')
