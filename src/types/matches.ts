@@ -7,7 +7,8 @@ export type MatchStatus = 'pending' | 'interested' | 'rejected' | 'closed';
 export interface DbMatch {
     id: string;
     case_id: string;
-    appetite_id: string;
+    appetite_id: string | null;
+    banker_id: string | null;
     score: number;
     status: MatchStatus;
     advisor_status: 'pending' | 'interested' | 'rejected';

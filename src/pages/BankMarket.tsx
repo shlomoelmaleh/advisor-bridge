@@ -45,12 +45,21 @@ const BankMarket = () => {
         setLoading(true);
         try {
             // 1. Fetch cases already matched with this banker to filter them out
-            const { data: existingMatches } = await supabase
+            // Check both direct matches and appetite-based matches
+            const { data: directMatches } = await supabase
+                .from('matches')
+                .select('case_id')
+                .eq('banker_id', user.id);
+
+            const { data: appetiteMatches } = await supabase
                 .from('matches')
                 .select('case_id, appetite:branch_appetites!inner(banker_id)')
                 .eq('branch_appetites.banker_id', user.id);
 
-            const existingCaseIds = existingMatches?.map(m => m.case_id) ?? [];
+            const existingCaseIds = Array.from(new Set([
+                ...(directMatches?.map(m => m.case_id) ?? []),
+                ...(appetiteMatches?.map(m => m.case_id) ?? [])
+            ])).filter(Boolean) as string[];
 
             // 2. Fetch all approved open cases
             let query = supabase
@@ -80,29 +89,31 @@ const BankMarket = () => {
         if (!user) return;
         setSubmitting(caseId);
         try {
-            // 1. Find active appetite
-            const { data: appetite, error: appError } = await supabase
-                .from('branch_appetites')
+            // 1. Check if a match already exists for this case + banker
+            const { data: existingMatch } = await supabase
+                .from('matches')
                 .select('id')
+                .eq('case_id', caseId)
                 .eq('banker_id', user.id)
-                .eq('is_active', true)
-                .single();
+                .maybeSingle();
 
-            if (appError || !appetite) {
-                toast.error('יש להגדיר אות תיאבון פעיל לפני הבעת עניין');
+            if (existingMatch) {
+                toast.info('כבר הבעת עניין בתיק זה');
+                setCases(prev => prev.filter(c => c.id !== caseId));
                 return;
             }
 
-            // 2. Insert match
+            // 2. Insert match directly WITHOUT requiring appetite
             const { error: matchError } = await supabase
                 .from('matches')
                 .insert({
                     case_id: caseId,
-                    appetite_id: appetite.id,
-                    score: 0, // Manual interest
-                    status: 'pending',
+                    appetite_id: null,   // no appetite required
+                    score: 0,
+                    status: 'interested',
                     advisor_status: 'pending',
-                    banker_status: 'interested'
+                    banker_status: 'interested',
+                    banker_id: user.id   // add this field if it exists on matches table
                 });
 
             if (matchError) throw matchError;

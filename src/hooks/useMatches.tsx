@@ -62,7 +62,7 @@ export const useMatches = (): UseMatchesReturn => {
             if (profile.role === 'advisor') {
                 filteredData = filteredData.filter((m) => m.case?.advisor_id === user.id);
             } else if (profile.role === 'bank') {
-                filteredData = filteredData.filter((m) => m.appetite?.banker_id === user.id);
+                filteredData = filteredData.filter((m) => m.banker_id === user.id || m.appetite?.banker_id === user.id);
             }
 
             setMatches(filteredData);
