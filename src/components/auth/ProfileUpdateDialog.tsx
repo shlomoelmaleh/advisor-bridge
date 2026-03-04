@@ -29,7 +29,7 @@ const ProfileUpdateDialog: React.FC<ProfileUpdateDialogProps> = ({ open, onOpenC
     });
 
     useEffect(() => {
-        if (profile) {
+        if (open && profile) {
             setFormData({
                 full_name: profile.full_name || '',
                 company: profile.company || '',

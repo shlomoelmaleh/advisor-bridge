@@ -157,7 +157,7 @@ const Navbar = () => {
 
                 <div className="border-r h-6 mx-2 hidden md:block" />
 
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative flex items-center gap-2 rounded-full px-2">
                       <div className="h-8 w-8 bg-muted rounded-full flex items-center justify-center">
@@ -174,7 +174,13 @@ const Navbar = () => {
                       {user?.email}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setIsProfileUpdateOpen(true)} className="justify-end cursor-pointer">
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setIsProfileUpdateOpen(true);
+                      }}
+                      className="justify-end cursor-pointer"
+                    >
                       <span>עדכון פרטים</span>
                       <Settings className="ml-2 h-4 w-4 text-muted-foreground" />
                     </DropdownMenuItem>
