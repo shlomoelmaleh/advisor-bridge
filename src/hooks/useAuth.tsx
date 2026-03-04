@@ -15,6 +15,7 @@ export interface Profile {
   user_id: string;
   full_name: string | null;
   company: string | null;
+  phone: string | null;
   role: UserRole;
   is_approved?: boolean;
   created_at?: string;
@@ -93,7 +94,7 @@ const clearAuthCache = () => {
 const fetchProfileFromDB = async (userId: string, signal?: AbortSignal): Promise<Profile | null> => {
   const { data, error } = await supabase
     .from('profiles')
-    .select('user_id, full_name, company, role, is_approved, created_at')
+    .select('user_id, full_name, company, phone, role, is_approved, created_at')
     .eq('user_id', userId)
     .single();
 

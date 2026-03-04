@@ -8,7 +8,9 @@ import {
   Home,
   AlertCircle,
   Clock,
+  Settings,
 } from 'lucide-react';
+import ProfileUpdateDialog from '@/components/auth/ProfileUpdateDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +25,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { user, profile, roleState, profileState, sessionState, signOut, reFetchProfile } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isProfileUpdateOpen, setIsProfileUpdateOpen] = React.useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -171,7 +174,11 @@ const Navbar = () => {
                       {user?.email}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="justify-end">
+                    <DropdownMenuItem onClick={() => setIsProfileUpdateOpen(true)} className="justify-end cursor-pointer">
+                      <span>עדכון פרטים</span>
+                      <Settings className="ml-2 h-4 w-4 text-muted-foreground" />
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout} className="justify-end cursor-pointer text-red-600 focus:text-red-600">
                       <span>התנתקות</span>
                       <LogOut className="ml-2 h-4 w-4" />
                     </DropdownMenuItem>
@@ -297,6 +304,7 @@ const Navbar = () => {
           )}
         </div>
       </header>
+      <ProfileUpdateDialog open={isProfileUpdateOpen} onOpenChange={setIsProfileUpdateOpen} />
     </>
   );
 };
