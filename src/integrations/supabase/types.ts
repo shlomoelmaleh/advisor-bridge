@@ -136,6 +136,7 @@ export type Database = {
         Row: {
           advisor_status: string | null
           appetite_id: string | null
+          banker_id: string | null
           banker_status: string | null
           case_id: string | null
           created_at: string | null
@@ -146,6 +147,7 @@ export type Database = {
         Insert: {
           advisor_status?: string | null
           appetite_id?: string | null
+          banker_id?: string | null
           banker_status?: string | null
           case_id?: string | null
           created_at?: string | null
@@ -156,6 +158,7 @@ export type Database = {
         Update: {
           advisor_status?: string | null
           appetite_id?: string | null
+          banker_id?: string | null
           banker_status?: string | null
           case_id?: string | null
           created_at?: string | null
@@ -170,6 +173,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "branch_appetites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_banker_id_fkey"
+            columns: ["banker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "matches_case_id_fkey"
@@ -254,6 +264,14 @@ export type Database = {
       compute_match_score: {
         Args: { p_appetite_id: string; p_case_id: string }
         Returns: number
+      }
+      internal_compute_match_score: {
+        Args: { p_appetite_id: string; p_case_id: string }
+        Returns: number
+      }
+      internal_run_matching_for_case: {
+        Args: { p_case_id: string }
+        Returns: undefined
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       run_matching_for_case: { Args: { p_case_id: string }; Returns: undefined }
