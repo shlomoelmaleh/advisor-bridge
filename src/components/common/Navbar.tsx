@@ -28,6 +28,13 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isProfileUpdateOpen, setIsProfileUpdateOpen] = React.useState(false);
   const [totalUnread, setTotalUnread] = useState(0);
+  const [adminPendingCount, setAdminPendingCount] = useState(0);
+  const [newMatchesCount, setNewMatchesCount] = useState(0);
+  const [approvedAppetiteCount, setApprovedAppetiteCount] = useState(0);
+  const [seenApprovedAppetites, setSeenApprovedAppetites] = useState<string[]>(() => {
+    const stored = localStorage.getItem('seen_approved_appetites');
+    return stored ? JSON.parse(stored) : [];
+  });
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -50,6 +57,74 @@ const Navbar = () => {
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
   }, [user?.id, roleState]);
+
+  useEffect(() => {
+    const fetchAdminPending = async () => {
+      if (roleState !== 'admin') return;
+
+      const [{ count: pendingUsers }, { count: pendingCases }, { count: pendingAppetites }] =
+        await Promise.all([
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_approved', false),
+          supabase.from('cases').select('*', { count: 'exact', head: true }).eq('is_approved', false),
+          supabase.from('branch_appetites').select('*', { count: 'exact', head: true }).eq('is_approved', false)
+        ]);
+
+      setAdminPendingCount((pendingUsers ?? 0) + (pendingCases ?? 0) + (pendingAppetites ?? 0));
+    };
+
+    if (roleState !== 'admin') return;
+    fetchAdminPending();
+    const interval = setInterval(fetchAdminPending, 30000);
+    return () => clearInterval(interval);
+  }, [roleState]);
+
+  useEffect(() => {
+    const fetchNewMatches = async () => {
+      if (roleState !== 'advisor' || !user?.id) return;
+
+      const { count } = await supabase
+        .from('matches')
+        .select('*, case:cases!inner(advisor_id)', { count: 'exact', head: true })
+        .eq('cases.advisor_id', user.id)
+        .eq('advisor_status', 'pending')
+        .eq('banker_status', 'interested');
+
+      setNewMatchesCount(count ?? 0);
+    };
+
+    if (roleState !== 'advisor') return;
+    fetchNewMatches();
+    const interval = setInterval(fetchNewMatches, 30000);
+    return () => clearInterval(interval);
+  }, [roleState, user?.id]);
+
+  useEffect(() => {
+    const fetchApprovedAppetites = async () => {
+      if (roleState !== 'bank' || !user?.id) return;
+
+      const { data } = await supabase
+        .from('branch_appetites')
+        .select('id')
+        .eq('banker_id', user.id)
+        .eq('is_approved', true)
+        .eq('is_active', true);
+
+      const approvedIds = (data ?? []).map(a => a.id);
+      const unseen = approvedIds.filter(id => !seenApprovedAppetites.includes(id));
+      setApprovedAppetiteCount(unseen.length);
+    };
+
+    if (roleState !== 'bank') return;
+    fetchApprovedAppetites();
+    const interval = setInterval(fetchApprovedAppetites, 30000);
+    return () => clearInterval(interval);
+  }, [roleState, user?.id, seenApprovedAppetites]);
+
+  const handleAppetiteClick = () => {
+    const stored = localStorage.getItem('seen_approved_appetites');
+    const current: string[] = stored ? JSON.parse(stored) : [];
+    setApprovedAppetiteCount(0);
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -125,17 +200,27 @@ const Navbar = () => {
               <>
                 <Link
                   to={getDashboardPath()}
-                  className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                  className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                 >
                   {roleState === 'admin' ? 'לוח בקרה' : 'דאשבורד'}
+                  {roleState === 'admin' && adminPendingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                      {adminPendingCount > 9 ? '9+' : adminPendingCount}
+                    </span>
+                  )}
                 </Link>
 
                 {roleState !== 'admin' && (
                   <Link
                     to="/matches"
-                    className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                    className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                   >
                     התאמות
+                    {roleState === 'advisor' && newMatchesCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                        {newMatchesCount > 9 ? '9+' : newMatchesCount}
+                      </span>
+                    )}
                   </Link>
                 )}
 
@@ -171,9 +256,15 @@ const Navbar = () => {
                     </Link>
                     <Link
                       to="/bank/appetite"
-                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                      className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                      onClick={handleAppetiteClick}
                     >
                       תיאבון
+                      {approvedAppetiteCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                          {approvedAppetiteCount}
+                        </span>
+                      )}
                     </Link>
                     <Link
                       to="/conversations"
@@ -252,6 +343,11 @@ const Navbar = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {roleState === 'admin' ? 'לוח בקרה' : 'דאשבורד'}
+                      {roleState === 'admin' && adminPendingCount > 0 && (
+                        <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                          {adminPendingCount > 9 ? '9+' : adminPendingCount}
+                        </span>
+                      )}
                       <Home className="ml-2 h-4 w-4" />
                     </Link>
 
@@ -262,6 +358,11 @@ const Navbar = () => {
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         התאמות
+                        {roleState === 'advisor' && newMatchesCount > 0 && (
+                          <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                            {newMatchesCount > 9 ? '9+' : newMatchesCount}
+                          </span>
+                        )}
                       </Link>
                     )}
 
@@ -301,9 +402,17 @@ const Navbar = () => {
                         <Link
                           to="/bank/appetite"
                           className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
-                          onClick={() => setIsMobileMenuOpen(false)}
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            handleAppetiteClick();
+                          }}
                         >
                           תיאבון
+                          {approvedAppetiteCount > 0 && (
+                            <span className="mr-2 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                              {approvedAppetiteCount}
+                            </span>
+                          )}
                         </Link>
                         <Link
                           to="/conversations"
