@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAdmin } from '@/hooks/useAdmin';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,41 @@ const AdminDashboard = () => {
     } = useAdmin();
 
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+    useEffect(() => {
+        refreshAll();
+        const interval = setInterval(refreshAll, 30000);
+        return () => clearInterval(interval);
+    }, [refreshAll]);
+
+    useEffect(() => {
+        const profilesSub = supabase
+            .channel('admin-profiles')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'profiles' },
+                () => refreshAll())
+            .subscribe();
+
+        const casesSub = supabase
+            .channel('admin-cases')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'cases' },
+                () => refreshAll())
+            .subscribe();
+
+        const appetitesSub = supabase
+            .channel('admin-appetites')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'branch_appetites' },
+                () => refreshAll())
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(profilesSub);
+            supabase.removeChannel(casesSub);
+            supabase.removeChannel(appetitesSub);
+        };
+    }, [refreshAll]);
 
     const handleAction = async (id: string, action: () => Promise<{ error: string | null }>, successMsg: string) => {
         setActionLoading(id);
