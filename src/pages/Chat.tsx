@@ -199,8 +199,8 @@ const Chat = () => {
 
     // Header formatting based on role
     const chatTitle = profile?.role === 'advisor'
-        ? `שיחה עם ${match.appetite.bank_name} - ${match.appetite.branch_name}`
-        : `שיחה עם יועץ (תיק ע"ס ₪${(match.case.loan_amount_max / 1_000_000).toFixed(1)}M)`;
+        ? (match.appetite?.bank_name || match.banker?.company || 'בנקאי')
+        : `תיק: ₪${((match.case?.loan_amount_min ?? 0) / 1_000_000).toFixed(1)}M`;
 
     return (
         <div className="container max-w-4xl py-6 animate-fade-in flex flex-col h-[calc(100vh-5rem)]">
@@ -214,23 +214,18 @@ const Chat = () => {
                                 <ArrowRight className="h-4 w-4" />
                             </Button>
                             <h2 className="font-bold text-lg">
-                                {profile?.role === 'advisor'
-                                    ? match.appetite?.bank_name || match.banker?.company || 'בנקאי'
-                                    : `תיק: ₪${(match.case?.loan_amount_min / 1_000_000).toFixed(1)}M`
-                                }
+                                {chatTitle}
                             </h2>
                         </div>
                         <div className="text-sm text-muted-foreground space-y-1 mt-1 pr-10">
-                            <p>סכום: ₪{(match.case?.loan_amount_min / 1_000).toLocaleString()}K
-                                – ₪{(match.case?.loan_amount_max / 1_000).toLocaleString()}K</p>
+                            <p>סכום: ₪{((match.case?.loan_amount_min ?? 0) / 1_000).toLocaleString()}K
+                                – ₪{((match.case?.loan_amount_max ?? 0) / 1_000).toLocaleString()}K</p>
                             <p>LTV: {match.case?.ltv}% |
                                 אזור: {match.case?.region} |
                                 {match.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
-                            {match.appetite && (
-                                <p>סניף: {match.appetite.branch_name} |
-                                    תיאבון: {match.appetite.appetite_level}</p>
-                            )}
-                            {!match.appetite && (
+                            {match.appetite ? (
+                                <p>סניף: {match.appetite.branch_name} | תיאבון: {match.appetite.appetite_level}</p>
+                            ) : (
                                 <Badge variant="outline" className="text-blue-600 text-xs">
                                     פנייה ישירה מהשוק הפתוח
                                 </Badge>
