@@ -33,37 +33,8 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         refreshAll();
-        const interval = setInterval(refreshAll, 30000);
+        const interval = setInterval(refreshAll, 10000);
         return () => clearInterval(interval);
-    }, [refreshAll]);
-
-    useEffect(() => {
-        const profilesSub = supabase
-            .channel('admin-profiles')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'profiles' },
-                () => refreshAll())
-            .subscribe();
-
-        const casesSub = supabase
-            .channel('admin-cases')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'cases' },
-                () => refreshAll())
-            .subscribe();
-
-        const appetitesSub = supabase
-            .channel('admin-appetites')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'branch_appetites' },
-                () => refreshAll())
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(profilesSub);
-            supabase.removeChannel(casesSub);
-            supabase.removeChannel(appetitesSub);
-        };
     }, [refreshAll]);
 
     const handleAction = async (id: string, action: () => Promise<{ error: string | null }>, successMsg: string) => {
@@ -115,16 +86,18 @@ const AdminDashboard = () => {
                         <TabsTrigger value="pending-content">
                             תוכן לאישור
                             {(pendingCases.length + pendingAppetites.length) > 0 && (
-                                <Badge variant="destructive" className="mr-2 ml-0 rounded-full">
+                                <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 inline-flex items-center justify-center font-bold">
                                     {pendingCases.length + pendingAppetites.length}
-                                </Badge>
+                                </span>
                             )}
                         </TabsTrigger>
                         <TabsTrigger value="all-users">כל המשתמשים</TabsTrigger>
                         <TabsTrigger value="pending-users">
                             משתמשים ליאשור
                             {pendingUsers.length > 0 && (
-                                <Badge variant="destructive" className="mr-2 ml-0 rounded-full">{pendingUsers.length}</Badge>
+                                <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 inline-flex items-center justify-center font-bold">
+                                    {pendingUsers.length}
+                                </span>
                             )}
                         </TabsTrigger>
                         <TabsTrigger value="overview">סקירה כללית</TabsTrigger>
