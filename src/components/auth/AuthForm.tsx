@@ -65,7 +65,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
     const { error } = await signIn(loginEmail, loginPassword);
 
     if (error) {
-      setLoginError(error.message);
+      setLoginError('אימייל או סיסמה שגויים');
       setLoginLoading(false);
       return;
     }
@@ -113,7 +113,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
     setRegisterLoading(false);
 
     if (error) {
-      setRegisterError(error.message);
+      setRegisterError('ההרשמה נכשלה. נסה שוב או פנה לתמיכה.');
     } else {
       setRegisterSuccess(true);
       toast.success('ההרשמה הצליחה! בדוק את המייל שלך לאישור.');
