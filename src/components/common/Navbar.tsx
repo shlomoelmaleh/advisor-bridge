@@ -31,10 +31,9 @@ const Navbar = () => {
   const [adminPendingCount, setAdminPendingCount] = useState(0);
   const [newMatchesCount, setNewMatchesCount] = useState(0);
   const [approvedAppetiteCount, setApprovedAppetiteCount] = useState(0);
-  const [seenApprovedAppetites, setSeenApprovedAppetites] = useState<string[]>(() => {
-    const stored = localStorage.getItem('seen_approved_appetites');
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [lastSeenAppetiteTime, setLastSeenAppetiteTime] = useState<string>(
+    () => localStorage.getItem('last_seen_appetite') ?? new Date(0).toISOString()
+  );
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -102,27 +101,26 @@ const Navbar = () => {
     const fetchApprovedAppetites = async () => {
       if (roleState !== 'bank' || !user?.id) return;
 
-      const { data } = await supabase
+      const { count } = await supabase
         .from('branch_appetites')
-        .select('id')
+        .select('*', { count: 'exact', head: true })
         .eq('banker_id', user.id)
         .eq('is_approved', true)
-        .eq('is_active', true);
+        .gt('created_at', lastSeenAppetiteTime);
 
-      const approvedIds = (data ?? []).map(a => a.id);
-      const unseen = approvedIds.filter(id => !seenApprovedAppetites.includes(id));
-      setApprovedAppetiteCount(unseen.length);
+      setApprovedAppetiteCount(count ?? 0);
     };
 
     if (roleState !== 'bank') return;
     fetchApprovedAppetites();
     const interval = setInterval(fetchApprovedAppetites, 30000);
     return () => clearInterval(interval);
-  }, [roleState, user?.id, seenApprovedAppetites]);
+  }, [roleState, user?.id, lastSeenAppetiteTime]);
 
   const handleAppetiteClick = () => {
-    const stored = localStorage.getItem('seen_approved_appetites');
-    const current: string[] = stored ? JSON.parse(stored) : [];
+    const now = new Date().toISOString();
+    localStorage.setItem('last_seen_appetite', now);
+    setLastSeenAppetiteTime(now);
     setApprovedAppetiteCount(0);
   };
 
