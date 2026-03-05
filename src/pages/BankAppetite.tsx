@@ -19,6 +19,7 @@ import {
     ShieldCheck,
     Building2
 } from 'lucide-react';
+import { appetiteSchema } from '@/lib/validation';
 import AppLayout from '@/components/layout/AppLayout';
 
 interface AppetiteSignal {
@@ -194,11 +195,27 @@ const BankAppetite = () => {
                             <form onSubmit={(e) => {
                                 e.preventDefault();
                                 const formData = new FormData(e.currentTarget);
-                                createMutation.mutate({
-                                    branch_name: formData.get('branch') as string,
+                                const raw = {
+                                    bank_name: profile?.company || 'Unknown Bank',
+                                    branch_name: (formData.get('branch') as string) || null,
+                                    appetite_level: appetiteLevel,
                                     max_ltv: Number(formData.get('ltv')),
                                     min_loan_amount: Number(formData.get('min_loan')),
                                     sla_days: Number(formData.get('sla')),
+                                    preferred_borrower_types: [],
+                                    preferred_regions: [],
+                                    valid_until: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
+                                };
+                                const result = appetiteSchema.safeParse(raw);
+                                if (!result.success) {
+                                    toast.error(result.error.errors[0]?.message || 'נתונים לא תקינים');
+                                    return;
+                                }
+                                createMutation.mutate({
+                                    branch_name: raw.branch_name,
+                                    max_ltv: raw.max_ltv,
+                                    min_loan_amount: raw.min_loan_amount,
+                                    sla_days: raw.sla_days,
                                     appetite_level: appetiteLevel
                                 });
                             }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -399,7 +416,22 @@ const AppetiteItem = ({ item, onUpdate, onDelete, isReadOnly }: {
                     {isEditing ? (
                         <>
                             <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>ביטול</Button>
-                            <Button size="sm" gap-2 onClick={() => {
+                            <Button size="sm" onClick={() => {
+                                const result = appetiteSchema.safeParse({
+                                    bank_name: tempData.bank_name,
+                                    branch_name: tempData.branch_name,
+                                    appetite_level: tempData.appetite_level,
+                                    max_ltv: tempData.max_ltv ?? 0,
+                                    min_loan_amount: tempData.min_loan_amount ?? 0,
+                                    sla_days: tempData.sla_days ?? 1,
+                                    preferred_borrower_types: tempData.preferred_borrower_types ?? [],
+                                    preferred_regions: tempData.preferred_regions ?? [],
+                                    valid_until: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
+                                });
+                                if (!result.success) {
+                                    toast.error(result.error.errors[0]?.message || 'נתונים לא תקינים');
+                                    return;
+                                }
                                 onUpdate(tempData);
                                 setIsEditing(false);
                             }}>
