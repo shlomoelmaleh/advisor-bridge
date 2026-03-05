@@ -8,7 +8,7 @@ export type UserRole = 'advisor' | 'bank' | 'admin';
 
 export type SessionState = 'booting' | 'no-session' | 'has-session';
 export type RoleState = UserRole | 'unknown';
-export type RoleSource = 'none' | 'allowlist' | 'db' | 'jwt-optimistic' | 'cache';
+export type RoleSource = 'none' | 'db' | 'jwt-optimistic' | 'cache';
 export type ProfileState = 'idle' | 'loading' | 'ready' | 'missing' | 'pending' | 'error';
 
 export interface Profile {
@@ -30,7 +30,7 @@ export interface Profile {
  */
 export const isFinalForNavigation = (role: RoleState, src: RoleSource): boolean => {
   if (role === 'unknown') return false;
-  if (role === 'admin') return src === 'db' || src === 'allowlist';
+  if (role === 'admin') return src === 'db';
   return src !== 'none';
 };
 
@@ -39,7 +39,7 @@ export const isFinalForNavigation = (role: RoleState, src: RoleSource): boolean 
  * Use for admin authorization and requireFinalRole guards.
  */
 export const isFinalForSecurity = (src: RoleSource): boolean =>
-  src === 'db' || src === 'allowlist';
+  src === 'db';
 
 // Keep backward-compat alias
 export const isRoleFinalSource = isFinalForSecurity;
@@ -83,8 +83,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const VALID_ROLES: UserRole[] = ['advisor', 'bank', 'admin'];
 const isValidRole = (r: unknown): r is UserRole => VALID_ROLES.includes(r as UserRole);
 
-const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '')
-  .split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+
 
 const clearAuthCache = () => {
   localStorage.removeItem('advisor_bridge_profile');
@@ -159,17 +158,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Optimistic role from JWT / cache (called before DB responds) ──────────
   const resolveOptimisticRole = useCallback((u: User) => {
-    const email = u.email?.toLowerCase();
     const jwtRole = u.user_metadata?.role;
     const cachedRole = localStorage.getItem('advisor_bridge_role');
 
-    // Admin allowlist → immediate authoritative role (no optimistic advisor risk)
-    if (email && ADMIN_EMAILS.includes(email)) {
-      applyRole('admin', 'allowlist');
-      return;
-    }
-
-    // JWT optimistic (non-admin only)
+    // JWT optimistic (non-admin only — admin must come from DB)
     if (isValidRole(jwtRole) && jwtRole !== 'admin') {
       applyRole(jwtRole, 'jwt-optimistic');
       return;
@@ -181,14 +173,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // No optimistic role available — stay unknown
+    // No optimistic role available — stay unknown until DB responds
     applyRole('unknown', 'none');
   }, [applyRole]);
 
   // ── Authoritative role from DB profile ────────────────────────────────────
   const resolveRoleFromDB = useCallback((u: User, dbProfile: Profile | null) => {
-    const email = u.email?.toLowerCase();
-
     if (dbProfile && isValidRole(dbProfile.role)) {
       const dbRole = dbProfile.role;
       const prevOptimistic = roleRef.current;
@@ -196,27 +186,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isValidRole(prevOptimistic) && prevOptimistic !== dbRole) {
         console.log(`[Auth] role correction: JWT=${prevOptimistic} DB=${dbRole} → following DB`);
       }
-      // Allowlist still wins for admin email (belt and suspenders)
-      if (email && ADMIN_EMAILS.includes(email) && dbRole !== 'admin') {
-        console.warn(`[Auth] allowlisted admin has non-admin DB role (${dbRole}); using allowlist`);
-        applyRole('admin', 'allowlist');
-      } else {
-        applyRole(dbRole, 'db');
-      }
+      applyRole(dbRole, 'db');
       return;
     }
 
-    // Profile missing: for admin allowlist, that's suspicious
-    if (email && ADMIN_EMAILS.includes(email)) {
-      console.warn('[Auth] admin allowlist user has no DB profile — keeping unknown until profile is created');
-      applyRole('unknown', 'none');
-      return;
-    }
-
-    // Profile missing for non-admin: use JWT/cache if available (user can still operate with banner)
+    // Profile missing: use JWT/cache if available (user can still operate with banner)
     const currentRole = roleRef.current;
     if (currentRole !== 'unknown') {
-      // Already have an optimistic role → keep it, mark as final (profile just missing)
       applyRole(currentRole, roleSourceRef.current);
     }
     // else: remains unknown (new user with no profile yet?)
