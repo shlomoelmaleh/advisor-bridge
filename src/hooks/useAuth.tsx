@@ -83,8 +83,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const VALID_ROLES: UserRole[] = ['advisor', 'bank', 'admin'];
 const isValidRole = (r: unknown): r is UserRole => VALID_ROLES.includes(r as UserRole);
 
-const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mortgagebridge.co.il')
-  .split(',').map((e: string) => e.trim().toLowerCase());
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '')
+  .split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
 
 const clearAuthCache = () => {
   localStorage.removeItem('advisor_bridge_profile');

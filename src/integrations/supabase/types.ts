@@ -196,6 +196,7 @@ export type Database = {
           created_at: string | null
           id: string
           match_id: string | null
+          read_at: string | null
           sender_id: string | null
         }
         Insert: {
@@ -203,6 +204,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           match_id?: string | null
+          read_at?: string | null
           sender_id?: string | null
         }
         Update: {
@@ -210,6 +212,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           match_id?: string | null
+          read_at?: string | null
           sender_id?: string | null
         }
         Relationships: [
@@ -235,6 +238,7 @@ export type Database = {
           created_at: string | null
           full_name: string | null
           is_approved: boolean | null
+          phone: string | null
           role: string
           user_id: string
         }
@@ -243,6 +247,7 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           is_approved?: boolean | null
+          phone?: string | null
           role: string
           user_id: string
         }
@@ -251,6 +256,7 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           is_approved?: boolean | null
+          phone?: string | null
           role?: string
           user_id?: string
         }

@@ -42,7 +42,7 @@ const Chat = () => {
         if (!user || !matchId) return;
         await supabase
             .from('messages')
-            .update({ read_at: new Date().toISOString() })
+            .update({ read_at: new Date().toISOString() } as any)
             .eq('match_id', matchId)
             .neq('sender_id', user.id)
             .is('read_at', null);
