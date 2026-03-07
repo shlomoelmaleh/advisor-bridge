@@ -76,8 +76,13 @@ const AdminDashboard = () => {
                         </h1>
                         <p className="text-muted-foreground mt-2 text-right">פיקוח על משתמשים, תיקים ופעילות המערכת.</p>
                     </div>
-                    <Button variant="outline" onClick={refreshAll} className="gap-2">
-                        <RefreshCw className="h-4 w-4" /> רענן נתונים
+                    <Button
+                        variant="outline"
+                        onClick={refreshAll}
+                        className="gap-2 active:scale-95 transition-all"
+                        disabled={loading}
+                    >
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> רענן נתונים
                     </Button>
                 </div>
 
