@@ -1,1 +1,7 @@
 project_id = "oasivruwsvhfmvynpbia"
+
+[functions.notify-advisor-banker-interest]
+verify_jwt = false
+
+[functions.notify-banker-appetite-approved]
+verify_jwt = false
