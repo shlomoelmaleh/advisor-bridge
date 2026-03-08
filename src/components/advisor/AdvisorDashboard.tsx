@@ -23,6 +23,7 @@ import {
 import { useCases } from '@/hooks/useCases';
 import { useAuth } from '@/hooks/useAuth';
 import type { DbCase, CaseStatus } from '@/types/cases';
+import AdvisorActivityLog from './AdvisorActivityLog';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
