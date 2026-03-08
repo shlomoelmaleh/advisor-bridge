@@ -184,6 +184,9 @@ const BankDashboard = () => {
           </div>
         )}
       </section>
+
+      {/* Activity Log */}
+      {profile?.user_id && <BankActivityLog userId={profile.user_id} />}
     </div>
   );
 };
