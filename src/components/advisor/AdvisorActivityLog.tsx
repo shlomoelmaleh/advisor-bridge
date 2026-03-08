@@ -80,13 +80,11 @@ const AdvisorActivityLog: React.FC<{ userId: string }> = ({ userId }) => {
     const { data: pendingMatches } = await supabase
       .from('matches')
       .select(`id, created_at, banker_status, advisor_status, case_id,
-               appetite:branch_appetites(bank_name, branch_name),
-               case:cases!inner(advisor_id)`)
-      .eq('case.advisor_id' as any, userId)
+               appetite:branch_appetites(bank_name, branch_name)`)
       .eq('banker_status', 'interested')
       .eq('advisor_status', 'pending')
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(10) as { data: any[] | null };
 
     pendingMatches?.forEach((m: any) => {
       const bankName = m.appetite?.bank_name || 'בנקאי';
