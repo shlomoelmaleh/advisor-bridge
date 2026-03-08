@@ -274,6 +274,12 @@ const Navbar = () => {
                       הגש תיק
                     </Link>
                     <Link
+                      to="/advisor/market"
+                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                    >
+                      שוק תיאבון
+                    </Link>
+                    <Link
                       to="/conversations"
                       className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                     >
