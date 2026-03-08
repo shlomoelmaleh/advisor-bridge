@@ -195,8 +195,13 @@ const BankAppetite = () => {
                             <form onSubmit={(e) => {
                                 e.preventDefault();
                                 const formData = new FormData(e.currentTarget);
+                                const bankNameVal = (formData.get('bank_name') as string)?.trim() || profile?.company || '';
+                                if (!bankNameVal) {
+                                    toast.error('נא למלא שם בנק');
+                                    return;
+                                }
                                 const raw = {
-                                    bank_name: profile?.company || 'Unknown Bank',
+                                    bank_name: bankNameVal,
                                     branch_name: (formData.get('branch') as string) || null,
                                     appetite_level: appetiteLevel,
                                     max_ltv: Number(formData.get('ltv')),
@@ -212,6 +217,7 @@ const BankAppetite = () => {
                                     return;
                                 }
                                 createMutation.mutate({
+                                    bank_name: bankNameVal,
                                     branch_name: raw.branch_name,
                                     max_ltv: raw.max_ltv,
                                     min_loan_amount: raw.min_loan_amount,
@@ -220,8 +226,9 @@ const BankAppetite = () => {
                                 });
                             }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">סניף / יחידה</label>
-                                    <Input name="branch" placeholder="לדוגמה: עסקי מרכז" required />
+                                    <label className="text-sm font-medium">שם בנק</label>
+                                    <Input name="bank_name" placeholder="לדוגמה: בנק לאומי" defaultValue={profile?.company || ''} required />
+                                </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">מימון מקסימלי (LTV %)</label>
