@@ -182,7 +182,7 @@ const AdminDashboard = () => {
                                                     <Button
                                                         variant="outline"
                                                         className="border-destructive text-destructive hover:bg-destructive/10"
-                                                        onClick={() => handleAction(u.user_id, () => suspendUser(u.user_id), 'משתמש נדחה')}
+                                                        onClick={() => handleAction(u.user_id, () => deleteUser(u.user_id), 'משתמש נדחה ונמחק')}
                                                         disabled={actionLoading === u.user_id}
                                                     >
                                                         <Ban className="h-4 w-4 mr-2" /> דחה

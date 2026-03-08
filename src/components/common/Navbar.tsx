@@ -81,10 +81,15 @@ const Navbar = () => {
     const fetchNewMatches = async () => {
       if (roleState !== 'advisor' || !user?.id) return;
 
+      const { data: advisorCases } = await supabase
+        .from('cases').select('id').eq('advisor_id', user.id);
+      const caseIds = (advisorCases ?? []).map(c => c.id);
+      if (caseIds.length === 0) { setNewMatchesCount(0); return; }
+
       const { count } = await supabase
         .from('matches')
-        .select('*, case:cases!inner(advisor_id)', { count: 'exact', head: true })
-        .eq('cases.advisor_id', user.id)
+        .select('*', { count: 'exact', head: true })
+        .in('case_id', caseIds)
         .eq('advisor_status', 'pending')
         .eq('banker_status', 'interested');
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,15 +18,18 @@ import {
   ArrowLeft,
   ShieldCheck,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppetites } from '@/hooks/useAppetites';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { DbCase } from '@/types/cases';
 
 const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
 
-const AnonymousCaseRow: React.FC<{ c: DbCase }> = ({ c }) => (
+const AnonymousCaseRow: React.FC<{ c: DbCase; onExpress: (id: string) => void; submitting: string | null }> = ({ c, onExpress, submitting }) => (
   <div className="p-4 border rounded-lg hover:bg-accent transition-colors">
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
       <div className="space-y-1">
@@ -44,12 +47,19 @@ const AnonymousCaseRow: React.FC<{ c: DbCase }> = ({ c }) => (
           <Badge variant="outline" className="text-[10px]">{c.region}</Badge>
         </div>
       </div>
-      <Link to="/bank/appetite">
-        <Button variant="ghost" size="sm" className="gap-1">
-          הצע התאמה
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-      </Link>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1"
+        disabled={submitting === c.id}
+        onClick={() => onExpress(c.id)}
+      >
+        {submitting === c.id ? (
+          <><Loader2 className="h-4 w-4 animate-spin" /> שולח...</>
+        ) : (
+          <>הצע התאמה<ArrowLeft className="h-4 w-4" /></>
+        )}
+      </Button>
     </div>
   </div>
 );
@@ -57,8 +67,17 @@ const AnonymousCaseRow: React.FC<{ c: DbCase }> = ({ c }) => (
 const BankDashboard = () => {
   const { profile, profileState } = useAuth();
   const { myAppetite, openCases, loading, error } = useAppetites();
+  const [submitting, setSubmitting] = useState<string | null>(null);
 
   const isReadOnly = profileState === 'pending' || profileState === 'missing';
+
+  const handleExpressInterest = async (caseId: string) => {
+    setSubmitting(caseId);
+    const { error } = await supabase.rpc('express_interest_in_case', { p_case_id: caseId });
+    setSubmitting(null);
+    if (error) toast.error('שגיאה בשליחת התעניינות');
+    else toast.success('התעניינות נשלחה ליועץ!');
+  };
 
   if (loading) {
     return (
@@ -135,7 +154,7 @@ const BankDashboard = () => {
             <p className="text-sm text-muted-foreground mt-2">צפה בכל השיחות הפעילות שלך ונהל את שלבי הסגירה מול היועצים.</p>
           </CardContent>
           <CardFooter>
-            <Link to="/bank/chat" className="w-full">
+            <Link to="/conversations" className="w-full">
               <Button variant="outline" className="w-full gap-2 border-blue-200 hover:bg-blue-100">
                 לכל השיחות
                 <ExternalLink className="h-4 w-4" />
@@ -175,7 +194,7 @@ const BankDashboard = () => {
         ) : (
           <div className="grid grid-cols-1 gap-3">
             {openCases?.slice(0, 5).map(c => (
-              <AnonymousCaseRow key={c.id} c={c} />
+              <AnonymousCaseRow key={c.id} c={c} onExpress={handleExpressInterest} submitting={submitting} />
             ))}
           </div>
         )}
