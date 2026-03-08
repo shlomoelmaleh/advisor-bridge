@@ -70,6 +70,22 @@ const CaseSkeleton = () => (
 
 // ─── Single case row ──────────────────────────────────────────────────────────
 
+const getApprovalBadge = (c: DbCase) => {
+  if (c.status === 'closed') {
+    return <Badge className="bg-blue-500/10 text-blue-600 border-blue-200">עסקה נסגרה</Badge>;
+  }
+  if (c.status === 'rejected') {
+    return <Badge className="bg-red-500/10 text-red-600 border-red-200">נדחה</Badge>;
+  }
+  if (c.is_approved && c.status === 'open') {
+    return <Badge className="bg-green-500/10 text-green-600 border-green-200">פעיל - חשוף לבנקאים</Badge>;
+  }
+  if (!c.is_approved && c.status !== 'rejected') {
+    return <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">ממתין לאישור Admin</Badge>;
+  }
+  return null;
+};
+
 const CaseRow: React.FC<{ c: DbCase }> = ({ c }) => (
   <div className="p-4 border rounded-lg hover:bg-accent transition-colors card-highlight">
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -82,6 +98,7 @@ const CaseRow: React.FC<{ c: DbCase }> = ({ c }) => (
             {STATUS_ICON[c.status]}
             {STATUS_LABEL[c.status]}
           </Badge>
+          {getApprovalBadge(c)}
         </div>
         <div className="flex flex-wrap gap-2 mt-1">
           <Badge variant="outline">LTV {c.ltv}%</Badge>
@@ -91,7 +108,12 @@ const CaseRow: React.FC<{ c: DbCase }> = ({ c }) => (
           <Badge variant="outline">{c.property_type}</Badge>
           <Badge variant="outline">{c.region}</Badge>
         </div>
-        <p className="text-xs text-muted-foreground">הוגש ב-{formatDate(c.created_at)}</p>
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1">
+          <span>הוגש ב-{formatDate(c.created_at)}</span>
+          {c.is_approved && c.last_matched_at && (
+            <span>אושר ושודך ב-{formatDate(c.last_matched_at)}</span>
+          )}
+        </div>
       </div>
     </div>
   </div>
