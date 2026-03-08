@@ -283,7 +283,7 @@ export type Database = {
         Args: { p_case_id: string }
         Returns: undefined
       }
-      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin: { Args: { _user_id?: string }; Returns: boolean }
       run_matching_for_case: { Args: { p_case_id: string }; Returns: undefined }
     }
     Enums: {
