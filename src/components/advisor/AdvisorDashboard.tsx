@@ -162,7 +162,7 @@ const CaseList: React.FC<{ cases: DbCase[]; filter: string; isReadOnly: boolean 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const AdvisorDashboard = () => {
-  const { profile, profileState } = useAuth();
+  const { profile, profileState, user } = useAuth();
   const { cases, loading, error } = useCases();
   const [activeFilter, setActiveFilter] = useState('all');
 
