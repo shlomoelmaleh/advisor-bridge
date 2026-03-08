@@ -30,6 +30,7 @@ const Navbar = () => {
   const [totalUnread, setTotalUnread] = useState(0);
   const [adminPendingCount, setAdminPendingCount] = useState(0);
   const [newMatchesCount, setNewMatchesCount] = useState(0);
+  const [newBankMatchesCount, setNewBankMatchesCount] = useState(0);
   const [approvedAppetiteCount, setApprovedAppetiteCount] = useState(0);
   const [lastSeenAppetiteTime, setLastSeenAppetiteTime] = useState<string>(
     () => localStorage.getItem('last_seen_appetite') ?? new Date(0).toISOString()
