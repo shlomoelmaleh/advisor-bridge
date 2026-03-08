@@ -53,6 +53,7 @@ export const useAppetites = (): UseAppetitesReturn => {
                 .from('cases')
                 .select('*')
                 .eq('status', 'open')
+                .eq('is_approved', true)
                 .order('created_at', { ascending: false });
 
             if (casesError) throw new Error(mapDatabaseError(casesError));
