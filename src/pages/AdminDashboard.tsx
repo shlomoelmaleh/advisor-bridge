@@ -21,6 +21,7 @@ const AdminDashboard = () => {
         loading,
         approveUser,
         suspendUser,
+        deleteUser,
         changeUserRole,
         approveCase,
         rejectCase,
