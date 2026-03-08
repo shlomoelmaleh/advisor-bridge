@@ -31,6 +31,7 @@ const STATUS_COLOR: Record<CaseStatus, string> = {
   in_progress: 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20',
   matched: 'bg-green-500/10 text-green-500 hover:bg-green-500/20',
   closed: 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20',
+  rejected: 'bg-red-500/10 text-red-500 hover:bg-red-500/20',
 };
 
 const STATUS_ICON: Record<CaseStatus, React.ReactNode> = {
@@ -38,6 +39,7 @@ const STATUS_ICON: Record<CaseStatus, React.ReactNode> = {
   in_progress: <Clock className="h-4 w-4 ml-1" />,
   matched: <HandshakeIcon className="h-4 w-4 ml-1" />,
   closed: <LockIcon className="h-4 w-4 ml-1" />,
+  rejected: <AlertCircle className="h-4 w-4 ml-1" />,
 };
 
 const STATUS_LABEL: Record<CaseStatus, string> = {
@@ -45,6 +47,7 @@ const STATUS_LABEL: Record<CaseStatus, string> = {
   in_progress: 'בטיפול',
   matched: 'הותאם',
   closed: 'סגור',
+  rejected: 'נדחה',
 };
 
 const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
