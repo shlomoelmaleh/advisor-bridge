@@ -49,6 +49,14 @@ const AdvisorMatchesView = () => {
         else toast.success('התעניינות נשלחה לסניף!');
     };
 
+    const handleReject = async (matchId: string) => {
+        setActingOn(matchId);
+        const { error } = await rejectMatch(matchId);
+        setActingOn(null);
+        if (error) toast.error('שגיאה');
+        else toast.info('ההצעה נדחתה');
+    };
+
     // Group matches by case ID
     const matchesByCaseId = matches.reduce((acc, m) => {
         if (!acc[m.case_id]) acc[m.case_id] = [];
