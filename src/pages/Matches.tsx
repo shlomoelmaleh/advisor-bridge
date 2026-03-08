@@ -274,22 +274,36 @@ const BankMatchesView = () => {
                   We simplify UI based on the prompt instructions.
                 */}
                                 <div className="text-sm text-center py-3 bg-accent/20 rounded-md">
-                                    {m.banker_status === 'pending' && m.advisor_status === 'pending' && "ממתין לתגובה שלך / של היועץ"}
-                                    {m.banker_status !== 'interested' && m.advisor_status === 'interested' && <span className="text-blue-600 font-semibold">יועץ הראה התעניינות!</span>}
-                                    {m.banker_status === 'interested' && m.advisor_status !== 'interested' && <span className="text-amber-600 font-semibold">ממתין לאישור היועץ...</span>}
-                                    {m.status === 'closed' && <span className="text-green-600 font-semibold">שידוך סגור! זהות המגיש נחשפה.</span>}
+                                    {m.banker_status === 'pending' && m.advisor_status === 'pending' && "ממתין לתגובה שלך"}
+                                    {m.banker_status === 'pending' && m.advisor_status === 'interested' && <span className="text-blue-600 font-semibold">יועץ הראה התעניינות! 🔥</span>}
+                                    {m.banker_status === 'interested' && m.advisor_status === 'pending' && <span className="text-amber-600 font-semibold">ממתין לאישור היועץ...</span>}
+                                    {m.status === 'closed' && <span className="text-green-600 font-semibold">שידוך סגור! זהות נחשפת.</span>}
                                     {(m.banker_status === 'rejected' || m.advisor_status === 'rejected') && "נדחה."}
                                 </div>
                             </CardContent>
 
                             <CardFooter className="pt-2 mt-auto">
-                                {m.status !== 'closed' && m.status !== 'rejected' && (
+                                {m.banker_status === 'pending' && m.advisor_status === 'pending' && (
                                     <Button
                                         className="w-full shadow-md"
                                         onClick={() => handleInterest(m.id)}
                                         disabled={actingOn === m.id}
                                     >
-                                        {actingOn === m.id ? 'מעדכן...' : '👍 רלוונטי לסניף!'}
+                                        {actingOn === m.id ? 'מעדכן...' : 'רלוונטי לסניף!'}
+                                    </Button>
+                                )}
+                                {m.banker_status === 'interested' && m.advisor_status === 'pending' && (
+                                    <Button disabled className="w-full bg-amber-100 text-amber-800 cursor-not-allowed">
+                                        ממתין לאישור היועץ...
+                                    </Button>
+                                )}
+                                {m.banker_status === 'pending' && m.advisor_status === 'interested' && (
+                                    <Button
+                                        className="w-full bg-blue-600 hover:bg-blue-700"
+                                        onClick={() => handleInterest(m.id)}
+                                        disabled={actingOn === m.id}
+                                    >
+                                        {actingOn === m.id ? 'מעדכן...' : 'אני מעוניין! ✓'}
                                     </Button>
                                 )}
                                 {m.status === 'closed' && (
@@ -297,7 +311,7 @@ const BankMatchesView = () => {
                                         className="w-full bg-green-600 hover:bg-green-700"
                                         onClick={() => navigate(`/chat/${m.id}`)}
                                     >
-                                        מעבר לצ'אט עם המגיש →
+                                        מעבר לצ'אט עם המגיש
                                     </Button>
                                 )}
                             </CardFooter>
