@@ -228,6 +228,9 @@ const BankAppetite = () => {
                                     <label className="text-sm font-medium">שם בנק</label>
                                     <Input name="bank_name" placeholder="לדוגמה: בנק לאומי" defaultValue={profile?.company || ''} required />
                                 </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">סניף / יחידה</label>
+                                    <Input name="branch" placeholder="לדוגמה: עסקי מרכז" required />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">מימון מקסימלי (LTV %)</label>
