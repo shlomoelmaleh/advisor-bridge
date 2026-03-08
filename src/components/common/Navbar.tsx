@@ -30,6 +30,7 @@ const Navbar = () => {
   const [totalUnread, setTotalUnread] = useState(0);
   const [adminPendingCount, setAdminPendingCount] = useState(0);
   const [newMatchesCount, setNewMatchesCount] = useState(0);
+  const [newBankMatchesCount, setNewBankMatchesCount] = useState(0);
   const [approvedAppetiteCount, setApprovedAppetiteCount] = useState(0);
   const [lastSeenAppetiteTime, setLastSeenAppetiteTime] = useState<string>(
     () => localStorage.getItem('last_seen_appetite') ?? new Date(0).toISOString()
@@ -122,11 +123,42 @@ const Navbar = () => {
     return () => clearInterval(interval);
   }, [roleState, user?.id, lastSeenAppetiteTime]);
 
+  useEffect(() => {
+    const fetchBankMatches = async () => {
+      if (roleState !== 'bank' || !user?.id) return;
+      const lastSeen = localStorage.getItem('last_seen_matches') ?? new Date(0).toISOString();
+
+      const { count: newCount } = await supabase
+        .from('matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('banker_id', user.id)
+        .gt('created_at', lastSeen);
+
+      const { count: closedCount } = await supabase
+        .from('matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('banker_id', user.id)
+        .eq('status', 'closed')
+        .gt('created_at', lastSeen);
+
+      setNewBankMatchesCount((newCount ?? 0) + (closedCount ?? 0));
+    };
+    if (roleState !== 'bank') return;
+    fetchBankMatches();
+    const interval = setInterval(fetchBankMatches, 30000);
+    return () => clearInterval(interval);
+  }, [roleState, user?.id]);
+
   const handleAppetiteClick = () => {
     const now = new Date().toISOString();
     localStorage.setItem('last_seen_appetite', now);
     setLastSeenAppetiteTime(now);
     setApprovedAppetiteCount(0);
+  };
+
+  const handleMatchesClick = () => {
+    localStorage.setItem('last_seen_matches', new Date().toISOString());
+    setNewBankMatchesCount(0);
   };
 
   const handleLogout = async () => {
@@ -217,11 +249,17 @@ const Navbar = () => {
                   <Link
                     to="/matches"
                     className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                    onClick={roleState === 'bank' ? handleMatchesClick : undefined}
                   >
                     התאמות
                     {roleState === 'advisor' && newMatchesCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                         {newMatchesCount > 9 ? '9+' : newMatchesCount}
+                      </span>
+                    )}
+                    {roleState === 'bank' && newBankMatchesCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                        {newBankMatchesCount > 9 ? '9+' : newBankMatchesCount}
                       </span>
                     )}
                   </Link>
@@ -358,12 +396,20 @@ const Navbar = () => {
                       <Link
                         to="/matches"
                         className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (roleState === 'bank') handleMatchesClick();
+                        }}
                       >
                         התאמות
                         {roleState === 'advisor' && newMatchesCount > 0 && (
                           <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                             {newMatchesCount > 9 ? '9+' : newMatchesCount}
+                          </span>
+                        )}
+                        {roleState === 'bank' && newBankMatchesCount > 0 && (
+                          <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                            {newBankMatchesCount > 9 ? '9+' : newBankMatchesCount}
                           </span>
                         )}
                       </Link>
