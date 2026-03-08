@@ -97,15 +97,23 @@ const BankDashboard = () => {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Quick Appetite Status */}
         <Card className="relative overflow-hidden border-primary/20 bg-primary/5">
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
               <Activity className="h-8 w-8 text-primary opacity-20" />
-              <Badge variant={myAppetite ? "default" : "secondary"}>
-                {myAppetite ? "תיאבון פעיל" : "אין אות פעיל"}
-              </Badge>
+              {myAppetite ? (
+                !myAppetite.is_active ? (
+                  <Badge variant="secondary" className="bg-gray-100 text-gray-600">מושבת</Badge>
+                ) : myAppetite.is_approved ? (
+                  <Badge className="bg-green-500/10 text-green-600 border-green-200">פעיל ומאושר</Badge>
+                ) : (
+                  <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">ממתין לאישור Admin</Badge>
+                )
+              ) : (
+                <Badge variant="secondary">אין אות פעיל</Badge>
+              )}
             </div>
             <CardTitle className="text-xl mt-2">הגדרות תיאבון</CardTitle>
             <CardDescription>נהל את סוגי התיקים שמעניינים אותך</CardDescription>
@@ -139,37 +147,7 @@ const BankDashboard = () => {
             </Link>
           </CardFooter>
         </Card>
-
-        {/* Quick Chat Status */}
-        <Card className="relative overflow-hidden border-blue-200 bg-blue-50/30">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <MessageSquare className="h-8 w-8 text-blue-500 opacity-20" />
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200">צ'אטים פעילים</Badge>
-            </div>
-            <CardTitle className="text-xl mt-2">הודעות ושיחות</CardTitle>
-            <CardDescription>תקשורת ישירה מול יועצים בתיקים שנסגרו</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mt-2">צפה בכל השיחות הפעילות שלך ונהל את שלבי הסגירה מול היועצים.</p>
-          </CardContent>
-          <CardFooter>
-            <Link to="/conversations" className="w-full">
-              <Button variant="outline" className="w-full gap-2 border-blue-200 hover:bg-blue-100">
-                לכל השיחות
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
       </div>
-
-      {/* SECTION 2: Open Cases Preview */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            תיקים פתוחים במערכת
-            <Badge variant="secondary">{openCases?.length || 0}</Badge>
           </h2>
           <Link to="/bank/appetite">
             <Button variant="link" className="text-primary gap-1">
