@@ -29,7 +29,7 @@ const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
 const AdvisorMatchesView = () => {
     const navigate = useNavigate();
     const { cases } = useCases();
-    const { matches, loading, error, runMatching, expressInterest } = useMatches();
+    const { matches, loading, error, runMatching, expressInterest, rejectMatch } = useMatches();
     const [runningFor, setRunningFor] = useState<string | null>(null);
     const [actingOn, setActingOn] = useState<string | null>(null);
 
@@ -47,6 +47,14 @@ const AdvisorMatchesView = () => {
         setActingOn(null);
         if (error) toast.error(`שגיאה בשליחת התעניינות: ${error}`);
         else toast.success('התעניינות נשלחה לסניף!');
+    };
+
+    const handleReject = async (matchId: string) => {
+        setActingOn(matchId);
+        const { error } = await rejectMatch(matchId);
+        setActingOn(null);
+        if (error) toast.error('שגיאה');
+        else toast.info('ההצעה נדחתה');
     };
 
     // Group matches by case ID
@@ -145,6 +153,14 @@ const AdvisorMatchesView = () => {
                                                                     className="bg-green-600 hover:bg-green-700"
                                                                 >
                                                                     כן, מעוניין לסגור עסקה
+                                                                </Button>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    className="border-destructive text-destructive hover:bg-destructive/10"
+                                                                    onClick={() => handleReject(m.id)}
+                                                                    disabled={actingOn === m.id}
+                                                                >
+                                                                    דחה הצעה
                                                                 </Button>
                                                             </div>
                                                         )}
