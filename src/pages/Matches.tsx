@@ -154,6 +154,14 @@ const AdvisorMatchesView = () => {
                                                                 >
                                                                     כן, מעוניין לסגור עסקה
                                                                 </Button>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    className="border-destructive text-destructive hover:bg-destructive/10"
+                                                                    onClick={() => handleReject(m.id)}
+                                                                    disabled={actingOn === m.id}
+                                                                >
+                                                                    דחה הצעה
+                                                                </Button>
                                                             </div>
                                                         )}
 
