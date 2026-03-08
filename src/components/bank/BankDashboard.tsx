@@ -148,6 +148,13 @@ const BankDashboard = () => {
           </CardFooter>
         </Card>
       </div>
+
+      {/* SECTION 2: Open Cases Preview */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            תיקים פתוחים במערכת
+            <Badge variant="secondary">{openCases?.length || 0}</Badge>
           </h2>
           <Link to="/bank/appetite">
             <Button variant="link" className="text-primary gap-1">
