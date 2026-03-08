@@ -40,15 +40,11 @@ const Navbar = () => {
     const fetchUnread = async () => {
       if (!user?.id) return;
 
-      console.log('[Navbar] fetchUnread for user:', user.id, 'role:', roleState);
-
-      const { count, error } = await supabase
+      const { count } = await supabase
         .from('messages')
         .select('*', { count: 'exact', head: true })
         .neq('sender_id', user.id)
         .is('read_at', null);
-
-      console.log('[Navbar] unread count:', count, 'error:', error);
       setTotalUnread(count ?? 0);
     };
 
