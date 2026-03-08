@@ -123,11 +123,42 @@ const Navbar = () => {
     return () => clearInterval(interval);
   }, [roleState, user?.id, lastSeenAppetiteTime]);
 
+  useEffect(() => {
+    const fetchBankMatches = async () => {
+      if (roleState !== 'bank' || !user?.id) return;
+      const lastSeen = localStorage.getItem('last_seen_matches') ?? new Date(0).toISOString();
+
+      const { count: newCount } = await supabase
+        .from('matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('banker_id', user.id)
+        .gt('created_at', lastSeen);
+
+      const { count: closedCount } = await supabase
+        .from('matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('banker_id', user.id)
+        .eq('status', 'closed')
+        .gt('created_at', lastSeen);
+
+      setNewBankMatchesCount((newCount ?? 0) + (closedCount ?? 0));
+    };
+    if (roleState !== 'bank') return;
+    fetchBankMatches();
+    const interval = setInterval(fetchBankMatches, 30000);
+    return () => clearInterval(interval);
+  }, [roleState, user?.id]);
+
   const handleAppetiteClick = () => {
     const now = new Date().toISOString();
     localStorage.setItem('last_seen_appetite', now);
     setLastSeenAppetiteTime(now);
     setApprovedAppetiteCount(0);
+  };
+
+  const handleMatchesClick = () => {
+    localStorage.setItem('last_seen_matches', new Date().toISOString());
+    setNewBankMatchesCount(0);
   };
 
   const handleLogout = async () => {
