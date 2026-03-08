@@ -23,6 +23,7 @@ import {
 import { useCases } from '@/hooks/useCases';
 import { useAuth } from '@/hooks/useAuth';
 import type { DbCase, CaseStatus } from '@/types/cases';
+import AdvisorActivityLog from './AdvisorActivityLog';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ const CaseList: React.FC<{ cases: DbCase[]; filter: string; isReadOnly: boolean 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const AdvisorDashboard = () => {
-  const { profile, profileState } = useAuth();
+  const { profile, profileState, user } = useAuth();
   const { cases, loading, error } = useCases();
   const [activeFilter, setActiveFilter] = useState('all');
 
@@ -265,6 +266,9 @@ const AdvisorDashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Activity Log */}
+      {user?.id && <AdvisorActivityLog userId={user.id} />}
     </div>
   );
 };
