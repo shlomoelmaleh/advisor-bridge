@@ -71,6 +71,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/advisor/market"
+              element={
+                <ProtectedRoute allowedRoles={['advisor']} requireFinalRole>
+                  <AdvisorMarket />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Bank-only routes */}
             <Route
