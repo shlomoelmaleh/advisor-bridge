@@ -431,6 +431,13 @@ const Navbar = () => {
                           הגש תיק
                         </Link>
                         <Link
+                          to="/advisor/market"
+                          className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          שוק תיאבון
+                        </Link>
+                        <Link
                           to="/conversations"
                           className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
                           onClick={() => setIsMobileMenuOpen(false)}
