@@ -214,10 +214,14 @@ const Chat = () => {
 
     if (!match) return null;
 
-    // Header formatting based on role
+    const bankName = match.appetite?.bank_name || match.banker?.company || 'בנקאי';
+    const branchName = match.appetite?.branch_name || '';
+    const loanMin = ((match.case?.loan_amount_min ?? 0) / 1_000_000).toFixed(1);
+    const loanMax = ((match.case?.loan_amount_max ?? 0) / 1_000_000).toFixed(1);
+
     const chatTitle = profile?.role === 'advisor'
-        ? (match.appetite?.bank_name || match.banker?.company || 'בנקאי')
-        : `תיק: ₪${((match.case?.loan_amount_min ?? 0) / 1_000_000).toFixed(1)}M`;
+        ? `${bankName}${branchName ? ' - ' + branchName : ''}`
+        : `תיק ₪${loanMin}M–₪${loanMax}M | ${match.case?.region || ''}`;
 
     return (
         <div className="container max-w-4xl py-6 animate-fade-in flex flex-col h-[calc(100vh-5rem)]">
