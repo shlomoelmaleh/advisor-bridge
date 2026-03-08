@@ -6,7 +6,7 @@ export interface CasePriorities {
     ltv: boolean;
 }
 
-export type CaseStatus = 'open' | 'in_progress' | 'matched' | 'closed';
+export type CaseStatus = 'open' | 'in_progress' | 'matched' | 'closed' | 'rejected';
 export type BorrowerType = 'employee' | 'self_employed';
 
 /** Row shape returned from Supabase */
