@@ -249,11 +249,17 @@ const Navbar = () => {
                   <Link
                     to="/matches"
                     className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                    onClick={roleState === 'bank' ? handleMatchesClick : undefined}
                   >
                     התאמות
                     {roleState === 'advisor' && newMatchesCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                         {newMatchesCount > 9 ? '9+' : newMatchesCount}
+                      </span>
+                    )}
+                    {roleState === 'bank' && newBankMatchesCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                        {newBankMatchesCount > 9 ? '9+' : newBankMatchesCount}
                       </span>
                     )}
                   </Link>
