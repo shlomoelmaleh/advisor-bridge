@@ -102,12 +102,10 @@ const AdvisorActivityLog: React.FC<{ userId: string }> = ({ userId }) => {
     const { data: closedMatches } = await supabase
       .from('matches')
       .select(`id, created_at, status,
-               appetite:branch_appetites(bank_name),
-               case:cases!inner(advisor_id)`)
-      .eq('case.advisor_id' as any, userId)
+               appetite:branch_appetites(bank_name)`)
       .eq('status', 'closed')
       .order('created_at', { ascending: false })
-      .limit(5);
+      .limit(5) as { data: any[] | null };
 
     closedMatches?.forEach((m: any) => {
       allEvents.push({
