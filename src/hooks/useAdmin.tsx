@@ -168,7 +168,10 @@ export const useAdmin = () => {
     const rejectCase = async (caseId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
         try {
-            const { error } = await supabase.from('cases').delete().eq('id', caseId);
+            const { error } = await supabase
+                .from('cases')
+                .update({ status: 'rejected', is_approved: false })
+                .eq('id', caseId);
             if (error) throw error;
             await fetchAll();
             return { error: null };
