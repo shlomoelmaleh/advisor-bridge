@@ -29,7 +29,7 @@ const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
 const AdvisorMatchesView = () => {
     const navigate = useNavigate();
     const { cases } = useCases();
-    const { matches, loading, error, runMatching, expressInterest } = useMatches();
+    const { matches, loading, error, runMatching, expressInterest, rejectMatch } = useMatches();
     const [runningFor, setRunningFor] = useState<string | null>(null);
     const [actingOn, setActingOn] = useState<string | null>(null);
 
