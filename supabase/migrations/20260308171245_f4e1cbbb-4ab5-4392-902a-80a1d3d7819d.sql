@@ -1,0 +1,1 @@
+UPDATE branch_appetites SET bank_name = 'בנק לא ידוע' WHERE bank_name = 'Unknown Bank';
