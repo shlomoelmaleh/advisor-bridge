@@ -396,12 +396,20 @@ const Navbar = () => {
                       <Link
                         to="/matches"
                         className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (roleState === 'bank') handleMatchesClick();
+                        }}
                       >
                         התאמות
                         {roleState === 'advisor' && newMatchesCount > 0 && (
                           <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                             {newMatchesCount > 9 ? '9+' : newMatchesCount}
+                          </span>
+                        )}
+                        {roleState === 'bank' && newBankMatchesCount > 0 && (
+                          <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                            {newBankMatchesCount > 9 ? '9+' : newBankMatchesCount}
                           </span>
                         )}
                       </Link>
