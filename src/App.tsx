@@ -19,6 +19,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import BankAppetite from './pages/BankAppetite';
 import BankMarket from './pages/BankMarket';
 import Conversations from './pages/Conversations';
+import AdvisorMarket from './pages/AdvisorMarket';
 import NotFound from "./pages/NotFound";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
@@ -67,6 +68,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['advisor']} requireFinalRole>
                   <CaseSubmit />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/advisor/market"
+              element={
+                <ProtectedRoute allowedRoles={['advisor']} requireFinalRole>
+                  <AdvisorMarket />
                 </ProtectedRoute>
               }
             />

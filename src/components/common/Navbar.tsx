@@ -274,6 +274,12 @@ const Navbar = () => {
                       הגש תיק
                     </Link>
                     <Link
+                      to="/advisor/market"
+                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                    >
+                      שוק תיאבון
+                    </Link>
+                    <Link
                       to="/conversations"
                       className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                     >
@@ -423,6 +429,13 @@ const Navbar = () => {
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           הגש תיק
+                        </Link>
+                        <Link
+                          to="/advisor/market"
+                          className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          שוק תיאבון
                         </Link>
                         <Link
                           to="/conversations"
