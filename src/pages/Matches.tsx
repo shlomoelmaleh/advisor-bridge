@@ -238,8 +238,24 @@ const AdvisorMatchesView = () => {
 // ─── Component: Bank View ─────────────────────────────────────────────────────
 const BankMatchesView = () => {
     const navigate = useNavigate();
-    const { matches, loading, error, expressInterest } = useMatches();
+    const { matches, loading, error, expressInterest, refreshMatches } = useMatches();
     const [actingOn, setActingOn] = useState<string | null>(null);
+
+    useEffect(() => {
+        const interval = setInterval(refreshMatches, 15000);
+        return () => clearInterval(interval);
+    }, [refreshMatches]);
+
+    useEffect(() => {
+        const channel = supabase
+            .channel('bank-matches-realtime')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'matches' },
+                () => { refreshMatches(); }
+            )
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, []);
 
     const handleInterest = async (matchId: string) => {
         setActingOn(matchId);
