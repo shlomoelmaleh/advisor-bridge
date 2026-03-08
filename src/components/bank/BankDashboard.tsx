@@ -23,6 +23,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useAppetites } from '@/hooks/useAppetites';
 import { supabase } from '@/integrations/supabase/client';
+import BankActivityLog from '@/components/bank/BankActivityLog';
 import { toast } from 'sonner';
 import type { DbCase } from '@/types/cases';
 
@@ -183,6 +184,9 @@ const BankDashboard = () => {
           </div>
         )}
       </section>
+
+      {/* Activity Log */}
+      {profile?.user_id && <BankActivityLog userId={profile.user_id} />}
     </div>
   );
 };
