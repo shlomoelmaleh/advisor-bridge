@@ -203,6 +203,18 @@ export const useAdmin = () => {
         }
     };
 
+    const deleteUser = async (userId: string) => {
+        if (!checkAdmin()) return { error: 'Unauthorized' };
+        try {
+            const { error } = await supabase.from('profiles').delete().eq('user_id', userId);
+            if (error) throw error;
+            await fetchAll();
+            return { error: null };
+        } catch (err: unknown) {
+            return { error: mapDatabaseError(err) };
+        }
+    };
+
     return {
         pendingUsers,
         allUsers,
@@ -212,6 +224,7 @@ export const useAdmin = () => {
         loading,
         approveUser,
         suspendUser,
+        deleteUser,
         changeUserRole,
         approveCase,
         rejectCase,

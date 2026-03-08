@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMatches } from '@/hooks/useMatches';
 import { useNavigate } from 'react-router-dom';
@@ -17,23 +17,27 @@ const Conversations = () => {
 
     const isAdvisor = profile?.role === 'advisor';
 
-    // We only want closed matches where the chat is active
-    const closedMatches = matches.filter(m => m.status === 'closed')
-        .sort((a, b) => {
-            const unreadA = unreadCounts[a.id] || 0;
-            const unreadB = unreadCounts[b.id] || 0;
-            if (unreadA !== unreadB) return unreadB - unreadA;
+    const closedMatches = useMemo(() =>
+        matches
+            .filter(m => m.status === 'closed')
+            .sort((a, b) => {
+                const unreadA = unreadCounts[a.id] || 0;
+                const unreadB = unreadCounts[b.id] || 0;
+                if (unreadA !== unreadB) return unreadB - unreadA;
 
-            const timeA = a.messages?.[0]?.created_at ? new Date(a.messages[0].created_at).getTime() : 0;
-            const timeB = b.messages?.[0]?.created_at ? new Date(b.messages[0].created_at).getTime() : 0;
-            return timeB - timeA;
-        });
+                const timeA = a.messages?.[0]?.created_at ? new Date(a.messages[0].created_at).getTime() : 0;
+                const timeB = b.messages?.[0]?.created_at ? new Date(b.messages[0].created_at).getTime() : 0;
+                return timeB - timeA;
+            }),
+        [matches, unreadCounts]
+    );
 
     useEffect(() => {
-        if (closedMatches.length === 0) return;
+        const closed = matches.filter(m => m.status === 'closed');
+        if (closed.length === 0) return;
         const fetchCounts = async () => {
             const counts: Record<string, number> = {};
-            for (const match of closedMatches) {
+            for (const match of closed) {
                 counts[match.id] = await getUnreadCount(match.id);
             }
             setUnreadCounts(counts);

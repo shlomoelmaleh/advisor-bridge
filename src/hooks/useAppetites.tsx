@@ -53,6 +53,7 @@ export const useAppetites = (): UseAppetitesReturn => {
                 .from('cases')
                 .select('*')
                 .eq('status', 'open')
+                .eq('is_approved', true)
                 .order('created_at', { ascending: false });
 
             if (casesError) throw new Error(mapDatabaseError(casesError));
@@ -82,7 +83,7 @@ export const useAppetites = (): UseAppetitesReturn => {
                 // Update existing active appetite
                 result = await supabase
                     .from('branch_appetites')
-                    .update(data)
+                    .update({ ...data, is_approved: false })
                     .eq('id', myAppetite.id);
             } else {
                 // Insert new appetite
