@@ -266,6 +266,9 @@ const AdvisorDashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Activity Log */}
+      {user?.id && <AdvisorActivityLog userId={user.id} />}
     </div>
   );
 };
