@@ -83,7 +83,7 @@ const BankAppetite = () => {
     });
 
     const createMutation = useMutation({
-        mutationFn: async (newAppetite: Partial<AppetiteSignal>) => {
+        mutationFn: async (newAppetite: Partial<AppetiteSignal> & { bank_name: string }) => {
             if (!user) throw new Error('Not authenticated');
             const { data, error } = await supabase
                 .from('branch_appetites')
