@@ -90,7 +90,6 @@ const BankAppetite = () => {
                 .insert([{
                     ...newAppetite,
                     banker_id: user.id,
-                    bank_name: profile?.company || 'Unknown Bank',
                     is_active: true
                 }])
                 .select()
