@@ -96,7 +96,7 @@ const Chat = () => {
                 if (isMounted) setMatch(matchDetails);
 
                 // UX guard only — actual access enforced by RLS "Match participants see messages" policy
-                if (profile.role === 'advisor' && matchDetails.case.advisor_id !== user.id) {
+                if (profile.role === 'advisor' && matchDetails.case?.advisor_id !== user.id) {
                     throw new Error('Access denied');
                 }
 
