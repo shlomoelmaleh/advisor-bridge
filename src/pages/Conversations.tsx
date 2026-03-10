@@ -128,11 +128,11 @@ const ConversationCard = ({ match, isAdvisor, unreadCount, onClick }: {
                     <div className="text-sm text-muted-foreground space-y-0.5">
                         {isAdvisor ? (
                             <p>
-                                ₪{(match.case.loan_amount_min / 1_000).toLocaleString()}K – ₪{(match.case.loan_amount_max / 1_000).toLocaleString()}K | LTV {match.case.ltv}%
+                                ₪{((match.case?.loan_amount_min ?? 0) / 1_000).toLocaleString()}K – ₪{((match.case?.loan_amount_max ?? 0) / 1_000).toLocaleString()}K | LTV {match.case?.ltv ?? 0}%
                             </p>
                         ) : (
                             <p>
-                                LTV {match.case.ltv}% | אזור: {match.case.region} | {match.case.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
+                                LTV {match.case?.ltv ?? 0}% | אזור: {match.case?.region ?? ''} | {match.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
                             </p>
                         )}
                         <p className={`line-clamp-1 mt-1 ${unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground italic opacity-80'}`}>

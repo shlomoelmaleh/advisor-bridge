@@ -241,11 +241,15 @@ const Chat = () => {
                             </h2>
                         </div>
                         <div className="text-sm text-muted-foreground space-y-1 mt-1 pr-10">
-                            <p>סכום: ₪{((match.case?.loan_amount_min ?? 0) / 1_000).toLocaleString()}K
-                                – ₪{((match.case?.loan_amount_max ?? 0) / 1_000).toLocaleString()}K</p>
-                            <p>LTV: {match.case?.ltv}% |
-                                אזור: {match.case?.region} |
-                                {match.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
+                        {match.case && (
+                            <>
+                                <p>סכום: ₪{((match.case.loan_amount_min ?? 0) / 1_000).toLocaleString()}K
+                                    – ₪{((match.case.loan_amount_max ?? 0) / 1_000).toLocaleString()}K</p>
+                                <p>LTV: {match.case.ltv ?? 0}% |
+                                    אזור: {match.case.region ?? ''} |
+                                    {match.case.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
+                            </>
+                        )}
                             {match.appetite ? (
                                 <p>סניף: {match.appetite.branch_name} | תיאבון: {match.appetite.appetite_level}</p>
                             ) : (
