@@ -96,7 +96,9 @@ const ConversationCard = ({ match, isAdvisor, unreadCount, onClick }: {
         ? (match.appetite
             ? `${match.appetite.bank_name} - ${match.appetite.branch_name}`
             : match.banker?.company || 'בנקאי')
-        : `תיק: ₪${(match.case.loan_amount_min / 1_000).toLocaleString()}K-₪${(match.case.loan_amount_max / 1_000).toLocaleString()}K`;
+        : match.case
+            ? `תיק: ₪${((match.case.loan_amount_min ?? 0) / 1_000).toLocaleString()}K-₪${((match.case.loan_amount_max ?? 0) / 1_000).toLocaleString()}K`
+            : 'שיחה';
 
     return (
         <Card
