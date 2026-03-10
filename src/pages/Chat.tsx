@@ -96,11 +96,11 @@ const Chat = () => {
                 if (isMounted) setMatch(matchDetails);
 
                 // UX guard only — actual access enforced by RLS "Match participants see messages" policy
-                if (profile.role === 'advisor' && matchDetails.case.advisor_id !== user.id) {
+                if (profile.role === 'advisor' && matchDetails.case?.advisor_id !== user.id) {
                     throw new Error('Access denied');
                 }
 
-                const isBankerMatch = matchDetails.banker_id === user.id || matchDetails.appetite?.banker_id === user.id;
+    const isBankerMatch = matchDetails.banker_id === user.id || matchDetails.appetite?.banker_id === user.id;
                 if (profile.role === 'bank' && !isBankerMatch) {
                     throw new Error('Access denied');
                 }
@@ -221,7 +221,9 @@ const Chat = () => {
 
     const chatTitle = profile?.role === 'advisor'
         ? `${bankName}${branchName ? ' - ' + branchName : ''}`
-        : `תיק ₪${loanMin}M–₪${loanMax}M | ${match.case?.region || ''}`;
+        : match.case
+            ? `תיק ₪${loanMin}M–₪${loanMax}M | ${match.case.region || ''}`
+            : 'שיחה';
 
     return (
         <div className="container max-w-4xl py-6 animate-fade-in flex flex-col h-[calc(100vh-5rem)]">
@@ -239,11 +241,15 @@ const Chat = () => {
                             </h2>
                         </div>
                         <div className="text-sm text-muted-foreground space-y-1 mt-1 pr-10">
-                            <p>סכום: ₪{((match.case?.loan_amount_min ?? 0) / 1_000).toLocaleString()}K
-                                – ₪{((match.case?.loan_amount_max ?? 0) / 1_000).toLocaleString()}K</p>
-                            <p>LTV: {match.case?.ltv}% |
-                                אזור: {match.case?.region} |
-                                {match.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
+                        {match.case && (
+                            <>
+                                <p>סכום: ₪{((match.case.loan_amount_min ?? 0) / 1_000).toLocaleString()}K
+                                    – ₪{((match.case.loan_amount_max ?? 0) / 1_000).toLocaleString()}K</p>
+                                <p>LTV: {match.case.ltv ?? 0}% |
+                                    אזור: {match.case.region ?? ''} |
+                                    {match.case.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
+                            </>
+                        )}
                             {match.appetite ? (
                                 <p>סניף: {match.appetite.branch_name} | תיאבון: {match.appetite.appetite_level}</p>
                             ) : (
