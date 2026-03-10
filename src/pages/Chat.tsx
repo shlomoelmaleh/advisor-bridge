@@ -100,7 +100,7 @@ const Chat = () => {
                     throw new Error('Access denied');
                 }
 
-                const isBankerMatch = matchDetails.banker_id === user.id || matchDetails.appetite?.banker_id === user.id;
+    const isBankerMatch = matchDetails.banker_id === user.id || matchDetails.appetite?.banker_id === user.id;
                 if (profile.role === 'bank' && !isBankerMatch) {
                     throw new Error('Access denied');
                 }
