@@ -268,6 +268,21 @@ const BankMatchesView = () => {
     if (loading) return <div className="space-y-4"><Skeleton className="h-40 w-full" /></div>;
     if (error) return <div className="text-red-500 p-4 bg-red-50 rounded-lg">{error}</div>;
 
+    const bestMatchPerCase = Object.values(
+        matches.reduce((acc, m) => {
+            const key = m.case_id;
+            if (!acc[key]) { acc[key] = m; return acc; }
+            const current = acc[key];
+            const statusRank: Record<string, number> = { closed: 3, interested: 2, pending: 1 };
+            const currentRank = statusRank[current.status ?? ''] ?? 0;
+            const newRank = statusRank[m.status ?? ''] ?? 0;
+            if (newRank > currentRank || (newRank === currentRank && (m.score ?? 0) > (current.score ?? 0))) {
+                acc[key] = m;
+            }
+            return acc;
+        }, {} as Record<string, MatchWithDetails>)
+    );
+
     return (
         <div className="space-y-8 animate-fade-in">
             <div>
@@ -275,14 +290,14 @@ const BankMatchesView = () => {
                 <p className="text-muted-foreground">תיקים אנונימיים שעלתה בהם התאמה לאות התיאבון שפרסמת.</p>
             </div>
 
-            {matches.length === 0 ? (
+            {bestMatchPerCase.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed rounded-lg bg-background">
                     <h3 className="text-lg text-muted-foreground">אין התאמות כרגע</h3>
                     <p className="text-sm">וודא שאות התיאבון שלך פעיל ועדכני.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {matches.map((m) => (
+                    {bestMatchPerCase.map((m) => (
                         <Card key={m.id} className="hover-scale flex flex-col">
                             <CardHeader className="pb-3 border-b bg-accent/20">
                                 <div className="flex justify-between items-start">

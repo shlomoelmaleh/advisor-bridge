@@ -284,6 +284,14 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: { _user_id?: string }; Returns: boolean }
+      is_banker_in_case: {
+        Args: { p_banker_id: string; p_case_id: string }
+        Returns: boolean
+      }
+      is_match_participant: {
+        Args: { p_profile_owner: string; p_viewer: string }
+        Returns: boolean
+      }
       run_matching_for_case: { Args: { p_case_id: string }; Returns: undefined }
     }
     Enums: {
