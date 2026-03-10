@@ -221,7 +221,9 @@ const Chat = () => {
 
     const chatTitle = profile?.role === 'advisor'
         ? `${bankName}${branchName ? ' - ' + branchName : ''}`
-        : `תיק ₪${loanMin}M–₪${loanMax}M | ${match.case?.region || ''}`;
+        : match.case
+            ? `תיק ₪${loanMin}M–₪${loanMax}M | ${match.case.region || ''}`
+            : 'שיחה';
 
     return (
         <div className="container max-w-4xl py-6 animate-fade-in flex flex-col h-[calc(100vh-5rem)]">
