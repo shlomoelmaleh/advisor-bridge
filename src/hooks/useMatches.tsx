@@ -43,7 +43,8 @@ export const useMatches = (): UseMatchesReturn => {
             ltv,
             borrower_type,
             region,
-            status
+            status,
+            is_approved
           ),
           appetite:branch_appetites (
             banker_id,
@@ -72,7 +73,11 @@ export const useMatches = (): UseMatchesReturn => {
 
             // UX filter only — actual access enforced by RLS "Match participants see matches" policy
             if (profile.role === 'advisor') {
-                filteredData = filteredData.filter((m) => m.case?.advisor_id === user.id);
+                filteredData = filteredData.filter((m) => 
+                    m.case?.advisor_id === user.id &&
+                    m.case?.status !== 'rejected' &&
+                    m.case?.is_approved === true
+                );
             } else if (profile.role === 'bank') {
                 filteredData = filteredData.filter((m) => m.banker_id === user.id || m.appetite?.banker_id === user.id);
             }
