@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,6 +21,8 @@ import {
   Clock,
   HandshakeIcon,
   LockIcon,
+  Trash2,
+  Edit,
 } from 'lucide-react';
 import { useCases } from '@/hooks/useCases';
 import { useAuth } from '@/hooks/useAuth';
@@ -91,38 +95,139 @@ const getApprovalBadge = (c: DbCase) => {
   return null;
 };
 
-const CaseRow: React.FC<{ c: DbCase }> = ({ c }) => (
-  <div className="p-4 border rounded-lg hover:bg-accent transition-colors card-highlight">
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-lg">
-            {fmt(c.loan_amount_min)} – {fmt(c.loan_amount_max)}
-          </h3>
-          <Badge className={`flex items-center ${STATUS_COLOR[c.status]}`}>
-            {STATUS_ICON[c.status]}
-            {STATUS_LABEL[c.status]}
-          </Badge>
-          {getApprovalBadge(c)}
-        </div>
-        <div className="flex flex-wrap gap-2 mt-1">
-          <Badge variant="outline">LTV {c.ltv}%</Badge>
-          <Badge variant="outline">
-            {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
-          </Badge>
-          <Badge variant="outline">{c.property_type}</Badge>
-          <Badge variant="outline">{c.region}</Badge>
-        </div>
-        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1">
-          <span>הוגש ב-{formatDate(c.created_at)}</span>
-          {c.is_approved && c.last_matched_at && (
-            <span>אושר ושודך ב-{formatDate(c.last_matched_at)}</span>
-          )}
+const CaseRow: React.FC<{ c: DbCase; onRefresh: () => Promise<void> }> = ({ c, onRefresh }) => {
+  const [showResubmitForm, setShowResubmitForm] = useState(false);
+  const [adminNote, setAdminNote] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isResubmitting, setIsResubmitting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.from('cases').delete().eq('id', c.id);
+      if (error) throw error;
+      toast.success('התיק נמחק בהצלחה');
+      await onRefresh();
+    } catch (err: unknown) {
+      toast.error('שגיאה במחיקת התיק');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleResubmit = async () => {
+    setIsResubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('cases')
+        .update({
+          status: 'open',
+          is_approved: false,
+          resubmitted: true,
+          admin_note: adminNote || null,
+        } as any)
+        .eq('id', c.id);
+      if (error) throw error;
+      toast.success('התיק הוגש מחדש בהצלחה');
+      setShowResubmitForm(false);
+      setAdminNote('');
+      await onRefresh();
+    } catch (err: unknown) {
+      toast.error('שגיאה בהגשה מחדש');
+    } finally {
+      setIsResubmitting(false);
+    }
+  };
+
+  return (
+    <div className="p-4 border rounded-lg hover:bg-accent transition-colors card-highlight">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-semibold text-lg">
+              {fmt(c.loan_amount_min)} – {fmt(c.loan_amount_max)}
+            </h3>
+            <Badge className={`flex items-center ${STATUS_COLOR[c.status]}`}>
+              {STATUS_ICON[c.status]}
+              {STATUS_LABEL[c.status]}
+            </Badge>
+            {getApprovalBadge(c)}
+          </div>
+          <div className="flex flex-wrap gap-2 mt-1">
+            <Badge variant="outline">LTV {c.ltv}%</Badge>
+            <Badge variant="outline">
+              {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
+            </Badge>
+            <Badge variant="outline">{c.property_type}</Badge>
+            <Badge variant="outline">{c.region}</Badge>
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1">
+            <span>הוגש ב-{formatDate(c.created_at)}</span>
+            {c.is_approved && c.last_matched_at && (
+              <span>אושר ושודך ב-{formatDate(c.last_matched_at)}</span>
+            )}
+          </div>
         </div>
       </div>
+
+      {c.status === 'rejected' && (
+        <div className="mt-3 pt-3 border-t space-y-3">
+          <div className="flex gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              <Trash2 className="h-4 w-4 ml-1" />
+              {isDeleting ? 'מוחק...' : 'מחק תיק'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+              onClick={() => setShowResubmitForm(!showResubmitForm)}
+            >
+              <Edit className="h-4 w-4 ml-1" />
+              ערוך והגש מחדש
+            </Button>
+          </div>
+
+          {showResubmitForm && (
+            <div className="space-y-3 p-3 bg-accent/30 rounded-lg">
+              <div>
+                <label className="text-sm font-medium">הערה ל-Admin (אופציונלי)</label>
+                <textarea
+                  className="w-full mt-1 p-2 border rounded-md text-sm resize-none bg-background"
+                  rows={3}
+                  placeholder="הוסף הערה..."
+                  value={adminNote}
+                  onChange={(e) => setAdminNote(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleResubmit}
+                  disabled={isResubmitting}
+                >
+                  {isResubmitting ? 'שולח...' : 'הגש מחדש'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setShowResubmitForm(false); setAdminNote(''); }}
+                >
+                  ביטול
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
@@ -144,14 +249,14 @@ const EmptyState: React.FC<{ filtered?: boolean; isReadOnly: boolean }> = ({ fil
 
 // ─── Case list for a given filter ─────────────────────────────────────────────
 
-const CaseList: React.FC<{ cases: DbCase[]; filter: string; isReadOnly: boolean }> = ({ cases, filter, isReadOnly }) => {
+const CaseList: React.FC<{ cases: DbCase[]; filter: string; isReadOnly: boolean; onRefresh: () => Promise<void> }> = ({ cases, filter, isReadOnly, onRefresh }) => {
   const filtered =
     filter === 'all' ? cases : cases.filter((c) => c.status === filter);
 
   return filtered.length > 0 ? (
     <div className="space-y-3">
       {filtered.map((c) => (
-        <CaseRow key={c.id} c={c} />
+        <CaseRow key={c.id} c={c} onRefresh={onRefresh} />
       ))}
     </div>
   ) : (
@@ -163,7 +268,7 @@ const CaseList: React.FC<{ cases: DbCase[]; filter: string; isReadOnly: boolean 
 
 const AdvisorDashboard = () => {
   const { profile, profileState, user } = useAuth();
-  const { cases, loading, error } = useCases();
+  const { cases, loading, error, refreshCases } = useCases();
   const [activeFilter, setActiveFilter] = useState('all');
 
   const isReadOnly = profileState === 'pending' || profileState === 'missing';
@@ -259,7 +364,7 @@ const AdvisorDashboard = () => {
 
               {(['all', 'open', 'in_progress', 'matched', 'closed'] as const).map((tab) => (
                 <TabsContent key={tab} value={tab}>
-                  <CaseList cases={cases} filter={tab} isReadOnly={isReadOnly} />
+                  <CaseList cases={cases} filter={tab} isReadOnly={isReadOnly} onRefresh={refreshCases} />
                 </TabsContent>
               ))}
             </Tabs>
