@@ -66,6 +66,17 @@ const AdvisorMatchesView = () => {
         else toast.success('התעניינות נשלחה לסניף!');
     };
 
+    const handleInterestAndChat = async (matchId: string) => {
+        setActingOn(matchId);
+        const { error } = await expressInterest(matchId);
+        setActingOn(null);
+        if (error) {
+            toast.error(`שגיאה בשליחת התעניינות: ${error}`);
+        } else {
+            navigate(`/chat/${matchId}`);
+        }
+    };
+
     const handleReject = async (matchId: string) => {
         setActingOn(matchId);
         const { error } = await rejectMatch(matchId);
@@ -164,13 +175,13 @@ const AdvisorMatchesView = () => {
                                                                 <Badge className="bg-blue-500 text-white p-2">
                                                                     🏦 בנק מעוניין! האם אתה מעוניין?
                                                                 </Badge>
-                                                                <Button
-                                                                    onClick={() => handleInterest(m.id)}
-                                                                    disabled={actingOn === m.id}
-                                                                    className="bg-green-600 hover:bg-green-700"
-                                                                >
-                                                                    כן, מעוניין לסגור עסקה
-                                                                </Button>
+                                                                    <Button
+                                                                        onClick={() => handleInterestAndChat(m.id)}
+                                                                        disabled={actingOn === m.id}
+                                                                        className="bg-green-600 hover:bg-green-700"
+                                                                    >
+                                                                        אשר ועבור לצ'אט ←
+                                                                    </Button>
                                                                 <Button
                                                                     variant="outline"
                                                                     className="border-destructive text-destructive hover:bg-destructive/10"
@@ -265,6 +276,17 @@ const BankMatchesView = () => {
         else toast.success('התעניינות אושרה! תעודכן אם היועץ גם יסכים.');
     };
 
+    const handleInterestAndChat = async (matchId: string) => {
+        setActingOn(matchId);
+        const { error } = await expressInterest(matchId);
+        setActingOn(null);
+        if (error) {
+            toast.error(`שגיאה בשליחת אישור: ${error}`);
+        } else {
+            navigate(`/chat/${matchId}`);
+        }
+    };
+
     if (loading) return <div className="space-y-4"><Skeleton className="h-40 w-full" /></div>;
     if (error) return <div className="text-red-500 p-4 bg-red-50 rounded-lg">{error}</div>;
 
@@ -334,10 +356,10 @@ const BankMatchesView = () => {
                                 {m.banker_status === 'pending' && m.advisor_status === 'pending' && (
                                     <Button
                                         className="w-full shadow-md"
-                                        onClick={() => handleInterest(m.id)}
+                                        onClick={() => handleInterestAndChat(m.id)}
                                         disabled={actingOn === m.id}
                                     >
-                                        {actingOn === m.id ? 'מעדכן...' : 'רלוונטי לסניף!'}
+                                        {actingOn === m.id ? 'מעדכן...' : 'מעבר לצ\'אט ←'}
                                     </Button>
                                 )}
                                 {m.banker_status === 'interested' && m.advisor_status === 'pending' && (
