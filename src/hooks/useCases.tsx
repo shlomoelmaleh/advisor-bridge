@@ -26,7 +26,7 @@ export const useCases = (): UseCasesReturn => {
             return;
         }
 
-        setLoading(true);
+        if (cases.length === 0) setLoading(true);
         setError(null);
 
         let query = supabase

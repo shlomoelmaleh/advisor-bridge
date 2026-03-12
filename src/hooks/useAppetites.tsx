@@ -31,7 +31,7 @@ export const useAppetites = (): UseAppetitesReturn => {
             return;
         }
 
-        setLoading(true);
+        if (openCases.length === 0) setLoading(true);
         setError(null);
 
         try {

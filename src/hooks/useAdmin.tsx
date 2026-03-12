@@ -44,7 +44,7 @@ export const useAdmin = () => {
             return;
         }
 
-        setLoading(true);
+        if (allUsers.length === 0) setLoading(true);
         try {
             // 1. Fetch Users
             const { data: profiles, error: profilesError } = await supabase
