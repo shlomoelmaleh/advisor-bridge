@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth, Profile, UserRole } from '@/hooks/useAuth';
 import type { DbCase } from '@/types/cases';
@@ -28,6 +28,7 @@ export const useAdmin = () => {
         closedMatches: 0,
     });
     const [loading, setLoading] = useState(true);
+    const initialized = useRef(false);
 
     // UX guard only — actual authorization enforced by RLS policies (is_admin() SECURITY DEFINER function)
     const checkAdmin = () => {
@@ -44,7 +45,10 @@ export const useAdmin = () => {
             return;
         }
 
-        if (allUsers.length === 0) setLoading(true);
+        if (!initialized.current) {
+            setLoading(true);
+            initialized.current = true;
+        }
         try {
             // 1. Fetch Users
             const { data: profiles, error: profilesError } = await supabase

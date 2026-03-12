@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { DbCase, CreateCaseData, CasePriorities } from '@/types/cases';
@@ -18,6 +18,7 @@ export const useCases = (): UseCasesReturn => {
     const [cases, setCases] = useState<DbCase[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const initialized = useRef(false);
 
     const fetchCases = useCallback(async () => {
         if (!user || !profile) {
@@ -26,7 +27,10 @@ export const useCases = (): UseCasesReturn => {
             return;
         }
 
-        if (cases.length === 0) setLoading(true);
+        if (!initialized.current) {
+            setLoading(true);
+            initialized.current = true;
+        }
         setError(null);
 
         let query = supabase

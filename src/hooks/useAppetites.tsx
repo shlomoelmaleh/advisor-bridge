@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { BranchAppetite, UpsertAppetiteData } from '@/types/appetites';
@@ -21,6 +21,7 @@ export const useAppetites = (): UseAppetitesReturn => {
     const [openCases, setOpenCases] = useState<DbCase[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const initialized = useRef(false);
 
     const fetchAppetiteAndCases = useCallback(async () => {
         // Only bankers should fetch this data
@@ -31,7 +32,10 @@ export const useAppetites = (): UseAppetitesReturn => {
             return;
         }
 
-        if (openCases.length === 0) setLoading(true);
+        if (!initialized.current) {
+            setLoading(true);
+            initialized.current = true;
+        }
         setError(null);
 
         try {

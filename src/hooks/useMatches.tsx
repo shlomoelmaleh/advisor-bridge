@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { mapDatabaseError } from '@/lib/mapDatabaseError';
@@ -20,6 +20,7 @@ export const useMatches = (): UseMatchesReturn => {
     const [matches, setMatches] = useState<MatchWithDetails[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const initialized = useRef(false);
 
     const fetchMatches = useCallback(async () => {
         if (!user || !profile) {
@@ -28,7 +29,10 @@ export const useMatches = (): UseMatchesReturn => {
             return;
         }
 
-        if (matches.length === 0) setLoading(true);
+        if (!initialized.current) {
+            setLoading(true);
+            initialized.current = true;
+        }
         setError(null);
 
         try {
