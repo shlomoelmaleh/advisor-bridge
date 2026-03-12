@@ -18,7 +18,8 @@ import {
   ShieldCheck,
   Clock,
   ExternalLink,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppetites } from '@/hooks/useAppetites';
@@ -138,18 +139,27 @@ const BankDashboard = () => {
           </CardHeader>
           <CardContent>
             {myAppetite ? (
-              <div className="space-y-2 text-sm mt-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground font-medium flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4" /> LTV מקסימלי:
-                  </span>
-                  <span className="font-bold">{myAppetite.max_ltv}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground font-medium flex items-center gap-2">
-                    <Clock className="h-4 w-4" /> זמן תגובה (SLA):
-                  </span>
-                  <span className="font-bold">{myAppetite.sla_days} ימים</span>
+              <div className="space-y-4">
+                {myAppetite.is_approved && !myAppetite.is_active && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm font-medium flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    אות התיאבון שלך נדחה — ניתן להגדיר איתות חדש
+                  </div>
+                )}
+                
+                <div className="space-y-2 text-sm mt-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground font-medium flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" /> LTV מקסימלי:
+                    </span>
+                    <span className="font-bold">{myAppetite.max_ltv}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground font-medium flex items-center gap-2">
+                      <Clock className="h-4 w-4" /> זמן תגובה (SLA):
+                    </span>
+                    <span className="font-bold">{myAppetite.sla_days} ימים</span>
+                  </div>
                 </div>
               </div>
             ) : (
