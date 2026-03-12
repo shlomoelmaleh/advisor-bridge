@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -270,6 +270,12 @@ const AdvisorDashboard = () => {
   const { profile, profileState, user } = useAuth();
   const { cases, loading, error, refreshCases } = useCases();
   const [activeFilter, setActiveFilter] = useState('all');
+
+  useEffect(() => {
+    // Poll for updates (e.g., Admin approval or Banker interest) every 15 seconds
+    const interval = setInterval(refreshCases, 15000);
+    return () => clearInterval(interval);
+  }, [refreshCases]);
 
   const isReadOnly = profileState === 'pending' || profileState === 'missing';
 
