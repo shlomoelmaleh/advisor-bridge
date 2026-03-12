@@ -209,19 +209,25 @@ export const useAdmin = () => {
     const deleteUser = async (userId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
         try {
-            const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-            if (authError) {
-                console.error('Auth delete error:', authError);
-                throw authError;
+            const { data: { session } } = await supabase.auth.getSession();
+
+            const response = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session?.access_token}`,
+                    },
+                    body: JSON.stringify({ userId }),
+                }
+            );
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to delete user');
             }
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .delete()
-                .eq('user_id', userId);
-            if (profileError) {
-                console.error('Profile delete error:', profileError);
-                throw profileError;
-            }
+
             await fetchAll();
             return { error: null };
         } catch (err: unknown) {
