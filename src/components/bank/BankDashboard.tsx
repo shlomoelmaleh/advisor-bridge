@@ -29,7 +29,12 @@ import type { DbCase } from '@/types/cases';
 
 const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
 
-const AnonymousCaseRow: React.FC<{ c: DbCase; onExpress: (id: string) => void; submitting: string | null }> = ({ c, onExpress, submitting }) => (
+const AnonymousCaseRow: React.FC<{ 
+  c: DbCase; 
+  onExpress: (id: string) => void; 
+  submitting: string | null;
+  expressedCases: Set<string>;
+}> = ({ c, onExpress, submitting, expressedCases }) => (
   <div className="p-4 border rounded-lg hover:bg-accent transition-colors">
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
       <div className="space-y-1">
@@ -51,11 +56,13 @@ const AnonymousCaseRow: React.FC<{ c: DbCase; onExpress: (id: string) => void; s
         variant="ghost"
         size="sm"
         className="gap-1"
-        disabled={submitting === c.id}
+        disabled={submitting === c.id || expressedCases.has(c.id)}
         onClick={() => onExpress(c.id)}
       >
         {submitting === c.id ? (
           <><Loader2 className="h-4 w-4 animate-spin" /> שולח...</>
+        ) : expressedCases.has(c.id) ? (
+          <span className="text-green-600 font-medium">נשלח ✓</span>
         ) : (
           <>הצע התאמה<ArrowLeft className="h-4 w-4" /></>
         )}
@@ -68,6 +75,7 @@ const BankDashboard = () => {
   const { profile, profileState } = useAuth();
   const { myAppetite, openCases, loading, error } = useAppetites();
   const [submitting, setSubmitting] = useState<string | null>(null);
+  const [expressedCases, setExpressedCases] = useState<Set<string>>(new Set());
 
   const isReadOnly = profileState === 'pending' || profileState === 'missing';
 
@@ -75,8 +83,12 @@ const BankDashboard = () => {
     setSubmitting(caseId);
     const { error } = await supabase.rpc('express_interest_in_case', { p_case_id: caseId });
     setSubmitting(null);
-    if (error) toast.error('שגיאה בשליחת התעניינות');
-    else toast.success('התעניינות נשלחה ליועץ!');
+    if (error) {
+        toast.error('שגיאה בשליחת התעניינות');
+    } else {
+        toast.success('התעניינות נשלחה ליועץ!');
+        setExpressedCases(prev => new Set(prev).add(caseId));
+    }
   };
 
   if (loading) {
@@ -179,7 +191,13 @@ const BankDashboard = () => {
         ) : (
           <div className="grid grid-cols-1 gap-3">
             {openCases?.slice(0, 5).map(c => (
-              <AnonymousCaseRow key={c.id} c={c} onExpress={handleExpressInterest} submitting={submitting} />
+              <AnonymousCaseRow 
+                key={c.id} 
+                c={c} 
+                onExpress={handleExpressInterest} 
+                submitting={submitting} 
+                expressedCases={expressedCases}
+              />
             ))}
           </div>
         )}
