@@ -315,7 +315,7 @@ const AppetiteItem = ({ item, onUpdate, onDelete, isReadOnly }: {
     const [tempData, setTempData] = useState(item);
 
     return (
-        <Card className={`transition-all duration-300 hover:shadow-md ${!item.is_active ? 'opacity-70 grayscale-[50%]' : 'border-l-4 border-l-primary'}`}>
+        <Card className="transition-all duration-300 hover:shadow-md border-l-4 border-l-primary">
             <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -327,18 +327,14 @@ const AppetiteItem = ({ item, onUpdate, onDelete, isReadOnly }: {
                             <p className="text-xs text-muted-foreground">{item.bank_name}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium">{item.is_active ? 'פעיל' : 'מושהה'}</span>
-                            <Switch
-                                checked={item.is_active}
-                                onCheckedChange={(val) => onUpdate({ is_active: val })}
-                                disabled={isReadOnly}
-                            />
-                        </div>
-                        <Badge variant={item.is_approved ? "outline" : "secondary"} className="h-6">
-                            {item.is_approved ? "מאושר" : "בבדיקה"}
-                        </Badge>
+                    <div className="flex items-center gap-2">
+                        {!item.is_approved ? (
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">בבדיקה</Badge>
+                        ) : item.is_active ? (
+                            <Badge className="bg-green-100 text-green-800 border-green-200">פעיל</Badge>
+                        ) : (
+                            <Badge variant="destructive">נדחה</Badge>
+                        )}
                     </div>
                 </div>
             </CardHeader>

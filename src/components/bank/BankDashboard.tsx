@@ -122,12 +122,12 @@ const BankDashboard = () => {
             <div className="flex justify-between items-start">
               <Activity className="h-8 w-8 text-primary opacity-20" />
               {myAppetite ? (
-                !myAppetite.is_active ? (
-                  <Badge variant="secondary" className="bg-gray-100 text-gray-600">מושבת</Badge>
-                ) : myAppetite.is_approved ? (
-                  <Badge className="bg-green-500/10 text-green-600 border-green-200">פעיל ומאושר</Badge>
+                !myAppetite.is_approved ? (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">בבדיקה</Badge>
+                ) : myAppetite.is_active ? (
+                  <Badge className="bg-green-100 text-green-800 border-green-200">פעיל</Badge>
                 ) : (
-                  <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">ממתין לאישור Admin</Badge>
+                  <Badge variant="destructive">נדחה</Badge>
                 )
               ) : (
                 <Badge variant="secondary">אין אות פעיל</Badge>

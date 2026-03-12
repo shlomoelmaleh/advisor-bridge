@@ -354,17 +354,17 @@ const AdminDashboard = () => {
                                                         <Button
                                                             variant="outline"
                                                             className="flex-1 text-destructive hover:bg-destructive/10 border-destructive"
-                                                            onClick={() => handleAction(a.id, () => rejectAppetite(a.id), 'אות תיאבון נדחה')}
+                                                            onClick={() => handleAction(a.id, () => rejectAppetite(a.id), 'איתות התיאבון נדחה')}
                                                             disabled={actionLoading === a.id}
                                                         >
-                                                            <Ban className="h-4 w-4 mr-2" /> דחה אות
+                                                            <Ban className="h-4 w-4 mr-2" /> דחה
                                                         </Button>
                                                         <Button
                                                             className="flex-1 bg-green-600 hover:bg-green-700"
                                                             onClick={() => handleAction(a.id, () => approveAppetite(a.id), 'אות תיאבון נכנס לתוקף')}
                                                             disabled={actionLoading === a.id}
                                                         >
-                                                            <CheckCircle className="h-4 w-4 mr-2" /> אשר אות
+                                                            <CheckCircle className="h-4 w-4 mr-2" /> אשר
                                                         </Button>
                                                     </div>
                                                 </div>
