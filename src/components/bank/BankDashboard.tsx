@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -73,9 +73,15 @@ const AnonymousCaseRow: React.FC<{
 
 const BankDashboard = () => {
   const { profile, profileState } = useAuth();
-  const { myAppetite, openCases, loading, error } = useAppetites();
+  const { myAppetite, openCases, loading, error, refreshData } = useAppetites();
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [expressedCases, setExpressedCases] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Poll for updates (e.g., Admin approval or new anonymous cases) every 15 seconds
+    const interval = setInterval(refreshData, 15000);
+    return () => clearInterval(interval);
+  }, [refreshData]);
 
   const isReadOnly = profileState === 'pending' || profileState === 'missing';
 
