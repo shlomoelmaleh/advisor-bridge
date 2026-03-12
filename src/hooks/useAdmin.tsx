@@ -209,8 +209,19 @@ export const useAdmin = () => {
     const deleteUser = async (userId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
         try {
-            const { error } = await supabase.from('profiles').delete().eq('user_id', userId);
-            if (error) throw error;
+            const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+            if (authError) {
+                console.error('Auth delete error:', authError);
+                throw authError;
+            }
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .delete()
+                .eq('user_id', userId);
+            if (profileError) {
+                console.error('Profile delete error:', profileError);
+                throw profileError;
+            }
             await fetchAll();
             return { error: null };
         } catch (err: unknown) {
