@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Users, Briefcase, Activity, CheckCircle, Ban, RefreshCw, Trash2, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Users, Briefcase, Activity, CheckCircle, Ban, RefreshCw, Trash2, CheckCircle2, ShieldAlert, AlertCircle } from 'lucide-react';
 import type { UserRole } from '@/hooks/useAuth';
 import AppLayout from '@/components/layout/AppLayout';
 
@@ -294,6 +294,16 @@ const AdminDashboard = () => {
                                                         <p>סוג תעסוקה: {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
                                                         <p>אזור: {c.region}</p>
                                                         <p>הוגש ב: {new Date(c.created_at).toLocaleDateString()}</p>
+                                                        
+                                                        {c.resubmitted && c.admin_note && (
+                                                            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-md">
+                                                                <p className="font-semibold text-amber-800 dark:text-amber-500 mb-1 flex items-center gap-1">
+                                                                    <AlertCircle className="h-4 w-4" />
+                                                                    הערת יועץ (הגשה מחדש):
+                                                                </p>
+                                                                <p className="text-amber-900 dark:text-amber-400 whitespace-pre-wrap">{c.admin_note}</p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <Button

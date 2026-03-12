@@ -123,7 +123,9 @@ const CaseRow: React.FC<{ c: DbCase; onRefresh: () => Promise<void> }> = ({ c, o
         .update({
           status: 'open',
           is_approved: false,
-        })
+          resubmitted: true,
+          admin_note: adminNote || null,
+        } as any)
         .eq('id', c.id);
       if (error) throw error;
       toast.success('התיק הוגש מחדש בהצלחה');

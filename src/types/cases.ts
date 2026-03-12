@@ -25,6 +25,8 @@ export interface DbCase {
     last_matched_at?: string | null;
     is_anonymous?: boolean;
     is_approved?: boolean;
+    resubmitted?: boolean;
+    admin_note?: string | null;
 }
 
 /** Shape used when inserting a new case (advisor_id + status added by hook) */
