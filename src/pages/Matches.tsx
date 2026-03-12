@@ -356,24 +356,24 @@ const BankMatchesView = () => {
                                 {m.banker_status === 'pending' && m.advisor_status === 'pending' && (
                                     <Button
                                         className="w-full shadow-md"
-                                        onClick={() => handleInterestAndChat(m.id)}
+                                        onClick={() => handleInterest(m.id)}
                                         disabled={actingOn === m.id}
                                     >
-                                        {actingOn === m.id ? 'מעדכן...' : 'מעבר לצ\'אט ←'}
+                                        {actingOn === m.id ? 'מעדכן...' : 'הצע התאמה'}
                                     </Button>
                                 )}
                                 {m.banker_status === 'interested' && m.advisor_status === 'pending' && (
                                     <Button disabled className="w-full bg-amber-100 text-amber-800 cursor-not-allowed">
-                                        ממתין לאישור היועץ...
+                                        ממתין לאישור יועץ...
                                     </Button>
                                 )}
                                 {m.banker_status === 'pending' && m.advisor_status === 'interested' && (
                                     <Button
                                         className="w-full bg-blue-600 hover:bg-blue-700"
-                                        onClick={() => handleInterest(m.id)}
+                                        onClick={() => handleInterestAndChat(m.id)}
                                         disabled={actingOn === m.id}
                                     >
-                                        {actingOn === m.id ? 'מעדכן...' : 'אני מעוניין! ✓'}
+                                        {actingOn === m.id ? 'מעדכן...' : 'מעבר לצ\'אט ←'}
                                     </Button>
                                 )}
                                 {m.status === 'closed' && (
