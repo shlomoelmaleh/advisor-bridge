@@ -95,7 +95,7 @@ const AdvisorMatchesView = () => {
                 <div className="text-center py-12">אין לך עדיין תיקים. צור תיק כדי לקבל התאמות.</div>
             ) : (
                 <div className="space-y-8">
-                    {cases.map((c) => {
+                    {cases.filter(c => c.is_approved === true && c.status !== 'rejected').map((c) => {
                         const caseMatches = matchesByCaseId[c.id] || [];
                         return (
                             <Card key={c.id}>
