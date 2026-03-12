@@ -23,7 +23,7 @@ export interface DbMatch {
 export interface MatchWithDetails extends DbMatch {
     case: Pick<
         DbCase,
-        'advisor_id' | 'loan_amount_min' | 'loan_amount_max' | 'ltv' | 'borrower_type' | 'region' | 'status'
+        'advisor_id' | 'loan_amount_min' | 'loan_amount_max' | 'ltv' | 'borrower_type' | 'region' | 'status' | 'is_approved'
     >;
     appetite: Pick<
         BranchAppetite,

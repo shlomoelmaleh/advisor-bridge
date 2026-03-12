@@ -28,7 +28,7 @@ export const useMatches = (): UseMatchesReturn => {
             return;
         }
 
-        setLoading(true);
+        if (matches.length === 0) setLoading(true);
         setError(null);
 
         try {
