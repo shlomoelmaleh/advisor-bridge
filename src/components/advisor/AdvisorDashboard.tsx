@@ -140,7 +140,7 @@ const CaseRow: React.FC<{ c: DbCase; onRefresh: () => Promise<void> }> = ({ c, o
   };
 
   return (
-    <div className="p-4 border rounded-lg hover:bg-accent transition-colors card-highlight">
+    <div className="p-4 border rounded-lg hover:bg-accent transition-colors">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
