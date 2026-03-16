@@ -329,10 +329,16 @@ const BankMatchesView = () => {
                                     <ScoreBadge score={m.score} />
                                 </div>
                                 <CardTitle className="pt-2">
-                                    ₪{(m.case?.loan_amount_min / 1_000_000).toFixed(1)}M – ₪{(m.case?.loan_amount_max / 1_000_000).toFixed(1)}M
+                                    {m.case
+                                        ? `₪${(m.case.loan_amount_min / 1_000_000).toFixed(1)}M – ₪${(m.case.loan_amount_max / 1_000_000).toFixed(1)}M`
+                                        : `פנייה ישירה — ${m.appetite?.bank_name ?? 'בנק'}`
+                                    }
                                 </CardTitle>
                                 <CardDescription>
-                                    LTV: {m.case?.ltv}% • אזור מבוקש: {m.case?.region}
+                                    {m.case
+                                        ? `LTV: ${m.case.ltv}% • אזור מבוקש: ${m.case.region}`
+                                        : m.appetite?.branch_name ?? ''
+                                    }
                                 </CardDescription>
                             </CardHeader>
 
