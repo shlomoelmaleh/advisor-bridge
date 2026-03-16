@@ -291,7 +291,7 @@ const BankMatchesView = () => {
     if (error) return <div className="text-red-500 p-4 bg-red-50 rounded-lg">{error}</div>;
 
     const bestMatchPerCase = Object.values(
-        matches.reduce((acc, m) => {
+        matches.filter(m => m.case !== null && m.case !== undefined).reduce((acc, m) => {
             const key = m.case_id;
             if (!acc[key]) { acc[key] = m; return acc; }
             const current = acc[key];
