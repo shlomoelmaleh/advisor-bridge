@@ -15,9 +15,28 @@ Deno.serve(async (req) => {
 
   try {
     const payload = await req.json();
-    const record = payload.record ?? payload;
+    const newRecord = payload.record;
+    const oldRecord = payload.old_record;
 
-    if (!record.banker_id) {
+    // שלח אימייל אישור רק כשעבר מ-is_approved=false ל-is_approved=true
+    // וגם is_active=true (אישור אמיתי, לא דחייה)
+    const justApproved =
+      newRecord?.is_approved === true &&
+      newRecord?.is_active === true &&
+      (!oldRecord || oldRecord.is_approved !== true);
+
+    if (!justApproved) {
+      console.log("Skipped: not an approval event", {
+        newIsApproved: newRecord?.is_approved,
+        newIsActive: newRecord?.is_active,
+        oldIsApproved: oldRecord?.is_approved,
+      });
+      return new Response(JSON.stringify({ skipped: "not an approval event" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!newRecord.banker_id) {
       return new Response(JSON.stringify({ error: "Missing banker_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -26,8 +45,7 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Get banker email from auth
-    const { data: bankerAuth } = await supabaseAdmin.auth.admin.getUserById(record.banker_id);
+    const { data: bankerAuth } = await supabaseAdmin.auth.admin.getUserById(newRecord.banker_id);
 
     if (!bankerAuth?.user?.email) {
       console.error("Banker email not found");
@@ -37,31 +55,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Use bank_name and branch_name directly from the record
-    const bankName = record.bank_name ?? "בנק";
-    const branchName = record.branch_name ?? "";
+    const bankName = newRecord.bank_name ?? "בנק";
+    const branchName = newRecord.branch_name ?? "";
     const displayName = branchName ? `${bankName} - ${branchName}` : bankName;
-
-    const subject = `✅ אות התיאבון שלך אושר — ${displayName}`;
-
-    const html = `
-      <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a2e;">✅ אות תיאבון אושר!</h2>
-        <p style="font-size: 16px; color: #333;">
-          אות התיאבון של <strong>${displayName}</strong> אושר על ידי מנהל המערכת.
-        </p>
-        <p style="color: #555;">
-          מעכשיו, תיקים חדשים שתואמים את הקריטריונים שלך ייכנסו אוטומטית לרשימת ההתאמות שלך.
-        </p>
-        <div style="margin: 24px 0;">
-          <a href="https://advisor-bridge.lovable.app/bank/appetite"
-             style="background-color: #1a1a2e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
-            צפה בהגדרות התיאבון
-          </a>
-        </div>
-        <p style="font-size: 12px; color: #999;">הודעה זו נשלחה אוטומטית מ-BranchMatch</p>
-      </div>
-    `;
 
     const emailRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -72,8 +68,25 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: "BranchMatch <noreply@eshel-f.com>",
         to: [bankerAuth.user.email],
-        subject,
-        html,
+        subject: `✅ אות התיאבון שלך אושר — ${displayName}`,
+        html: `
+          <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #1a1a2e;">✅ אות תיאבון אושר!</h2>
+            <p style="font-size: 16px; color: #333;">
+              אות התיאבון של <strong>${displayName}</strong> אושר על ידי מנהל המערכת.
+            </p>
+            <p style="color: #555;">
+              מעכשיו, תיקים חדשים שתואמים את הקריטריונים שלך ייכנסו אוטומטית לרשימת ההתאמות שלך.
+            </p>
+            <div style="margin: 24px 0;">
+              <a href="https://advisor-bridge.lovable.app/bank/appetite"
+                 style="background-color: #1a1a2e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                צפה בהגדרות התיאבון
+              </a>
+            </div>
+            <p style="font-size: 12px; color: #999;">הודעה זו נשלחה אוטומטית מ-BranchMatch</p>
+          </div>
+        `,
       }),
     });
 
