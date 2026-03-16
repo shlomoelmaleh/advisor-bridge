@@ -24,15 +24,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     // Get banker email from auth
-    const { data: bankerAuth } = await supabaseAdmin.auth.admin.getUserById(
-      record.banker_id
-    );
+    const { data: bankerAuth } = await supabaseAdmin.auth.admin.getUserById(record.banker_id);
 
     if (!bankerAuth?.user?.email) {
       console.error("Banker email not found");
@@ -75,7 +70,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "MortgageBridge <onboarding@resend.dev>",
+        from: "BranchMatch <noreply@eshel-f.com>",
         to: [bankerAuth.user.email],
         subject,
         html,
