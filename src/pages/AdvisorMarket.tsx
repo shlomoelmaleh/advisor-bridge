@@ -16,13 +16,13 @@ import {
   Search,
   Users,
   TrendingUp,
+  Loader2,
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 
 interface AppetiteSignal {
   id: string;
   bank_name: string;
-  branch_name: string | null;
   appetite_level: string | null;
   min_loan_amount: number | null;
   max_ltv: number | null;
@@ -55,7 +55,7 @@ const AdvisorMarket = () => {
       try {
         const { data, error } = await supabase
           .from('branch_appetites')
-          .select('id, bank_name, branch_name, appetite_level, min_loan_amount, max_ltv, preferred_regions, preferred_borrower_types, sla_days, created_at')
+          .select('id, bank_name, appetite_level, min_loan_amount, max_ltv, preferred_regions, preferred_borrower_types, sla_days, created_at')
           .eq('is_approved', true)
           .eq('is_active', true)
           .order('created_at', { ascending: false });
@@ -106,6 +106,7 @@ const AdvisorMarket = () => {
 
 const AppetiteCard = ({ appetite }: { appetite: AppetiteSignal }) => {
   const navigate = useNavigate();
+  const [contacting, setContacting] = useState(false);
   const level = levelConfig[appetite.appetite_level ?? 'medium'] ?? levelConfig.medium;
   const regions = appetite.preferred_regions?.join(', ') || '—';
   const borrowerTypes = appetite.preferred_borrower_types
@@ -114,6 +115,23 @@ const AppetiteCard = ({ appetite }: { appetite: AppetiteSignal }) => {
   const minLoan = appetite.min_loan_amount
     ? `₪${(appetite.min_loan_amount / 1000).toLocaleString()}K`
     : '—';
+
+  const handleContact = async () => {
+    setContacting(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)('express_interest_in_appetite', {
+        p_appetite_id: appetite.id,
+      });
+      if (error) throw error;
+      // data is the new match UUID
+      navigate(`/chat/${data}`);
+    } catch (err: any) {
+      console.error('Error expressing interest:', err);
+      toast.error(err.message || 'שגיאה ביצירת קשר');
+    } finally {
+      setContacting(false);
+    }
+  };
 
   return (
     <Card className="hover:shadow-md transition-shadow border-r-4 border-r-primary overflow-hidden">
@@ -128,9 +146,6 @@ const AppetiteCard = ({ appetite }: { appetite: AppetiteSignal }) => {
       <CardContent className="space-y-4">
         <CardTitle className="text-xl font-bold">
           {appetite.bank_name}
-          {appetite.branch_name && (
-            <span className="text-base font-normal text-muted-foreground"> - {appetite.branch_name}</span>
-          )}
         </CardTitle>
 
         <div className="grid grid-cols-2 gap-4 pt-2">
@@ -175,10 +190,17 @@ const AppetiteCard = ({ appetite }: { appetite: AppetiteSignal }) => {
         <Button
           variant="default"
           className="w-full gap-2"
-          onClick={() => navigate(`/conversations?appetite=${appetite.id}`)}
+          onClick={handleContact}
+          disabled={contacting}
         >
-          צור קשר
-          <ChevronRight className="h-4 w-4 rotate-180" />
+          {contacting ? (
+            <><Loader2 className="h-4 w-4 animate-spin" /> יוצר קשר...</>
+          ) : (
+            <>
+              צור קשר
+              <ChevronRight className="h-4 w-4 rotate-180" />
+            </>
+          )}
         </Button>
       </CardFooter>
     </Card>

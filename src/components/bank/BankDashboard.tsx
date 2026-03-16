@@ -73,10 +73,26 @@ const AnonymousCaseRow: React.FC<{
 );
 
 const BankDashboard = () => {
-  const { profile, profileState } = useAuth();
+  const { user, profile, profileState } = useAuth();
   const { myAppetite, openCases, loading, error, refreshData } = useAppetites();
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [expressedCases, setExpressedCases] = useState<Set<string>>(new Set());
+
+  // Load already-expressed cases from DB on mount
+  useEffect(() => {
+    const loadExpressedCases = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('matches')
+        .select('case_id')
+        .eq('banker_id', user.id)
+        .eq('banker_status', 'interested');
+      if (data) {
+        setExpressedCases(new Set(data.map((m: any) => m.case_id).filter(Boolean)));
+      }
+    };
+    loadExpressedCases();
+  }, [user]);
 
   useEffect(() => {
     // Poll for updates (e.g., Admin approval or new anonymous cases) every 15 seconds
