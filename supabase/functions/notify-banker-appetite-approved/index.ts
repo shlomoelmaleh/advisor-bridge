@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
             צפה בהגדרות התיאבון
           </a>
         </div>
-        <p style="font-size: 12px; color: #999;">הודעה זו נשלחה אוטומטית מ-MortgageBridge</p>
+        <p style="font-size: 12px; color: #999;">הודעה זו נשלחה אוטומטית מ-BranchMatch</p>
       </div>
     `;
 

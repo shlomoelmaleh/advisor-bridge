@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
             הגש תיק חדש
           </a>
         </div>
-        <p style="font-size: 12px; color: #999;">הודעה זו נשלחה אוטומטית מ-MortgageBridge</p>
+        <p style="font-size: 12px; color: #999;">הודעה זו נשלחה אוטומטית מ-BranchMatch</p>
       </div>
     `;
 
