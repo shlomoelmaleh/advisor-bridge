@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
+
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -311,8 +311,7 @@ const AppetiteItem = ({ item, onUpdate, onDelete, isReadOnly }: {
     onDelete: () => void,
     isReadOnly: boolean
 }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [tempData, setTempData] = useState(item);
+
 
     return (
         <Card className="transition-all duration-300 hover:shadow-md border-l-4 border-l-primary">
@@ -339,113 +338,35 @@ const AppetiteItem = ({ item, onUpdate, onDelete, isReadOnly }: {
                 </div>
             </CardHeader>
             <CardContent>
-                {isEditing ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                        <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">LTV %</label>
-                            <Input
-                                type="number"
-                                value={tempData.max_ltv || ''}
-                                onChange={(e) => setTempData({ ...tempData, max_ltv: Number(e.target.value) })}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">מינימום (₪)</label>
-                            <Input
-                                type="number"
-                                value={tempData.min_loan_amount || ''}
-                                onChange={(e) => setTempData({ ...tempData, min_loan_amount: Number(e.target.value) })}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">SLA (ימים)</label>
-                            <Input
-                                type="number"
-                                value={tempData.sla_days || ''}
-                                onChange={(e) => setTempData({ ...tempData, sla_days: Number(e.target.value) })}
-                            />
-                        </div>
-                        <div className="sm:col-span-3 space-y-3 mt-2">
-                            <label className="text-sm font-medium">עדכון רמת תיאבון</label>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                {[
-                                    { id: 'low', label: 'נמוך', color: 'border-red-500 bg-red-50', icon: '🔴', desc: 'עמוס' },
-                                    { id: 'medium', label: 'בינוני', color: 'border-yellow-500 bg-yellow-50', icon: '🟡', desc: 'רגיל' },
-                                    { id: 'high', label: 'גבוה', color: 'border-green-500 bg-green-50', icon: '🟢', desc: 'רעב' }
-                                ].map((level) => (
-                                    <div
-                                        key={level.id}
-                                        onClick={() => setTempData({ ...tempData, appetite_level: level.id })}
-                                        className={`cursor-pointer border-2 rounded-lg p-3 transition-all flex flex-col items-center text-center gap-0.5 ${tempData.appetite_level === level.id ? `${level.color} scale-[1.03]` : 'border-muted bg-card opacity-60'
-                                            }`}
-                                    >
-                                        <span className="text-base">{level.icon}</span>
-                                        <span className="text-xs font-bold">{level.label}</span>
-                                        <span className="text-[10px] opacity-70">{level.desc}</span>
-                                    </div>
-                                ))}
-                            </div>
+                <div className="grid grid-cols-3 gap-4 mt-2">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">מקסימום LTV</span>
+                        <div className="flex items-center gap-1.5 font-semibold">
+                            <ShieldCheck className="h-3.5 w-3.5 text-primary/60" />
+                            {item.max_ltv}%
                         </div>
                     </div>
-                ) : (
-                    <div className="grid grid-cols-3 gap-4 mt-2">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">מקסימום LTV</span>
-                            <div className="flex items-center gap-1.5 font-semibold">
-                                <ShieldCheck className="h-3.5 w-3.5 text-primary/60" />
-                                {item.max_ltv}%
-                            </div>
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">מימון מינימלי</span>
-                            <div className="flex items-center gap-1.5 font-semibold">
-                                <DollarSign className="h-3.5 w-3.5 text-primary/60" />
-                                ₪{item.min_loan_amount?.toLocaleString()}
-                            </div>
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">זמן תגובה (SLA)</span>
-                            <div className="flex items-center gap-1.5 font-semibold">
-                                <Clock className="h-3.5 w-3.5 text-primary/60" />
-                                {item.sla_days} ימים
-                            </div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">מימון מינימלי</span>
+                        <div className="flex items-center gap-1.5 font-semibold">
+                            <DollarSign className="h-3.5 w-3.5 text-primary/60" />
+                            ₪{item.min_loan_amount?.toLocaleString()}
                         </div>
                     </div>
-                )}
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">זמן תגובה (SLA)</span>
+                        <div className="flex items-center gap-1.5 font-semibold">
+                            <Clock className="h-3.5 w-3.5 text-primary/60" />
+                            {item.sla_days} ימים
+                        </div>
+                    </div>
+                </div>
             </CardContent>
             <CardFooter className="pt-2 border-t mt-4 flex justify-between items-center bg-muted/10 py-3">
                 <div className="text-[10px] text-muted-foreground">
                     עודכן לאחרונה: {new Date().toLocaleDateString('he-IL')}
                 </div>
                 <div className="flex items-center gap-2">
-                    {isEditing ? (
-                        <>
-                            <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>ביטול</Button>
-                            <Button size="sm" onClick={() => {
-                                const result = appetiteSchema.safeParse({
-                                    bank_name: tempData.bank_name,
-                                    branch_name: tempData.branch_name,
-                                    appetite_level: tempData.appetite_level,
-                                    max_ltv: tempData.max_ltv ?? 0,
-                                    min_loan_amount: tempData.min_loan_amount ?? 0,
-                                    sla_days: tempData.sla_days ?? 1,
-                                    preferred_borrower_types: tempData.preferred_borrower_types ?? [],
-                                    preferred_regions: tempData.preferred_regions ?? [],
-                                    valid_until: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
-                                });
-                                if (!result.success) {
-                                    toast.error(result.error.errors[0]?.message || 'נתונים לא תקינים');
-                                    return;
-                                }
-                                onUpdate(tempData);
-                                setIsEditing(false);
-                            }}>
-                                <Save className="h-3.5 w-3.5" />
-                                שמור
-                            </Button>
-                        </>
-                    ) : (
-                        <>
                             <Button
                                 size="sm"
                                 variant="ghost"
@@ -457,16 +378,6 @@ const AppetiteItem = ({ item, onUpdate, onDelete, isReadOnly }: {
                             >
                                 <Trash2 className="h-3.5 w-3.5" />
                             </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setIsEditing(true)}
-                                disabled={isReadOnly}
-                            >
-                                ערוך
-                            </Button>
-                        </>
-                    )}
                 </div>
             </CardFooter>
         </Card>

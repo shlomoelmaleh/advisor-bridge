@@ -175,9 +175,9 @@ const AppetiteCard = ({ appetite }: { appetite: AppetiteSignal }) => {
         <Button
           variant="default"
           className="w-full gap-2"
-          onClick={() => navigate(`/advisor/submit-case?appetite=${appetite.id}`)}
+          onClick={() => navigate(`/conversations?appetite=${appetite.id}`)}
         >
-          הגש תיק לסניף זה
+          צור קשר
           <ChevronRight className="h-4 w-4 rotate-180" />
         </Button>
       </CardFooter>
