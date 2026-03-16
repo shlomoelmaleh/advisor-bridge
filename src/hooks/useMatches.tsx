@@ -40,7 +40,7 @@ export const useMatches = (): UseMatchesReturn => {
                 .from('matches')
                 .select(`
           *,
-          case:cases (
+          case:cases!left (
             advisor_id,
             loan_amount_min,
             loan_amount_max,
@@ -77,11 +77,16 @@ export const useMatches = (): UseMatchesReturn => {
 
             // UX filter only — actual access enforced by RLS "Match participants see matches" policy
             if (profile.role === 'advisor') {
-                filteredData = filteredData.filter((m) => 
-                    m.case?.advisor_id === user.id &&
-                    m.case?.status !== 'rejected' &&
-                    m.case?.is_approved === true
-                );
+                filteredData = filteredData.filter((m) => {
+                    if (m.case === null || m.case === undefined) {
+                        return (m as any).advisor_id === user.id;
+                    }
+                    return (
+                        m.case?.advisor_id === user.id &&
+                        m.case?.status !== 'rejected' &&
+                        m.case?.is_approved === true
+                    );
+                });
             } else if (profile.role === 'bank') {
                 filteredData = filteredData.filter(
                     (m) =>

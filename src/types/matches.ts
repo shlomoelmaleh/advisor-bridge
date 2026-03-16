@@ -9,6 +9,7 @@ export interface DbMatch {
     case_id: string;
     appetite_id: string | null;
     banker_id: string | null;
+    advisor_id: string | null;
     score: number;
     status: MatchStatus;
     advisor_status: 'pending' | 'interested' | 'rejected';

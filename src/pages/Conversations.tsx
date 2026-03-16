@@ -19,7 +19,7 @@ const Conversations = () => {
 
     const closedMatches = useMemo(() =>
         matches
-            .filter(m => m.status === 'closed')
+            .filter(m => m.status === 'closed' || (isAdvisor && !m.case_id))
             .sort((a, b) => {
                 const unreadA = unreadCounts[a.id] || 0;
                 const unreadB = unreadCounts[b.id] || 0;
@@ -33,11 +33,11 @@ const Conversations = () => {
     );
 
     useEffect(() => {
-        const closed = matches.filter(m => m.status === 'closed');
-        if (closed.length === 0) return;
+        const activeMatches = matches.filter(m => m.status === 'closed' || (isAdvisor && !m.case_id));
+        if (activeMatches.length === 0) return;
         const fetchCounts = async () => {
             const counts: Record<string, number> = {};
-            for (const match of closed) {
+            for (const match of activeMatches) {
                 counts[match.id] = await getUnreadCount(match.id);
             }
             setUnreadCounts(counts);
@@ -127,9 +127,15 @@ const ConversationCard = ({ match, isAdvisor, unreadCount, onClick }: {
 
                     <div className="text-sm text-muted-foreground space-y-0.5">
                         {isAdvisor ? (
-                            <p>
-                                ₪{((match.case?.loan_amount_min ?? 0) / 1_000).toLocaleString()}K – ₪{((match.case?.loan_amount_max ?? 0) / 1_000).toLocaleString()}K | LTV {match.case?.ltv ?? 0}%
-                            </p>
+                            match.case_id ? (
+                                <p>
+                                    ₪{((match.case?.loan_amount_min ?? 0) / 1_000).toLocaleString()}K – ₪{((match.case?.loan_amount_max ?? 0) / 1_000).toLocaleString()}K | LTV {match.case?.ltv ?? 0}%
+                                </p>
+                            ) : (
+                                <p className="text-amber-600 font-medium">
+                                    {match.status === 'pending' ? 'ממתין לתשובת בנקאי...' : 'פנייה ישירה שאושרה'}
+                                </p>
+                            )
                         ) : (
                             <p>
                                 LTV {match.case?.ltv ?? 0}% | אזור: {match.case?.region ?? ''} | {match.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
