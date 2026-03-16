@@ -24,10 +24,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     // Get the case to find the advisor
     const { data: caseData, error: caseError } = await supabaseAdmin
@@ -45,9 +42,7 @@ Deno.serve(async (req) => {
     }
 
     // Get advisor profile (email from auth.users)
-    const { data: advisorAuth } = await supabaseAdmin.auth.admin.getUserById(
-      caseData.advisor_id
-    );
+    const { data: advisorAuth } = await supabaseAdmin.auth.admin.getUserById(caseData.advisor_id);
 
     if (!advisorAuth?.user?.email) {
       console.error("Advisor email not found");
@@ -112,7 +107,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "MortgageBridge <onboarding@resend.dev>",
+        from: "BranchMatch <noreply@eshel-f.com>",
         to: [advisorAuth.user.email],
         subject,
         html,
