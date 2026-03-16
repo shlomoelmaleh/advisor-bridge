@@ -1,16 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import {
-  Menu,
-  User,
-  LogOut,
-  Home,
-  AlertCircle,
-  Clock,
-  Settings,
-} from 'lucide-react';
-import ProfileUpdateDialog from '@/components/auth/ProfileUpdateDialog';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Menu, User, LogOut, Home, AlertCircle, Clock, Settings } from "lucide-react";
+import ProfileUpdateDialog from "@/components/auth/ProfileUpdateDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +10,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -33,7 +25,7 @@ const Navbar = () => {
   const [newBankMatchesCount, setNewBankMatchesCount] = useState(0);
   const [approvedAppetiteCount, setApprovedAppetiteCount] = useState(0);
   const [lastSeenAppetiteTime, setLastSeenAppetiteTime] = useState<string>(
-    () => localStorage.getItem('last_seen_appetite') ?? new Date(0).toISOString()
+    () => localStorage.getItem("last_seen_appetite") ?? new Date(0).toISOString(),
   );
 
   useEffect(() => {
@@ -41,14 +33,14 @@ const Navbar = () => {
       if (!user?.id) return;
 
       const { count } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .neq('sender_id', user.id)
-        .is('read_at', null);
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .neq("sender_id", user.id)
+        .is("read_at", null);
       setTotalUnread(count ?? 0);
     };
 
-    if (!user?.id || roleState === 'unknown') return;
+    if (!user?.id || roleState === "unknown") return;
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
@@ -56,19 +48,18 @@ const Navbar = () => {
 
   useEffect(() => {
     const fetchAdminPending = async () => {
-      if (roleState !== 'admin') return;
+      if (roleState !== "admin") return;
 
-      const [{ count: pendingUsers }, { count: pendingCases }, { count: pendingAppetites }] =
-        await Promise.all([
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_approved', false),
-          supabase.from('cases').select('*', { count: 'exact', head: true }).eq('is_approved', false),
-          supabase.from('branch_appetites').select('*', { count: 'exact', head: true }).eq('is_approved', false)
-        ]);
+      const [{ count: pendingUsers }, { count: pendingCases }, { count: pendingAppetites }] = await Promise.all([
+        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("is_approved", false),
+        supabase.from("cases").select("*", { count: "exact", head: true }).eq("is_approved", false),
+        supabase.from("branch_appetites").select("*", { count: "exact", head: true }).eq("is_approved", false),
+      ]);
 
       setAdminPendingCount((pendingUsers ?? 0) + (pendingCases ?? 0) + (pendingAppetites ?? 0));
     };
 
-    if (roleState !== 'admin') return;
+    if (roleState !== "admin") return;
     fetchAdminPending();
     const interval = setInterval(fetchAdminPending, 30000);
     return () => clearInterval(interval);
@@ -76,24 +67,26 @@ const Navbar = () => {
 
   useEffect(() => {
     const fetchNewMatches = async () => {
-      if (roleState !== 'advisor' || !user?.id) return;
+      if (roleState !== "advisor" || !user?.id) return;
 
-      const { data: advisorCases } = await supabase
-        .from('cases').select('id').eq('advisor_id', user.id);
-      const caseIds = (advisorCases ?? []).map(c => c.id);
-      if (caseIds.length === 0) { setNewMatchesCount(0); return; }
+      const { data: advisorCases } = await supabase.from("cases").select("id").eq("advisor_id", user.id);
+      const caseIds = (advisorCases ?? []).map((c) => c.id);
+      if (caseIds.length === 0) {
+        setNewMatchesCount(0);
+        return;
+      }
 
       const { count } = await supabase
-        .from('matches')
-        .select('*', { count: 'exact', head: true })
-        .in('case_id', caseIds)
-        .eq('advisor_status', 'pending')
-        .eq('banker_status', 'interested');
+        .from("matches")
+        .select("*", { count: "exact", head: true })
+        .in("case_id", caseIds)
+        .eq("advisor_status", "pending")
+        .eq("banker_status", "interested");
 
       setNewMatchesCount(count ?? 0);
     };
 
-    if (roleState !== 'advisor') return;
+    if (roleState !== "advisor") return;
     fetchNewMatches();
     const interval = setInterval(fetchNewMatches, 30000);
     return () => clearInterval(interval);
@@ -101,19 +94,19 @@ const Navbar = () => {
 
   useEffect(() => {
     const fetchApprovedAppetites = async () => {
-      if (roleState !== 'bank' || !user?.id) return;
+      if (roleState !== "bank" || !user?.id) return;
 
       const { count } = await supabase
-        .from('branch_appetites')
-        .select('*', { count: 'exact', head: true })
-        .eq('banker_id', user.id)
-        .eq('is_approved', true)
-        .gt('created_at', lastSeenAppetiteTime);
+        .from("branch_appetites")
+        .select("*", { count: "exact", head: true })
+        .eq("banker_id", user.id)
+        .eq("is_approved", true)
+        .gt("created_at", lastSeenAppetiteTime);
 
       setApprovedAppetiteCount(count ?? 0);
     };
 
-    if (roleState !== 'bank') return;
+    if (roleState !== "bank") return;
     fetchApprovedAppetites();
     const interval = setInterval(fetchApprovedAppetites, 30000);
     return () => clearInterval(interval);
@@ -121,25 +114,25 @@ const Navbar = () => {
 
   useEffect(() => {
     const fetchBankMatches = async () => {
-      if (roleState !== 'bank' || !user?.id) return;
-      const lastSeen = localStorage.getItem('last_seen_matches') ?? new Date(0).toISOString();
+      if (roleState !== "bank" || !user?.id) return;
+      const lastSeen = localStorage.getItem("last_seen_matches") ?? new Date(0).toISOString();
 
       const { count: newCount } = await supabase
-        .from('matches')
-        .select('*', { count: 'exact', head: true })
-        .eq('banker_id', user.id)
-        .gt('created_at', lastSeen);
+        .from("matches")
+        .select("*", { count: "exact", head: true })
+        .eq("banker_id", user.id)
+        .gt("created_at", lastSeen);
 
       const { count: closedCount } = await supabase
-        .from('matches')
-        .select('*', { count: 'exact', head: true })
-        .eq('banker_id', user.id)
-        .eq('status', 'closed')
-        .gt('created_at', lastSeen);
+        .from("matches")
+        .select("*", { count: "exact", head: true })
+        .eq("banker_id", user.id)
+        .eq("status", "closed")
+        .gt("created_at", lastSeen);
 
       setNewBankMatchesCount((newCount ?? 0) + (closedCount ?? 0));
     };
-    if (roleState !== 'bank') return;
+    if (roleState !== "bank") return;
     fetchBankMatches();
     const interval = setInterval(fetchBankMatches, 30000);
     return () => clearInterval(interval);
@@ -147,57 +140,63 @@ const Navbar = () => {
 
   const handleAppetiteClick = () => {
     const now = new Date().toISOString();
-    localStorage.setItem('last_seen_appetite', now);
+    localStorage.setItem("last_seen_appetite", now);
     setLastSeenAppetiteTime(now);
     setApprovedAppetiteCount(0);
   };
 
   const handleMatchesClick = () => {
-    localStorage.setItem('last_seen_matches', new Date().toISOString());
+    localStorage.setItem("last_seen_matches", new Date().toISOString());
     setNewBankMatchesCount(0);
   };
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/');
+    navigate("/");
   };
 
   const getDashboardPath = () => {
-    if (roleState === 'advisor') return '/advisor/dashboard';
-    if (roleState === 'bank') return '/bank/dashboard';
-    if (roleState === 'admin') return '/admin/dashboard';
-    return '/';
+    if (roleState === "advisor") return "/advisor/dashboard";
+    if (roleState === "bank") return "/bank/dashboard";
+    if (roleState === "admin") return "/admin/dashboard";
+    return "/";
   };
 
   const renderStatusBanner = () => {
-    if (sessionState !== 'has-session') return null;
+    if (sessionState !== "has-session") return null;
 
-    if (profileState === 'missing') {
+    if (profileState === "missing") {
       return (
         <div className="bg-amber-50 border-b border-amber-200 py-2 px-4 flex items-center justify-center gap-2 text-amber-800 text-sm font-medium animate-in fade-in slide-in-from-top-4">
           <AlertCircle className="h-4 w-4" />
           <span>הפרופיל שלך טרם הוקם. פונקציות מסוימות עשויות להיות מוגבלות.</span>
-          <button onClick={() => reFetchProfile()} className="underline ml-2 hover:text-amber-900">בדוק עכשיו</button>
+          <button onClick={() => reFetchProfile()} className="underline ml-2 hover:text-amber-900">
+            בדוק עכשיו
+          </button>
         </div>
       );
     }
 
-    if (profileState === 'pending') {
+    if (profileState === "pending") {
       return (
         <div className="bg-blue-50 border-b border-blue-200 py-2 px-4 flex items-center justify-center gap-2 text-blue-800 text-sm font-medium animate-in fade-in slide-in-from-top-4">
           <Clock className="h-4 w-4" />
           <span>החשבון שלך ממתין לאישור מנהל. תוכל לצפות בנתונים אך לא לבצע פעולות חדשות.</span>
-          <button onClick={() => reFetchProfile()} className="underline ml-2 hover:text-blue-900">רענן סטטוס</button>
+          <button onClick={() => reFetchProfile()} className="underline ml-2 hover:text-blue-900">
+            רענן סטטוס
+          </button>
         </div>
       );
     }
 
-    if (profileState === 'error') {
+    if (profileState === "error") {
       return (
         <div className="bg-red-50 border-b border-red-200 py-2 px-4 flex items-center justify-center gap-2 text-red-800 text-sm font-medium animate-in fade-in slide-in-from-top-4">
           <AlertCircle className="h-4 w-4" />
           <span>שגיאה בטעינת נתוני הפרופיל.</span>
-          <button onClick={() => reFetchProfile()} className="underline ml-2 hover:text-red-900">נסה שוב</button>
+          <button onClick={() => reFetchProfile()} className="underline ml-2 hover:text-red-900">
+            נסה שוב
+          </button>
         </div>
       );
     }
@@ -208,60 +207,60 @@ const Navbar = () => {
   return (
     <>
       {renderStatusBanner()}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60 text-right" dir="rtl">
+      <header
+        className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60 text-right"
+        dir="rtl"
+      >
         <div className="container flex h-16 items-center px-4 sm:px-8">
           <Link to="/" className="flex items-center space-x-2 space-x-reverse ml-4">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">MB</span>
             </div>
-            <span className="font-semibold text-lg hidden sm:inline-block">MortgageBridge</span>
+            <span className="font-semibold text-lg hidden sm:inline-block">BranchMatch‏</span>
           </Link>
 
           {/* Mobile menu button */}
-          <button
-            className="mr-auto md:hidden"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
+          <button className="mr-auto md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             <Menu className="h-6 w-6" />
           </button>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex md:items-center md:space-x-4 md:space-x-reverse md:mr-auto">
-            {sessionState === 'has-session' ? (
+            {sessionState === "has-session" ? (
               <>
                 <Link
                   to={getDashboardPath()}
                   className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                 >
-                  {roleState === 'admin' ? 'לוח בקרה' : 'דאשבורד'}
-                  {roleState === 'admin' && adminPendingCount > 0 && (
+                  {roleState === "admin" ? "לוח בקרה" : "דאשבורד"}
+                  {roleState === "admin" && adminPendingCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                      {adminPendingCount > 9 ? '9+' : adminPendingCount}
+                      {adminPendingCount > 9 ? "9+" : adminPendingCount}
                     </span>
                   )}
                 </Link>
 
-                {roleState !== 'admin' && (
+                {roleState !== "admin" && (
                   <Link
                     to="/matches"
                     className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
-                    onClick={roleState === 'bank' ? handleMatchesClick : undefined}
+                    onClick={roleState === "bank" ? handleMatchesClick : undefined}
                   >
                     התאמות
-                    {roleState === 'advisor' && newMatchesCount > 0 && (
+                    {roleState === "advisor" && newMatchesCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                        {newMatchesCount > 9 ? '9+' : newMatchesCount}
+                        {newMatchesCount > 9 ? "9+" : newMatchesCount}
                       </span>
                     )}
-                    {roleState === 'bank' && newBankMatchesCount > 0 && (
+                    {roleState === "bank" && newBankMatchesCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                        {newBankMatchesCount > 9 ? '9+' : newBankMatchesCount}
+                        {newBankMatchesCount > 9 ? "9+" : newBankMatchesCount}
                       </span>
                     )}
                   </Link>
                 )}
 
-                {roleState === 'advisor' && (
+                {roleState === "advisor" && (
                   <>
                     <Link
                       to="/advisor/submit-case"
@@ -282,14 +281,14 @@ const Navbar = () => {
                       שיחות
                       {totalUnread > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                          {totalUnread > 9 ? '9+' : totalUnread}
+                          {totalUnread > 9 ? "9+" : totalUnread}
                         </span>
                       )}
                     </Link>
                   </>
                 )}
 
-                {roleState === 'bank' && (
+                {roleState === "bank" && (
                   <>
                     <Link
                       to="/bank/market"
@@ -316,7 +315,7 @@ const Navbar = () => {
                       שיחות
                       {totalUnread > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                          {totalUnread > 9 ? '9+' : totalUnread}
+                          {totalUnread > 9 ? "9+" : totalUnread}
                         </span>
                       )}
                     </Link>
@@ -337,7 +336,7 @@ const Navbar = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="text-right">
-                    <DropdownMenuLabel>{profile?.full_name ?? 'משתמש'}</DropdownMenuLabel>
+                    <DropdownMenuLabel>{profile?.full_name ?? "משתמש"}</DropdownMenuLabel>
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                       {user?.email}
                     </DropdownMenuLabel>
@@ -352,7 +351,10 @@ const Navbar = () => {
                       <span>עדכון פרטים</span>
                       <Settings className="ml-2 h-4 w-4 text-muted-foreground" />
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLogout} className="justify-end cursor-pointer text-red-600 focus:text-red-600">
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="justify-end cursor-pointer text-red-600 focus:text-red-600"
+                    >
                       <span>התנתקות</span>
                       <LogOut className="ml-2 h-4 w-4" />
                     </DropdownMenuItem>
@@ -378,46 +380,46 @@ const Navbar = () => {
           {isMobileMenuOpen && (
             <div className="absolute top-16 left-0 right-0 p-4 bg-background border-b shadow-lg md:hidden animate-in slide-in-from-top-4 duration-200">
               <nav className="flex flex-col space-y-3 text-right">
-                {sessionState === 'has-session' ? (
+                {sessionState === "has-session" ? (
                   <>
                     <Link
                       to={getDashboardPath()}
                       className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      {roleState === 'admin' ? 'לוח בקרה' : 'דאשבורד'}
-                      {roleState === 'admin' && adminPendingCount > 0 && (
+                      {roleState === "admin" ? "לוח בקרה" : "דאשבורד"}
+                      {roleState === "admin" && adminPendingCount > 0 && (
                         <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                          {adminPendingCount > 9 ? '9+' : adminPendingCount}
+                          {adminPendingCount > 9 ? "9+" : adminPendingCount}
                         </span>
                       )}
                       <Home className="ml-2 h-4 w-4" />
                     </Link>
 
-                    {roleState !== 'admin' && (
+                    {roleState !== "admin" && (
                       <Link
                         to="/matches"
                         className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
                         onClick={() => {
                           setIsMobileMenuOpen(false);
-                          if (roleState === 'bank') handleMatchesClick();
+                          if (roleState === "bank") handleMatchesClick();
                         }}
                       >
                         התאמות
-                        {roleState === 'advisor' && newMatchesCount > 0 && (
+                        {roleState === "advisor" && newMatchesCount > 0 && (
                           <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                            {newMatchesCount > 9 ? '9+' : newMatchesCount}
+                            {newMatchesCount > 9 ? "9+" : newMatchesCount}
                           </span>
                         )}
-                        {roleState === 'bank' && newBankMatchesCount > 0 && (
+                        {roleState === "bank" && newBankMatchesCount > 0 && (
                           <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                            {newBankMatchesCount > 9 ? '9+' : newBankMatchesCount}
+                            {newBankMatchesCount > 9 ? "9+" : newBankMatchesCount}
                           </span>
                         )}
                       </Link>
                     )}
 
-                    {roleState === 'advisor' && (
+                    {roleState === "advisor" && (
                       <>
                         <Link
                           to="/advisor/submit-case"
@@ -441,14 +443,14 @@ const Navbar = () => {
                           שיחות
                           {totalUnread > 0 && (
                             <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                              {totalUnread > 9 ? '9+' : totalUnread}
+                              {totalUnread > 9 ? "9+" : totalUnread}
                             </span>
                           )}
                         </Link>
                       </>
                     )}
 
-                    {roleState === 'bank' && (
+                    {roleState === "bank" && (
                       <>
                         <Link
                           to="/bank/market"
@@ -480,7 +482,7 @@ const Navbar = () => {
                           שיחות
                           {totalUnread > 0 && (
                             <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                              {totalUnread > 9 ? '9+' : totalUnread}
+                              {totalUnread > 9 ? "9+" : totalUnread}
                             </span>
                           )}
                         </Link>

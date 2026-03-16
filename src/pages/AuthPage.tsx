@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import AuthForm from '@/components/auth/AuthForm';
-import { useAuth, getHomePathByRole } from '@/hooks/useAuth';
-import { SESSION_REDIRECT_KEY } from '@/components/auth/ProtectedRoute';
-import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import AuthForm from "@/components/auth/AuthForm";
+import { useAuth, getHomePathByRole } from "@/hooks/useAuth";
+import { SESSION_REDIRECT_KEY } from "@/components/auth/ProtectedRoute";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
 
 interface AuthPageProps {
-  defaultTab?: 'login' | 'register';
+  defaultTab?: "login" | "register";
 }
 
-const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
+const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = "login" }) => {
   const { sessionState, roleState, roleFinal, roleSource, user, signOut } = useAuth();
   const [isSwitching, setIsSwitching] = useState(false);
   const navigate = useNavigate();
@@ -19,11 +19,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
   // advisor/bank: roleFinal as soon as jwt-optimistic is set
   // admin: roleFinal only after DB/allowlist confirms
   useEffect(() => {
-    const isAdminRole = roleState === 'admin';
-    const canNavigate = sessionState === 'has-session' &&
-      roleFinal &&
-      !isSwitching &&
-      (!isAdminRole || roleSource !== 'jwt-optimistic');
+    const isAdminRole = roleState === "admin";
+    const canNavigate =
+      sessionState === "has-session" && roleFinal && !isSwitching && (!isAdminRole || roleSource !== "jwt-optimistic");
 
     if (canNavigate) {
       // Consume the stored post-login redirect if valid
@@ -31,7 +29,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
       sessionStorage.removeItem(SESSION_REDIRECT_KEY);
 
       // Only use stored path if it's a proper path (not root)
-      const dest = (stored && stored !== '/') ? stored : getHomePathByRole(roleState);
+      const dest = stored && stored !== "/" ? stored : getHomePathByRole(roleState);
       console.log(`[Nav] post-login redirect → ${dest} (role=${roleState} roleFinal=${roleFinal})`);
       navigate(dest, { replace: true });
     }
@@ -45,7 +43,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
   };
 
   // ── Session exists ────────────────────────────────────────────────────────
-  if (sessionState === 'has-session' && !isSwitching) {
+  if (sessionState === "has-session" && !isSwitching) {
     // Ready to navigate → brief spinner (useEffect fires immediately)
     if (roleFinal) {
       return (
@@ -93,7 +91,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = 'login' }) => {
             </div>
           </div>
           <h1 className="mt-6 text-3xl font-extrabold text-foreground text-right" dir="rtl">
-            MortgageBridge
+            BranchMatch‏
           </h1>
           <p className="mt-2 text-sm text-muted-foreground text-right" dir="rtl">
             פלטפורמת התיווך למשכנתאות
