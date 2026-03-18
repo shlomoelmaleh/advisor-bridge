@@ -287,21 +287,22 @@ const AdminDashboard = () => {
                                         <div className="space-y-4">
                                             {pendingCases.map(c => (
                                                 <div key={c.id} className="p-4 border rounded-lg bg-card text-sm text-right">
-                                                    <div className="font-bold whitespace-nowrap overflow-hidden text-ellipsis mb-2">
-                                                        ₪{(c.loan_amount_min / 1_000_000).toFixed(1)}M - ₪{(c.loan_amount_max / 1_000_000).toFixed(1)}M | LTV {c.ltv}%
+                                                    <div className="font-bold mb-2 flex flex-wrap items-center gap-2">
+                                                        <span>₪{(c.loan_amount_min / 1_000_000).toFixed(1)}M - ₪{(c.loan_amount_max / 1_000_000).toFixed(1)}M | LTV {c.ltv}%</span>
+                                                        {c.resubmitted && <Badge className="bg-amber-500 hover:bg-amber-600 text-white mr-2">הוגש מחדש</Badge>}
                                                     </div>
                                                     <div className="text-muted-foreground mb-4">
                                                         <p>סוג תעסוקה: {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
                                                         <p>אזור: {c.region}</p>
                                                         <p>הוגש ב: {new Date(c.created_at).toLocaleDateString()}</p>
                                                         
-                                                        {c.resubmitted && c.admin_note && (
+                                                        {c.resubmitted && (
                                                             <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-md">
                                                                 <p className="font-semibold text-amber-800 dark:text-amber-500 mb-1 flex items-center gap-1">
                                                                     <AlertCircle className="h-4 w-4" />
                                                                     הערת יועץ (הגשה מחדש):
                                                                 </p>
-                                                                <p className="text-amber-900 dark:text-amber-400 whitespace-pre-wrap">{c.admin_note}</p>
+                                                                <p className="text-amber-900 dark:text-amber-400 whitespace-pre-wrap">{c.admin_note || "ללא הערה נוספת."}</p>
                                                             </div>
                                                         )}
                                                     </div>

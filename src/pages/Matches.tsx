@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useMatches } from '@/hooks/useMatches';
@@ -105,9 +106,19 @@ const AdvisorMatchesView = () => {
             {cases.length === 0 ? (
                 <div className="text-center py-12">אין לך עדיין תיקים. צור תיק כדי לקבל התאמות.</div>
             ) : (
-                <div className="space-y-8">
-                    {cases.filter(c => c.is_approved === true && c.status !== 'rejected').map((c) => {
-                        const caseMatches = matchesByCaseId[c.id] || [];
+                <Tabs defaultValue="active" className="w-full">
+                    <TabsList className="mb-6 h-auto p-1 bg-muted/50 border">
+                        <TabsTrigger value="active" className="text-base py-2 px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                            פעילים ({cases.filter(c => c.is_approved === true && c.status !== 'rejected' && c.status !== 'closed').length})
+                        </TabsTrigger>
+                        <TabsTrigger value="history" className="text-base py-2 px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                            היסטוריה ({cases.filter(c => c.status === 'rejected' || c.status === 'closed').length})
+                        </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="active" className="space-y-8">
+                        {cases.filter(c => c.is_approved === true && c.status !== 'rejected' && c.status !== 'closed').map((c) => {
+                            const caseMatches = matchesByCaseId[c.id] || [];
                         return (
                             <Card key={c.id}>
                                 <CardHeader>
@@ -239,7 +250,36 @@ const AdvisorMatchesView = () => {
                             </Card>
                         );
                     })}
-                </div>
+                    </TabsContent>
+
+                    <TabsContent value="history" className="space-y-8">
+                        {cases.filter(c => c.status === 'rejected' || c.status === 'closed').map((c) => {
+                            const caseMatches = matchesByCaseId[c.id] || [];
+                            return (
+                                <Card key={c.id}>
+                                    <CardHeader>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <CardTitle className="text-lg text-muted-foreground">
+                                                    תיק: {fmt(c.loan_amount_min)}–{fmt(c.loan_amount_max)} | LTV {c.ltv}%
+                                                </CardTitle>
+                                                <CardDescription>
+                                                    {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'} • מבוקש באזור {c.region}
+                                                    <Badge variant="outline" className="mr-2">{c.status === 'closed' ? 'נסגר' : 'נדחה'}</Badge>
+                                                </CardDescription>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-sm text-muted-foreground">
+                                            תיק זה נמצא בארכיון.
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    </TabsContent>
+                </Tabs>
             )}
         </div>
     );
@@ -305,96 +345,117 @@ const BankMatchesView = () => {
         }, {} as Record<string, MatchWithDetails>)
     );
 
+    const activeMatches = bestMatchPerCase.filter(m => m.status !== 'closed' && m.status !== 'rejected');
+    const historyMatches = bestMatchPerCase.filter(m => m.status === 'closed' || m.status === 'rejected');
+
+    const renderMatchesGrid = (matchesList: typeof bestMatchPerCase) => {
+        if (matchesList.length === 0) {
+            return (
+                <div className="text-center py-12 border-2 border-dashed rounded-lg bg-background">
+                    <h3 className="text-lg text-muted-foreground">אין התאמות בקטגוריה זו</h3>
+                </div>
+            );
+        }
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {matchesList.map((m) => (
+                    <Card key={m.id} className="hover-scale flex flex-col">
+                        <CardHeader className="pb-3 border-b bg-accent/20">
+                            <div className="flex justify-between items-start">
+                                <Badge variant="outline" className="bg-background">
+                                    {m.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
+                                </Badge>
+                                <ScoreBadge score={m.score} />
+                            </div>
+                            <CardTitle className="pt-2">
+                                {m.case
+                                    ? `₪${(m.case.loan_amount_min / 1_000_000).toFixed(1)}M – ₪${(m.case.loan_amount_max / 1_000_000).toFixed(1)}M`
+                                    : `פנייה ישירה — ${m.appetite?.bank_name ?? 'בנק'}`
+                                }
+                            </CardTitle>
+                            <CardDescription>
+                                {m.case
+                                    ? `LTV: ${m.case.ltv}% • אזור מבוקש: ${m.case.region}`
+                                    : m.appetite?.branch_name ?? ''
+                                }
+                            </CardDescription>
+                        </CardHeader>
+
+                        <CardContent className="pt-4 flex-1">
+                            <div className="text-sm text-center py-3 bg-accent/20 rounded-md">
+                                {m.banker_status === 'pending' && m.advisor_status === 'pending' && "ממתין לתגובה שלך"}
+                                {m.banker_status === 'pending' && m.advisor_status === 'interested' && <span className="text-blue-600 font-semibold">יועץ הראה התעניינות! 🔥</span>}
+                                {m.banker_status === 'interested' && m.advisor_status === 'pending' && <span className="text-amber-600 font-semibold">ממתין לאישור היועץ...</span>}
+                                {m.status === 'closed' && <span className="text-green-600 font-semibold">שידוך סגור! זהות נחשפת.</span>}
+                                {(m.banker_status === 'rejected' || m.advisor_status === 'rejected') && "נדחה."}
+                            </div>
+                        </CardContent>
+
+                        <CardFooter className="pt-2 mt-auto">
+                            {m.banker_status === 'pending' && m.advisor_status === 'pending' && (
+                                <Button
+                                    className="w-full shadow-md"
+                                    onClick={() => handleInterest(m.id)}
+                                    disabled={actingOn === m.id}
+                                >
+                                    {actingOn === m.id ? 'מעדכן...' : 'הצע התאמה'}
+                                </Button>
+                            )}
+                            {m.banker_status === 'interested' && m.advisor_status === 'pending' && (
+                                <Button disabled className="w-full bg-amber-100 text-amber-800 cursor-not-allowed">
+                                    ממתין לאישור יועץ...
+                                </Button>
+                            )}
+                            {m.banker_status === 'pending' && m.advisor_status === 'interested' && (
+                                <Button
+                                    className="w-full bg-blue-600 hover:bg-blue-700"
+                                    onClick={() => handleInterestAndChat(m.id)}
+                                    disabled={actingOn === m.id}
+                                >
+                                    {actingOn === m.id ? 'מעדכן...' : 'מעבר לצ\'אט ←'}
+                                </Button>
+                            )}
+                            {m.status === 'closed' && (
+                                <Button
+                                    className="w-full bg-green-600 hover:bg-green-700"
+                                    onClick={() => navigate(`/chat/${m.id}`)}
+                                >
+                                    מעבר לצ'אט עם המגיש
+                                </Button>
+                            )}
+                        </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        );
+    };
+
     return (
-        <div className="space-y-8 animate-fade-in">
+        <div className="space-y-8 animate-fade-in" dir="rtl">
             <div>
                 <h1 className="text-3xl font-bold">תיקים בהתאמה (Leads)</h1>
                 <p className="text-muted-foreground">תיקים אנונימיים שעלתה בהם התאמה לאות התיאבון שפרסמת.</p>
             </div>
 
-            {bestMatchPerCase.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed rounded-lg bg-background">
-                    <h3 className="text-lg text-muted-foreground">אין התאמות כרגע</h3>
-                    <p className="text-sm">וודא שאות התיאבון שלך פעיל ועדכני.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {bestMatchPerCase.map((m) => (
-                        <Card key={m.id} className="hover-scale flex flex-col">
-                            <CardHeader className="pb-3 border-b bg-accent/20">
-                                <div className="flex justify-between items-start">
-                                    <Badge variant="outline" className="bg-background">
-                                        {m.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
-                                    </Badge>
-                                    <ScoreBadge score={m.score} />
-                                </div>
-                                <CardTitle className="pt-2">
-                                    {m.case
-                                        ? `₪${(m.case.loan_amount_min / 1_000_000).toFixed(1)}M – ₪${(m.case.loan_amount_max / 1_000_000).toFixed(1)}M`
-                                        : `פנייה ישירה — ${m.appetite?.bank_name ?? 'בנק'}`
-                                    }
-                                </CardTitle>
-                                <CardDescription>
-                                    {m.case
-                                        ? `LTV: ${m.case.ltv}% • אזור מבוקש: ${m.case.region}`
-                                        : m.appetite?.branch_name ?? ''
-                                    }
-                                </CardDescription>
-                            </CardHeader>
-
-                            <CardContent className="pt-4 flex-1">
-                                {/* 
-                  Bank sees anonymous case data and has to "accept" the lead. 
-                  If status matches 'interested' it means the ADVISOR pressed interested,
-                  so if the bank presses interested now, it CLOSES the match.
-                  We simplify UI based on the prompt instructions.
-                */}
-                                <div className="text-sm text-center py-3 bg-accent/20 rounded-md">
-                                    {m.banker_status === 'pending' && m.advisor_status === 'pending' && "ממתין לתגובה שלך"}
-                                    {m.banker_status === 'pending' && m.advisor_status === 'interested' && <span className="text-blue-600 font-semibold">יועץ הראה התעניינות! 🔥</span>}
-                                    {m.banker_status === 'interested' && m.advisor_status === 'pending' && <span className="text-amber-600 font-semibold">ממתין לאישור היועץ...</span>}
-                                    {m.status === 'closed' && <span className="text-green-600 font-semibold">שידוך סגור! זהות נחשפת.</span>}
-                                    {(m.banker_status === 'rejected' || m.advisor_status === 'rejected') && "נדחה."}
-                                </div>
-                            </CardContent>
-
-                            <CardFooter className="pt-2 mt-auto">
-                                {m.banker_status === 'pending' && m.advisor_status === 'pending' && (
-                                    <Button
-                                        className="w-full shadow-md"
-                                        onClick={() => handleInterest(m.id)}
-                                        disabled={actingOn === m.id}
-                                    >
-                                        {actingOn === m.id ? 'מעדכן...' : 'הצע התאמה'}
-                                    </Button>
-                                )}
-                                {m.banker_status === 'interested' && m.advisor_status === 'pending' && (
-                                    <Button disabled className="w-full bg-amber-100 text-amber-800 cursor-not-allowed">
-                                        ממתין לאישור יועץ...
-                                    </Button>
-                                )}
-                                {m.banker_status === 'pending' && m.advisor_status === 'interested' && (
-                                    <Button
-                                        className="w-full bg-blue-600 hover:bg-blue-700"
-                                        onClick={() => handleInterestAndChat(m.id)}
-                                        disabled={actingOn === m.id}
-                                    >
-                                        {actingOn === m.id ? 'מעדכן...' : 'מעבר לצ\'אט ←'}
-                                    </Button>
-                                )}
-                                {m.status === 'closed' && (
-                                    <Button
-                                        className="w-full bg-green-600 hover:bg-green-700"
-                                        onClick={() => navigate(`/chat/${m.id}`)}
-                                    >
-                                        מעבר לצ'אט עם המגיש
-                                    </Button>
-                                )}
-                            </CardFooter>
-                        </Card>
-                    ))}
-                </div>
-            )}
+            <Tabs defaultValue="active" className="w-full">
+                <TabsList className="mb-6 h-auto p-1 bg-muted/50 border">
+                    <TabsTrigger value="active" className="text-base py-2 px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                        פעילים ({activeMatches.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="text-base py-2 px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                        היסטוריה ({historyMatches.length})
+                    </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="active" className="space-y-6">
+                    {renderMatchesGrid(activeMatches)}
+                </TabsContent>
+                
+                <TabsContent value="history" className="space-y-6">
+                    {renderMatchesGrid(historyMatches)}
+                </TabsContent>
+            </Tabs>
         </div>
     );
 };

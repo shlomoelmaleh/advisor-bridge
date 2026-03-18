@@ -41,6 +41,7 @@ const BankAppetite = () => {
     const { user, profile, profileState, signOut } = useAuth();
     const queryClient = useQueryClient();
     const [isAdding, setIsAdding] = useState(false);
+    const [editingAppetite, setEditingAppetite] = useState<AppetiteSignal | null>(null);
     const [appetiteLevel, setAppetiteLevel] = useState<'low' | 'medium' | 'high'>('medium');
 
     // ─── Data Fetching ────────────────────────────────────────────────────────
@@ -177,7 +178,11 @@ const BankAppetite = () => {
                     </div>
                     <Button
                         disabled={profileState === 'pending' || profileState === 'missing'}
-                        onClick={() => setIsAdding(true)}
+                        onClick={() => {
+                            setEditingAppetite(null);
+                            setAppetiteLevel('medium');
+                            setIsAdding(true);
+                        }}
                         className="w-full sm:w-auto gap-2"
                     >
                         <Plus className="h-4 w-4" />
@@ -185,10 +190,12 @@ const BankAppetite = () => {
                     </Button>
                 </header>
 
-                {isAdding && (
+                {(isAdding || editingAppetite) && (
                     <Card className="mb-8 border-primary/30 shadow-lg bg-primary/5">
                         <CardHeader>
-                            <CardTitle className="text-xl">חדש: קריטריון מימון</CardTitle>
+                            <CardTitle className="text-xl">
+                                {editingAppetite ? 'עריכת קריטריון קשור (בבדיקה)' : 'חדש: קריטריון מימון'}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={(e) => {
@@ -215,34 +222,49 @@ const BankAppetite = () => {
                                     toast.error(result.error.errors[0]?.message || 'נתונים לא תקינים');
                                     return;
                                 }
-                                createMutation.mutate({
-                                    bank_name: bankNameVal,
-                                    branch_name: raw.branch_name,
-                                    max_ltv: raw.max_ltv,
-                                    min_loan_amount: raw.min_loan_amount,
-                                    sla_days: raw.sla_days,
-                                    appetite_level: appetiteLevel
-                                });
+                                if (editingAppetite) {
+                                    updateMutation.mutate({
+                                        id: editingAppetite.id,
+                                        bank_name: bankNameVal,
+                                        branch_name: raw.branch_name,
+                                        max_ltv: raw.max_ltv,
+                                        min_loan_amount: raw.min_loan_amount,
+                                        sla_days: raw.sla_days,
+                                        appetite_level: appetiteLevel,
+                                        is_approved: false // Always ensure it stays pending upon edit
+                                    }, {
+                                        onSuccess: () => setEditingAppetite(null)
+                                    });
+                                } else {
+                                    createMutation.mutate({
+                                        bank_name: bankNameVal,
+                                        branch_name: raw.branch_name,
+                                        max_ltv: raw.max_ltv,
+                                        min_loan_amount: raw.min_loan_amount,
+                                        sla_days: raw.sla_days,
+                                        appetite_level: appetiteLevel
+                                    });
+                                }
                             }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">שם בנק</label>
-                                    <Input name="bank_name" placeholder="לדוגמה: בנק לאומי" defaultValue={profile?.company || ''} required />
+                                    <Input name="bank_name" placeholder="לדוגמה: בנק לאומי" defaultValue={editingAppetite?.bank_name || profile?.company || ''} required />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">סניף / יחידה</label>
-                                    <Input name="branch" placeholder="לדוגמה: עסקי מרכז" required />
+                                    <Input name="branch" placeholder="לדוגמה: עסקי מרכז" defaultValue={editingAppetite?.branch_name || ''} required />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">מימון מקסימלי (LTV %)</label>
-                                    <Input name="ltv" type="number" placeholder="75" required />
+                                    <Input name="ltv" type="number" placeholder="75" defaultValue={editingAppetite?.max_ltv || ''} required />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">סכום מינימלי (₪)</label>
-                                    <Input name="min_loan" type="number" placeholder="1000000" required />
+                                    <Input name="min_loan" type="number" placeholder="1000000" defaultValue={editingAppetite?.min_loan_amount || ''} required />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">זמן תגובה מובטח (ימים)</label>
-                                    <Input name="sla" type="number" placeholder="3" required />
+                                    <Input name="sla" type="number" placeholder="3" defaultValue={editingAppetite?.sla_days || ''} required />
                                 </div>
                                 <div className="space-y-4 md:col-span-2 lg:col-span-4">
                                     <label className="text-sm font-medium">רמת תיאבון (כמה אתה מחפש עסקאות כרגע?)</label>
@@ -266,9 +288,12 @@ const BankAppetite = () => {
                                     </div>
                                 </div>
                                 <div className="md:col-span-2 lg:col-span-4 flex justify-end gap-3 mt-4">
-                                    <Button type="button" variant="outline" onClick={() => setIsAdding(false)}>ביטול</Button>
-                                    <Button type="submit" disabled={createMutation.isPending}>
-                                        {createMutation.isPending ? 'יוצר...' : 'צור הגדרה'}
+                                    <Button type="button" variant="outline" onClick={() => {
+                                        setIsAdding(false);
+                                        setEditingAppetite(null);
+                                    }}>ביטול</Button>
+                                    <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                                        {createMutation.isPending || updateMutation.isPending ? 'שומר...' : (editingAppetite ? 'שמור שינויים' : 'צור הגדרה')}
                                     </Button>
                                 </div>
                             </form>
@@ -295,6 +320,12 @@ const BankAppetite = () => {
                                 item={item}
                                 onUpdate={(upd) => updateMutation.mutate({ id: item.id, ...upd })}
                                 onDelete={() => deleteMutation.mutate(item.id)}
+                                onEdit={() => {
+                                    setEditingAppetite(item);
+                                    setAppetiteLevel((item.appetite_level as any) || 'medium');
+                                    setIsAdding(false); // Make sure it's the edit mode
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
                                 isReadOnly={profileState === 'pending' || profileState === 'missing'}
                             />
                         ))}
@@ -305,10 +336,11 @@ const BankAppetite = () => {
     );
 };
 
-const AppetiteItem = ({ item, onUpdate, onDelete, isReadOnly }: {
+const AppetiteItem = ({ item, onUpdate, onDelete, onEdit, isReadOnly }: {
     item: AppetiteSignal,
     onUpdate: (upd: Partial<AppetiteSignal>) => void,
     onDelete: () => void,
+    onEdit: () => void,
     isReadOnly: boolean
 }) => {
 
@@ -367,6 +399,17 @@ const AppetiteItem = ({ item, onUpdate, onDelete, isReadOnly }: {
                     עודכן לאחרונה: {new Date().toLocaleDateString('he-IL')}
                 </div>
                 <div className="flex items-center gap-2">
+                            {!item.is_approved && !isReadOnly && (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                    onClick={onEdit}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+                                    <span className="mr-1">ערוך</span>
+                                </Button>
+                            )}
                             <Button
                                 size="sm"
                                 variant="ghost"

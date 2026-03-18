@@ -366,9 +366,12 @@ const AdvisorDashboard = () => {
                 <TabsTrigger value="closed" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   סגור ({cases.filter((c) => c.status === 'closed').length})
                 </TabsTrigger>
+                <TabsTrigger value="rejected" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  ארכיון נדחים ({cases.filter((c) => c.status === 'rejected').length})
+                </TabsTrigger>
               </TabsList>
 
-              {(['all', 'open', 'in_progress', 'matched', 'closed'] as const).map((tab) => (
+              {(['all', 'open', 'in_progress', 'matched', 'closed', 'rejected'] as const).map((tab) => (
                 <TabsContent key={tab} value={tab}>
                   <CaseList cases={cases} filter={tab} isReadOnly={isReadOnly} onRefresh={refreshCases} />
                 </TabsContent>

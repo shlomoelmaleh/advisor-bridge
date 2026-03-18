@@ -24,6 +24,10 @@ const Navbar = () => {
   const [newMatchesCount, setNewMatchesCount] = useState(0);
   const [newBankMatchesCount, setNewBankMatchesCount] = useState(0);
   const [approvedAppetiteCount, setApprovedAppetiteCount] = useState(0);
+  const [advisorNewAppetiteCount, setAdvisorNewAppetiteCount] = useState(0);
+  const [lastSeenMarketTime, setLastSeenMarketTime] = useState<string>(
+    () => localStorage.getItem("last_seen_market") ?? new Date(0).toISOString(),
+  );
   const [lastSeenAppetiteTime, setLastSeenAppetiteTime] = useState<string>(
     () => localStorage.getItem("last_seen_appetite") ?? new Date(0).toISOString(),
   );
@@ -43,7 +47,19 @@ const Navbar = () => {
     if (!user?.id || roleState === "unknown") return;
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
+    
+    // Feature B3: Real-time update for badge
+    const channel = supabase
+      .channel('navbar-messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        fetchUnread();
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [user?.id, roleState]);
 
   useEffect(() => {
@@ -111,6 +127,26 @@ const Navbar = () => {
     const interval = setInterval(fetchApprovedAppetites, 30000);
     return () => clearInterval(interval);
   }, [roleState, user?.id, lastSeenAppetiteTime]);
+
+  useEffect(() => {
+    const fetchAdvisorAppetites = async () => {
+      if (roleState !== "advisor") return;
+
+      const { count } = await supabase
+        .from("branch_appetites")
+        .select("*", { count: "exact", head: true })
+        .eq("is_approved", true)
+        .eq("is_active", true)
+        .gt("created_at", lastSeenMarketTime);
+
+      setAdvisorNewAppetiteCount(count ?? 0);
+    };
+
+    if (roleState !== "advisor") return;
+    fetchAdvisorAppetites();
+    const interval = setInterval(fetchAdvisorAppetites, 30000);
+    return () => clearInterval(interval);
+  }, [roleState, lastSeenMarketTime]);
 
   useEffect(() => {
     const fetchBankMatches = async () => {
@@ -270,9 +306,20 @@ const Navbar = () => {
                     </Link>
                     <Link
                       to="/advisor/market"
-                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                      className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                      onClick={() => {
+                        const now = new Date().toISOString();
+                        localStorage.setItem("last_seen_market", now);
+                        setLastSeenMarketTime(now);
+                        setAdvisorNewAppetiteCount(0);
+                      }}
                     >
                       שוק תיאבון
+                      {advisorNewAppetiteCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                          {advisorNewAppetiteCount > 9 ? "9+" : advisorNewAppetiteCount}
+                        </span>
+                      )}
                     </Link>
                     <Link
                       to="/conversations"
@@ -431,9 +478,20 @@ const Navbar = () => {
                         <Link
                           to="/advisor/market"
                           className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
-                          onClick={() => setIsMobileMenuOpen(false)}
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            const now = new Date().toISOString();
+                            localStorage.setItem("last_seen_market", now);
+                            setLastSeenMarketTime(now);
+                            setAdvisorNewAppetiteCount(0);
+                          }}
                         >
                           שוק תיאבון
+                          {advisorNewAppetiteCount > 0 && (
+                            <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                              {advisorNewAppetiteCount > 9 ? "9+" : advisorNewAppetiteCount}
+                            </span>
+                          )}
                         </Link>
                         <Link
                           to="/conversations"
