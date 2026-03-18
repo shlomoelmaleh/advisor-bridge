@@ -6,10 +6,16 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import 'dotenv/config';
 
-const SUPABASE_URL = 'https://oasivruwsvhfmvynpbia.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc2l2cnV3c3ZoZm12eW5wYmlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MTI3MzQsImV4cCI6MjA4NTE4ODczNH0.kpKaj4ld8c_nULrvC5zKubkpbWzDBhPLRo5ObEN0MT0';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc2l2cnV3c3ZoZm12eW5wYmlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTYxMjczNCwiZXhwIjoyMDg1MTg4NzM0fQ.y4XfvyToe_33HwQBIyh_Yu9t3BENXlei0C8F6IcHhNo';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
+const ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+if (!SUPABASE_URL || !ANON_KEY || !SERVICE_KEY) {
+  console.error('❌ חסרים משתני סביבה. ודא שקובץ .env מכיל את VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY ואת SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
 
 // משתמשי בדיקה
 const ADVISOR_EMAIL = 'office@eshel-f.com';
