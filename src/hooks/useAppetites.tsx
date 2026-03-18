@@ -86,7 +86,7 @@ export const useAppetites = (): UseAppetitesReturn => {
                 // Update existing active appetite
                 result = await supabase
                     .from('branch_appetites')
-                    .update({ ...data, is_approved: false })
+                    .update({ ...data, is_approved: false, is_active: true })
                     .eq('id', myAppetite.id);
             } else {
                 // Insert new appetite

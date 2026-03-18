@@ -189,7 +189,7 @@ export const useAdmin = () => {
     const approveAppetite = async (appetiteId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
         try {
-            const { error } = await supabase.from('branch_appetites').update({ is_approved: true }).eq('id', appetiteId);
+            const { error } = await supabase.from('branch_appetites').update({ is_approved: true, is_active: true }).eq('id', appetiteId);
             if (error) throw error;
             await fetchAll();
             return { error: null };
