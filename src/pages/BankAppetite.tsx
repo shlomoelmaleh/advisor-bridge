@@ -399,7 +399,8 @@ const AppetiteItem = ({ item, onUpdate, onDelete, onEdit, isReadOnly }: {
                     עודכן לאחרונה: {new Date().toLocaleDateString('he-IL')}
                 </div>
                 <div className="flex items-center gap-2">
-                            {!item.is_approved && !isReadOnly && (
+                            {/* Show edit only when rejected (is_approved=true, is_active=false) or pending (optional, but user specified rejected) */}
+                            {((item.is_approved && !item.is_active) || !item.is_approved) && !isReadOnly && (
                                 <Button
                                     size="sm"
                                     variant="ghost"
