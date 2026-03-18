@@ -53,7 +53,7 @@ export const useAppetites = (): UseAppetitesReturn => {
 
             // 2. Fetch open cases (anonymous cases from advisors)
             const { data: casesData, error: casesError } = await supabase
-                .from('cases')
+                .from('anonymous_cases')
                 .select('*')
                 .eq('status', 'open')
                 .eq('is_approved', true)
