@@ -66,7 +66,7 @@ const BankAppetite = () => {
         mutationFn: async (updated: Partial<AppetiteSignal> & { id: string }) => {
             const { data, error } = await supabase
                 .from('branch_appetites')
-                .update(updated)
+                .update({ ...updated, is_active: true }) // Explicitly set active upon any update/resubmission
                 .eq('id', updated.id)
                 .select()
                 .single();
@@ -231,7 +231,8 @@ const BankAppetite = () => {
                                         min_loan_amount: raw.min_loan_amount,
                                         sla_days: raw.sla_days,
                                         appetite_level: appetiteLevel,
-                                        is_approved: false // Always ensure it stays pending upon edit
+                                        is_approved: false, // Always ensure it stays pending upon edit
+                                        is_active: true // Ensure it is active (not rejected) when resubmitting
                                     }, {
                                         onSuccess: () => setEditingAppetite(null)
                                     });
