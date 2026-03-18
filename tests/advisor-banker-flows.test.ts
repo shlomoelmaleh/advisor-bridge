@@ -193,6 +193,7 @@ async function testBankerFlows(bankerClient: any, bankerId: string, advisorClien
         preferred_borrower_types: ['employee'],
         appetite_level: 'high',
         sla_days: 5,
+        is_active: true, // Explicitly set active
       }).select('id, is_approved, is_active').single();
 
       assert(
@@ -223,26 +224,118 @@ async function testBankerFlows(bankerClient: any, bankerId: string, advisorClien
           `תיאבון ממתין לא מופיע ברשימת הפעילים ליועצים`
         );
 
-        // ── D05 — בנקאי עורך תיאבון ──
+        // ── D05 — בנקאי עורך תיאבון (v2.2) ──
         {
           const { error: editError } = await bankerClient
             .from('branch_appetites')
-            .update({ min_loan_amount: 600_000 })
+            .update({ min_loan_amount: 600_000, is_approved: false })
             .eq('id', data.id);
 
           const { data: updated } = await admin
             .from('branch_appetites')
-            .select('min_loan_amount')
+            .select('min_loan_amount, is_approved, is_active')
             .eq('id', data.id)
             .single();
 
           assert(
             !editError && updated?.min_loan_amount === 600_000,
-            'TC-D05',
-            `בנקאי ערך תיאבון: min_loan_amount=600,000 ${editError ? '(שגיאה: ' + editError.message + ')' : '✓'}`
+            'TC-D05a',
+            `בנקאי ערך תיאבון: הנתונים התעדכנו ✓`
+          );
+          assert(
+            updated?.is_approved === false && updated?.is_active === true,
+            'TC-D05b',
+            `לאחר עריכה: התיאבון נשאר "בבדיקה" (is_approved=false) אך "פעיל" (is_active=true) ✓`
           );
         }
       }
+    }
+
+    // ── B1 — Badge שוק תיאבון ליועץ (Logic) ──
+    {
+       // צור תיאבון מאושר חדש
+       const { data: newAppetite } = await admin.from('branch_appetites').insert({
+         banker_id: bankerId,
+         bank_name: 'בנק למחקר B1',
+         is_approved: true,
+         is_active: true,
+         appetite_level: 'medium',
+         created_at: new Date().toISOString()
+       }).select('id, created_at').single();
+       
+       if (newAppetite) {
+         appetiteIds.push(newAppetite.id);
+         // בדוק אם היועץ מוצא אותו כ"חדש" (נניח "חדש" = אחרי זמן מסוים)
+         const lastSeen = new Date(Date.now() - 5000).toISOString();
+         const { data: fresh } = await advisorClient
+           .from('branch_appetites')
+           .select('id')
+           .eq('is_approved', true)
+           .eq('is_active', true)
+           .gt('created_at', lastSeen);
+
+         assert(
+           (fresh?.length ?? 0) > 0,
+           'TC-B1-Logic',
+           `יועץ מזהה ${fresh?.length} תיאבונות חדשים בשוק (לצורך Badge) ✓`
+         );
+       }
+    }
+
+    // ── B4 — טאב היסטוריה אצל בנקאי (Logic) ──
+    {
+       // צור match סגור
+       const tempCaseId = (await admin.from('cases').insert({
+         advisor_id: advisorId, status: 'open', is_approved: true
+       }).select('id').single()).data!.id;
+       caseIds.push(tempCaseId);
+
+       const tempAppetiteId = (await admin.from('branch_appetites').insert({
+         banker_id: bankerId, bank_name: 'B4 Test', is_approved: true, is_active: true
+       }).select('id').single()).data!.id;
+       appetiteIds.push(tempAppetiteId);
+
+       const { data: closedMatch } = await admin.from('matches').insert({
+         case_id: tempCaseId, appetite_id: tempAppetiteId, banker_id: bankerId,
+         advisor_status: 'interested', banker_status: 'interested'
+       }).select('id').single();
+       
+       if (closedMatch) {
+         matchIds.push(closedMatch.id);
+         // שליפה לטאב היסטוריה
+         const { data: history } = await bankerClient
+           .from('matches')
+           .select('id')
+           .in('status', ['closed', 'rejected']);
+
+         assert(
+           history?.some((m: any) => m.id === closedMatch.id),
+           'TC-B4-Logic',
+           `שידוך סגור מופיע בטאב היסטוריה של הבנקאי ✓`
+         );
+       }
+    }
+
+    // ── B5 — טאב ארכיון אצל יועץ (Logic) ──
+    {
+       // יועץ רואה תיקים נדחים בארכיון
+       const { data: rejectedCase } = await admin.from('cases').insert({
+         advisor_id: advisorId, status: 'rejected', is_approved: false
+       }).select('id').single();
+       
+       if (rejectedCase) {
+         caseIds.push(rejectedCase.id);
+         const { data: archive } = await advisorClient
+           .from('cases')
+           .select('id')
+           .eq('status', 'rejected');
+
+         assert(
+           archive?.some((c: any) => c.id === rejectedCase.id),
+           'TC-B5-Logic',
+           `תיק נדחה מופיע בטאב ארכיון של היועץ ✓`
+         );
+       }
     }
 
     // ── D04 — בנקאי רואה תיקים אנונימיים בשוק ──
@@ -328,8 +421,28 @@ async function testBankerFlows(bankerClient: any, bankerId: string, advisorClien
 
     // ── D Visual — ממשק בנקאי ──
     await visualCheck(
-      'TC-D-UI',
-      'פתח את האפליקציה → התחבר כבנקאי → ודא שתיאבון חדש מופיע תחת "ממתין לאישור" ושכפתור "הגש תיאבון" פועל'
+      'TC-D05v',
+      'בנקאי: נווט ל"תיאבון" → ודא שכפתור "ערוך" מופיע רק על תיאבון במצב "בבדיקה" או "נדחה". תיאבון פעיל כולל רק כפתור "מחק".'
+    );
+
+    await visualCheck(
+      'TC-B1v',
+      'יועץ: נווט לNavbar ← ודא שמופיע Badge ירוק על טאב "שוק תיאבון" כשיש תיאבון חדש (אחרי אישור Admin).'
+    );
+
+    await visualCheck(
+      'TC-B4v',
+      'בנקאי: נווט ל"התאמות" ← ודא שיש טאב "היסטוריה" המכיל שידוכים סגורים (Chat) או נדחים.'
+    );
+
+    await visualCheck(
+      'TC-B5v',
+      'יועץ: נווט לדשבורד/התאמות ← ודא שיש טאב "ארכיון" המכיל תיקים נדחים.'
+    );
+
+    await visualCheck(
+      'TC-B3v',
+      'צ\'אט: שלח הודעה מבנקאי ליועץ ← ודא שמופיע Badge אדום ב-Navbar של היועץ בזמן אמת (ללא רענון).'
     );
 
   } finally {

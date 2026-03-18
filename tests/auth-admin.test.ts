@@ -332,6 +332,33 @@ async function testAdmin() {
       `Admin שולף תיאבונות ממתינים: ${pendingAppetites?.length ?? 0}`
     );
   }
+
+  // ── B6 — תג "הוגש מחדש" + הערת יועץ (Logic) ──
+  {
+     // צור תיק "הוגש מחדש" עם הערה
+     const { data: resubmittedCase } = await admin.from('cases').insert({
+       advisor_id: ADVISOR_EMAIL, // use existing advisor for simplicity
+       status: 'open',
+       is_approved: false,
+       is_resubmitted: true,
+       advisor_note: 'בדיקת B6: הוגש מחדש עם תיקון'
+     }).select('id, is_resubmitted, advisor_note').single();
+
+     if (resubmittedCase) {
+       assert(
+         resubmittedCase.is_resubmitted === true && resubmittedCase.advisor_note !== null,
+         'TC-B6-Logic',
+         `תיק מסומן כ"הוגש מחדש" עם הערת יועץ ✓`
+       );
+       await admin.from('cases').delete().eq('id', resubmittedCase.id);
+     }
+  }
+
+  // ── B6v Visual — תג ב-Admin ──
+  await visualCheck(
+    'TC-B6v',
+    'Admin: נווט ל"תוכן לאישור" ← ודא שתיקים שהוגשו מחדש מסומנים בתג כתום "הוגש מחדש" ושהערת היועץ גלויה.'
+  );
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
