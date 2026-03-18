@@ -333,26 +333,43 @@ async function testAdmin() {
     );
   }
 
-  // ── B6 — תג "הוגש מחדש" + הערת יועץ (Logic) ──
-  {
-     // צור תיק "הוגש מחדש" עם הערה
-     const { data: resubmittedCase } = await admin.from('cases').insert({
-       advisor_id: ADVISOR_EMAIL, // use existing advisor for simplicity
-       status: 'open',
-       is_approved: false,
-       is_resubmitted: true,
-       advisor_note: 'בדיקת B6: הוגש מחדש עם תיקון'
-     }).select('id, is_resubmitted, advisor_note').single();
+   // ── B6 — תג "הוגש מחדש" + הערת יועץ (Logic) ──
+   {
+      // שילוף ה-UUID של יועץ (חיפוש לפי תפקיד כי אין עמודת email ב-profiles)
+      const { data: advisorProfile } = await admin
+        .from('profiles')
+        .select('user_id')
+        .eq('role', 'advisor')
+        .limit(1)
+        .maybeSingle();
+      
+      if (!advisorProfile) {
+        failures.push('TC-B6: לא נמצא אף פרופיל יועץ במערכת');
+        failed++;
+      } else {
+        // צור תיק "הוגש מחדש" עם הערה
+        const { data: resubmittedCase, error } = await admin.from('cases').insert({
+          advisor_id: advisorProfile.user_id,
+          status: 'open',
+          is_approved: false,
+          resubmitted: true,
+          admin_note: 'בדיקת B6: הוגש מחדש עם תיקון'
+        }).select('id, resubmitted, admin_note').single();
 
-     if (resubmittedCase) {
-       assert(
-         resubmittedCase.is_resubmitted === true && resubmittedCase.advisor_note !== null,
-         'TC-B6-Logic',
-         `תיק מסומן כ"הוגש מחדש" עם הערת יועץ ✓`
-       );
-       await admin.from('cases').delete().eq('id', resubmittedCase.id);
-     }
-  }
+        if (error) {
+           failures.push(`TC-B6-Logic: כשל בהכנסת תיק - ${error.message}`);
+           failed++;
+           console.log(`  ❌ TC-B6-Logic — כשל בהכנסת תיק: ${error.message}`);
+        } else if (resubmittedCase) {
+          assert(
+            resubmittedCase.resubmitted === true && resubmittedCase.admin_note !== null,
+            'TC-B6-Logic',
+            `תיק מסומן כ"הוגש מחדש" עם הערת יועץ ✓`
+          );
+          await admin.from('cases').delete().eq('id', resubmittedCase.id);
+        }
+      }
+   }
 
   // ── B6v Visual — תג ב-Admin ──
   await visualCheck(
@@ -392,6 +409,9 @@ async function main() {
   if (failures.length > 0) {
     console.log('\n❌ כשלונות:');
     failures.forEach(f => console.log(`  • ${f}`));
+    console.log('---JSON_FAILURES_START---');
+    console.log(JSON.stringify(failures));
+    console.log('---JSON_FAILURES_END---');
     process.exit(1);
   } else {
     console.log('\n🎉 כל הבדיקות עברו!');
