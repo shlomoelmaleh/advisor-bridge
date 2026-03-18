@@ -137,7 +137,7 @@ async function testAnonymousCasesForBanker(bankerClient: any) {
 
   // בנקאי שולף תיקים מאושרים
   const { data: cases } = await bankerClient
-    .from('cases')
+    .from('anonymous_cases')
     .select('*')
     .eq('is_approved', true)
     .eq('status', 'open');
