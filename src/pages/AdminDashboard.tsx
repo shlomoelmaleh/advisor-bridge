@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Users, Briefcase, Activity, CheckCircle, Ban, RefreshCw, Trash2, CheckCircle2, ShieldAlert, AlertCircle } from 'lucide-react';
 import type { UserRole } from '@/hooks/useAuth';
+import { appetiteLevelLabel, regionLabel } from '@/lib/labels';
 import AppLayout from '@/components/layout/AppLayout';
 
 const AdminDashboard = () => {
@@ -293,7 +294,7 @@ const AdminDashboard = () => {
                                                     </div>
                                                     <div className="text-muted-foreground mb-4">
                                                         <p>סוג תעסוקה: {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
-                                                        <p>אזור: {c.region}</p>
+                                                        <p>אזור: {regionLabel(c.region)}</p>
                                                         <p>הוגש ב: {new Date(c.created_at).toLocaleDateString()}</p>
                                                         
                                                         {c.resubmitted && (
@@ -347,7 +348,7 @@ const AdminDashboard = () => {
                                                         {a.bank_name} - {a.branch_name}
                                                     </div>
                                                     <div className="text-muted-foreground mb-4 space-y-1">
-                                                        <p>רמת תיאבון: <Badge variant="outline">{a.appetite_level}</Badge></p>
+                                                        <p>רמת תיאבון: <Badge variant="outline">{appetiteLevelLabel(a.appetite_level)}</Badge></p>
                                                         <p>SLA לימים: {a.sla_days}</p>
                                                         <p>עודכן ב: {new Date(a.created_at).toLocaleDateString()}</p>
                                                     </div>

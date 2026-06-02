@@ -20,7 +20,20 @@ import {
     Building2
 } from 'lucide-react';
 import { appetiteSchema } from '@/lib/validation';
+import {
+    BORROWER_TYPE_OPTIONS,
+    REGION_OPTIONS,
+    borrowerTypesLabel,
+    regionsLabel,
+} from '@/lib/labels';
 import AppLayout from '@/components/layout/AppLayout';
+
+/** ISO yyyy-mm-dd for "today + N days" (used for appetite validity). */
+const isoDatePlusDays = (days: number) =>
+    new Date(Date.now() + days * 86400000).toISOString().split('T')[0];
+
+const toggleInArray = (value: string, list: string[]): string[] =>
+    list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
 
 interface AppetiteSignal {
     id: string;
@@ -34,6 +47,7 @@ interface AppetiteSignal {
     appetite_level: string | null;
     preferred_borrower_types: string[] | null;
     preferred_regions: string[] | null;
+    valid_until: string | null;
     is_approved: boolean | null;
 }
 
@@ -43,6 +57,9 @@ const BankAppetite = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [editingAppetite, setEditingAppetite] = useState<AppetiteSignal | null>(null);
     const [appetiteLevel, setAppetiteLevel] = useState<'low' | 'medium' | 'high'>('medium');
+    const [borrowerTypes, setBorrowerTypes] = useState<string[]>([]);
+    const [regions, setRegions] = useState<string[]>([]);
+    const [validUntil, setValidUntil] = useState<string>(() => isoDatePlusDays(90));
 
     // ─── Data Fetching ────────────────────────────────────────────────────────
     const { data: appetites, isLoading, error } = useQuery({
@@ -181,6 +198,9 @@ const BankAppetite = () => {
                         onClick={() => {
                             setEditingAppetite(null);
                             setAppetiteLevel('medium');
+                            setBorrowerTypes([]);
+                            setRegions([]);
+                            setValidUntil(isoDatePlusDays(90));
                             setIsAdding(true);
                         }}
                         className="w-full sm:w-auto gap-2"
@@ -213,9 +233,9 @@ const BankAppetite = () => {
                                     max_ltv: Number(formData.get('ltv')),
                                     min_loan_amount: Number(formData.get('min_loan')),
                                     sla_days: Number(formData.get('sla')),
-                                    preferred_borrower_types: [],
-                                    preferred_regions: [],
-                                    valid_until: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
+                                    preferred_borrower_types: borrowerTypes,
+                                    preferred_regions: regions,
+                                    valid_until: validUntil,
                                 };
                                 const result = appetiteSchema.safeParse(raw);
                                 if (!result.success) {
@@ -231,6 +251,9 @@ const BankAppetite = () => {
                                         min_loan_amount: raw.min_loan_amount,
                                         sla_days: raw.sla_days,
                                         appetite_level: appetiteLevel,
+                                        preferred_borrower_types: borrowerTypes,
+                                        preferred_regions: regions,
+                                        valid_until: validUntil,
                                         is_approved: false, // Always ensure it stays pending upon edit
                                         is_active: true // Ensure it is active (not rejected) when resubmitting
                                     }, {
@@ -243,7 +266,10 @@ const BankAppetite = () => {
                                         max_ltv: raw.max_ltv,
                                         min_loan_amount: raw.min_loan_amount,
                                         sla_days: raw.sla_days,
-                                        appetite_level: appetiteLevel
+                                        appetite_level: appetiteLevel,
+                                        preferred_borrower_types: borrowerTypes,
+                                        preferred_regions: regions,
+                                        valid_until: validUntil,
                                     });
                                 }
                             }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -267,6 +293,60 @@ const BankAppetite = () => {
                                     <label className="text-sm font-medium">זמן תגובה מובטח (ימים)</label>
                                     <Input name="sla" type="number" placeholder="3" defaultValue={editingAppetite?.sla_days || ''} required />
                                 </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">תוקף ההגדרה עד</label>
+                                    <Input
+                                        type="date"
+                                        value={validUntil}
+                                        min={isoDatePlusDays(1)}
+                                        onChange={(e) => setValidUntil(e.target.value)}
+                                        required
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">לאחר תאריך זה האות יפסיק להופיע בהתאמות</p>
+                                </div>
+
+                                <div className="space-y-3 md:col-span-2 lg:col-span-4">
+                                    <label className="text-sm font-medium">סוגי לווים מועדפים</label>
+                                    <p className="text-xs text-muted-foreground -mt-1">לא נבחר = מתאים לכל סוגי הלווים</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {BORROWER_TYPE_OPTIONS.map((opt) => {
+                                            const active = borrowerTypes.includes(opt.value);
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    aria-pressed={active}
+                                                    onClick={() => setBorrowerTypes(toggleInArray(opt.value, borrowerTypes))}
+                                                    className={`px-4 py-2 rounded-full border text-sm transition-colors ${active ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-card text-muted-foreground hover:bg-accent'}`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3 md:col-span-2 lg:col-span-4">
+                                    <label className="text-sm font-medium">אזורים מועדפים</label>
+                                    <p className="text-xs text-muted-foreground -mt-1">לא נבחר = מתאים לכל האזורים</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {REGION_OPTIONS.map((opt) => {
+                                            const active = regions.includes(opt.value);
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    aria-pressed={active}
+                                                    onClick={() => setRegions(toggleInArray(opt.value, regions))}
+                                                    className={`px-4 py-2 rounded-full border text-sm transition-colors ${active ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-card text-muted-foreground hover:bg-accent'}`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
                                 <div className="space-y-4 md:col-span-2 lg:col-span-4">
                                     <label className="text-sm font-medium">רמת תיאבון (כמה אתה מחפש עסקאות כרגע?)</label>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -324,6 +404,9 @@ const BankAppetite = () => {
                                 onEdit={() => {
                                     setEditingAppetite(item);
                                     setAppetiteLevel((item.appetite_level as any) || 'medium');
+                                    setBorrowerTypes(item.preferred_borrower_types ?? []);
+                                    setRegions(item.preferred_regions ?? []);
+                                    setValidUntil(item.valid_until ?? isoDatePlusDays(90));
                                     setIsAdding(false); // Make sure it's the edit mode
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }}
@@ -344,7 +427,20 @@ const AppetiteItem = ({ item, onUpdate, onDelete, onEdit, isReadOnly }: {
     onEdit: () => void,
     isReadOnly: boolean
 }) => {
+    // Validity / expiry — surfaced so a banker knows when their signal stops
+    // appearing in matches (the engine filters on valid_until >= today).
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const validUntilDate = item.valid_until ? new Date(item.valid_until) : null;
+    const isExpired = !!validUntilDate && validUntilDate < today;
+    const daysLeft = validUntilDate
+        ? Math.ceil((validUntilDate.getTime() - today.getTime()) / 86400000)
+        : null;
+    const isExpiringSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 14;
+    const validUntilStr = validUntilDate ? validUntilDate.toLocaleDateString('he-IL') : '—';
 
+    // Editable when the signal is rejected (approved + inactive) or expired.
+    const canEdit = !isReadOnly && ((item.is_approved && !item.is_active) || isExpired);
 
     return (
         <Card className="transition-all duration-300 hover:shadow-md border-l-4 border-l-primary">
@@ -362,10 +458,12 @@ const AppetiteItem = ({ item, onUpdate, onDelete, onEdit, isReadOnly }: {
                     <div className="flex items-center gap-2">
                         {!item.is_approved ? (
                             <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">בבדיקה</Badge>
-                        ) : item.is_active ? (
-                            <Badge className="bg-green-100 text-green-800 border-green-200">פעיל</Badge>
-                        ) : (
+                        ) : !item.is_active ? (
                             <Badge variant="destructive">נדחה</Badge>
+                        ) : isExpired ? (
+                            <Badge className="bg-gray-200 text-gray-700 border-gray-300">פג תוקף</Badge>
+                        ) : (
+                            <Badge className="bg-green-100 text-green-800 border-green-200">פעיל</Badge>
                         )}
                     </div>
                 </div>
@@ -394,14 +492,35 @@ const AppetiteItem = ({ item, onUpdate, onDelete, onEdit, isReadOnly }: {
                         </div>
                     </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-3 border-t">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">אזורים מועדפים</span>
+                        <span className="text-sm">{regionsLabel(item.preferred_regions) || 'כל האזורים'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">סוגי לווים</span>
+                        <span className="text-sm">{borrowerTypesLabel(item.preferred_borrower_types) || 'כל הסוגים'}</span>
+                    </div>
+                </div>
+                {isExpired ? (
+                    <div className="mt-4 p-2.5 bg-red-50 border border-red-200 rounded-md text-red-800 text-xs font-medium flex items-center gap-2">
+                        <Clock className="h-3.5 w-3.5" />
+                        פג תוקף ב-{validUntilStr} — האות אינו מופיע בהתאמות. ערוך כדי לחדש.
+                    </div>
+                ) : isExpiringSoon && (
+                    <div className="mt-4 p-2.5 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs font-medium flex items-center gap-2">
+                        <Clock className="h-3.5 w-3.5" />
+                        התוקף יפוג בעוד {daysLeft} ימים ({validUntilStr}).
+                    </div>
+                )}
             </CardContent>
             <CardFooter className="pt-2 border-t mt-4 flex justify-between items-center bg-muted/10 py-3">
                 <div className="text-[10px] text-muted-foreground">
-                    עודכן לאחרונה: {new Date().toLocaleDateString('he-IL')}
+                    תוקף עד: {validUntilStr}
                 </div>
                 <div className="flex items-center gap-2">
-                            {/* Show edit only when rejected (is_approved=true, is_active=false) */}
-                            {(item.is_approved && !item.is_active) && !isReadOnly && (
+                            {/* Editable when rejected or expired */}
+                            {canEdit && (
                                 <Button
                                     size="sm"
                                     variant="ghost"

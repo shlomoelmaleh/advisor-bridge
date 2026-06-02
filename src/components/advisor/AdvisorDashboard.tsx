@@ -27,6 +27,7 @@ import {
 import { useCases } from '@/hooks/useCases';
 import { useAuth } from '@/hooks/useAuth';
 import type { DbCase, CaseStatus } from '@/types/cases';
+import { propertyTypeLabel, regionLabel } from '@/lib/labels';
 import AdvisorActivityLog from './AdvisorActivityLog';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -158,8 +159,8 @@ const CaseRow: React.FC<{ c: DbCase; onRefresh: () => Promise<void> }> = ({ c, o
             <Badge variant="outline">
               {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
             </Badge>
-            <Badge variant="outline">{c.property_type}</Badge>
-            <Badge variant="outline">{c.region}</Badge>
+            <Badge variant="outline">{propertyTypeLabel(c.property_type)}</Badge>
+            <Badge variant="outline">{regionLabel(c.region)}</Badge>
           </div>
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1">
             <span>הוגש ב-{formatDate(c.created_at)}</span>

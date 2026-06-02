@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MessageCircle, Clock, ChevronLeft } from 'lucide-react';
 import type { MatchWithDetails } from '@/types/matches';
+import { regionLabel } from '@/lib/labels';
 
 const Conversations = () => {
     const { profile } = useAuth();
@@ -138,7 +139,7 @@ const ConversationCard = ({ match, isAdvisor, unreadCount, onClick }: {
                             )
                         ) : (
                             <p>
-                                LTV {match.case?.ltv ?? 0}% | אזור: {match.case?.region ?? ''} | {match.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
+                                LTV {match.case?.ltv ?? 0}% | אזור: {regionLabel(match.case?.region)} | {match.case?.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
                             </p>
                         )}
                         <p className={`line-clamp-1 mt-1 ${unreadCount > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground italic opacity-80'}`}>

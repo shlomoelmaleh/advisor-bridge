@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import BankActivityLog from '@/components/bank/BankActivityLog';
 import { toast } from 'sonner';
 import type { DbCase } from '@/types/cases';
+import { regionLabel } from '@/lib/labels';
 
 const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
 
@@ -50,7 +51,7 @@ const AnonymousCaseRow: React.FC<{
           <Badge variant="outline" className="text-[10px]">
             {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}
           </Badge>
-          <Badge variant="outline" className="text-[10px]">{c.region}</Badge>
+          <Badge variant="outline" className="text-[10px]">{regionLabel(c.region)}</Badge>
         </div>
       </div>
       <Button

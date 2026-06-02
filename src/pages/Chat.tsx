@@ -10,6 +10,7 @@ import { Send, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { mapDatabaseError } from '@/lib/mapDatabaseError';
 import { messageSchema } from '@/lib/validation';
+import { appetiteLevelLabel, regionLabel } from '@/lib/labels';
 import type { MatchWithDetails } from '@/types/matches';
 
 interface Message {
@@ -222,7 +223,7 @@ const Chat = () => {
     const chatTitle = profile?.role === 'advisor'
         ? `${bankName}${branchName ? ' - ' + branchName : ''}`
         : match.case
-            ? `תיק ₪${loanMin}M–₪${loanMax}M | ${match.case.region || ''}`
+            ? `תיק ₪${loanMin}M–₪${loanMax}M | ${regionLabel(match.case.region)}`
             : 'שיחה';
 
     return (
@@ -246,12 +247,12 @@ const Chat = () => {
                                 <p>סכום: ₪{((match.case.loan_amount_min ?? 0) / 1_000).toLocaleString()}K
                                     – ₪{((match.case.loan_amount_max ?? 0) / 1_000).toLocaleString()}K</p>
                                 <p>LTV: {match.case.ltv ?? 0}% |
-                                    אזור: {match.case.region ?? ''} |
+                                    אזור: {regionLabel(match.case.region)} |
                                     {match.case.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'}</p>
                             </>
                         )}
                             {match.appetite ? (
-                                <p>סניף: {match.appetite.branch_name} | תיאבון: {match.appetite.appetite_level}</p>
+                                <p>סניף: {match.appetite.branch_name} | תיאבון: {appetiteLevelLabel(match.appetite.appetite_level)}</p>
                             ) : (
                                 <Badge variant="outline" className="text-blue-600 text-xs">
                                     פנייה ישירה מהשוק הפתוח

@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { useCases } from '@/hooks/useCases';
 import { useAuth } from '@/hooks/useAuth';
 import { caseSchema } from '@/lib/validation';
+import { BORROWER_TYPE_OPTIONS, PROPERTY_TYPE_OPTIONS, REGION_OPTIONS } from '@/lib/labels';
 import type { BorrowerType } from '@/types/cases';
 
 const CaseForm = () => {
@@ -186,8 +187,9 @@ const CaseForm = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="employee">שכיר</SelectItem>
-                  <SelectItem value="self_employed">עצמאי</SelectItem>
+                  {BORROWER_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -199,11 +201,9 @@ const CaseForm = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="apartment">דירה</SelectItem>
-                  <SelectItem value="private_house">בית פרטי</SelectItem>
-                  <SelectItem value="penthouse">פנטהאוז</SelectItem>
-                  <SelectItem value="commercial">מסחרי</SelectItem>
-                  <SelectItem value="land">קרקע</SelectItem>
+                  {PROPERTY_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -215,13 +215,9 @@ const CaseForm = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="center">מרכז</SelectItem>
-                  <SelectItem value="tel_aviv">תל אביב</SelectItem>
-                  <SelectItem value="jerusalem">ירושלים</SelectItem>
-                  <SelectItem value="north">צפון</SelectItem>
-                  <SelectItem value="south">דרום</SelectItem>
-                  <SelectItem value="sharon">שרון</SelectItem>
-                  <SelectItem value="shfela">שפלה</SelectItem>
+                  {REGION_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

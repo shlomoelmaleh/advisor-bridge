@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMatches } from '@/hooks/useMatches';
 import { useCases } from '@/hooks/useCases';
 import type { MatchWithDetails } from '@/types/matches';
+import { appetiteLevelLabel, regionLabel } from '@/lib/labels';
 
 const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
 
@@ -128,7 +129,7 @@ const AdvisorMatchesView = () => {
                                                 תיק: {fmt(c.loan_amount_min)}–{fmt(c.loan_amount_max)} | LTV {c.ltv}%
                                             </CardTitle>
                                             <CardDescription>
-                                                {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'} • מבוקש באזור {c.region}
+                                                {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'} • מבוקש באזור {regionLabel(c.region)}
                                             </CardDescription>
                                         </div>
                                         <Button
@@ -169,7 +170,7 @@ const AdvisorMatchesView = () => {
                                                         <div className="flex gap-2 text-sm text-muted-foreground">
                                                             {m.appetite ? (
                                                                 <>
-                                                                    <Badge variant="secondary">רמת תיאבון בסניף: {m.appetite.appetite_level}</Badge>
+                                                                    <Badge variant="secondary">רמת תיאבון בסניף: {appetiteLevelLabel(m.appetite.appetite_level)}</Badge>
                                                                     <span>•</span>
                                                                     <span>זמני טיפול: <strong>{m.appetite.sla_days} ימים</strong></span>
                                                                 </>
@@ -264,7 +265,7 @@ const AdvisorMatchesView = () => {
                                                     תיק: {fmt(c.loan_amount_min)}–{fmt(c.loan_amount_max)} | LTV {c.ltv}%
                                                 </CardTitle>
                                                 <CardDescription>
-                                                    {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'} • מבוקש באזור {c.region}
+                                                    {c.borrower_type === 'employee' ? 'שכיר' : 'עצמאי'} • מבוקש באזור {regionLabel(c.region)}
                                                     <Badge variant="outline" className="mr-2">{c.status === 'closed' ? 'נסגר' : 'נדחה'}</Badge>
                                                 </CardDescription>
                                             </div>
@@ -376,7 +377,7 @@ const BankMatchesView = () => {
                             </CardTitle>
                             <CardDescription>
                                 {m.case
-                                    ? `LTV: ${m.case.ltv}% • אזור מבוקש: ${m.case.region}`
+                                    ? `LTV: ${m.case.ltv}% • אזור מבוקש: ${regionLabel(m.case.region)}`
                                     : m.appetite?.branch_name ?? ''
                                 }
                             </CardDescription>
