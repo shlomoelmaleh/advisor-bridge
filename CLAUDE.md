@@ -44,7 +44,7 @@ This is the most intricate part of the frontend. A small state machine resolves 
 - `ProtectedRoute` consumes this: `requireFinalRole` (set on `/admin/*`) waits for the DB-authoritative role before granting access; advisor/bank routes render on the optimistic role.
 - Profile is cached in `localStorage` (`advisor_bridge_profile` / `advisor_bridge_role`) and cleared on sign-out. Profile fetches are deduped per-userId via refs.
 
-**Role naming gotcha:** the app's `UserRole` is `'advisor' | 'bank' | 'admin'`, but legacy data and some RLS policies still use `'banker'`. Hooks check both (`role === 'bank' || role === 'banker'`). When adding role logic, handle both spellings on the read side. (Note: `src/types/index.ts` has an unrelated, stale `UserRole` — the source of truth is the one exported from `useAuth.tsx`.)
+**Role naming:** the app's `UserRole` is `'advisor' | 'bank' | 'admin'`. The legacy `'banker'` spelling was normalized away (migration `20260712100000` adds a CHECK constraint locking the role set), so new code should use `'bank'` only. Some older RLS policies still accept both spellings — harmless. The source of truth for the `UserRole` type is the one exported from `useAuth.tsx`.
 
 ## Domain model & core flow
 

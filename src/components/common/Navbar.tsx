@@ -32,10 +32,12 @@ const Navbar = () => {
     () => localStorage.getItem("last_seen_appetite") ?? new Date(0).toISOString(),
   );
 
+  // All badge counters share a single 30s polling interval; each tick only
+  // runs the queries relevant to the current role.
   useEffect(() => {
-    const fetchUnread = async () => {
-      if (!user?.id) return;
+    if (!user?.id || roleState === "unknown") return;
 
+    const fetchUnread = async () => {
       const { count } = await supabase
         .from("messages")
         .select("*", { count: "exact", head: true })
@@ -44,28 +46,7 @@ const Navbar = () => {
       setTotalUnread(count ?? 0);
     };
 
-    if (!user?.id || roleState === "unknown") return;
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
-    
-    // Feature B3: Real-time update for badge
-    const channel = supabase
-      .channel('navbar-messages')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-        fetchUnread();
-      })
-      .subscribe();
-
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, roleState]);
-
-  useEffect(() => {
     const fetchAdminPending = async () => {
-      if (roleState !== "admin") return;
-
       const [{ count: pendingUsers }, { count: pendingCases }, { count: pendingAppetites }] = await Promise.all([
         supabase.from("profiles").select("*", { count: "exact", head: true }).eq("is_approved", false),
         supabase.from("cases").select("*", { count: "exact", head: true }).eq("is_approved", false),
@@ -75,16 +56,7 @@ const Navbar = () => {
       setAdminPendingCount((pendingUsers ?? 0) + (pendingCases ?? 0) + (pendingAppetites ?? 0));
     };
 
-    if (roleState !== "admin") return;
-    fetchAdminPending();
-    const interval = setInterval(fetchAdminPending, 30000);
-    return () => clearInterval(interval);
-  }, [roleState]);
-
-  useEffect(() => {
     const fetchNewMatches = async () => {
-      if (roleState !== "advisor" || !user?.id) return;
-
       const { data: advisorCases } = await supabase.from("cases").select("id").eq("advisor_id", user.id);
       const caseIds = (advisorCases ?? []).map((c) => c.id);
       if (caseIds.length === 0) {
@@ -102,36 +74,7 @@ const Navbar = () => {
       setNewMatchesCount(count ?? 0);
     };
 
-    if (roleState !== "advisor") return;
-    fetchNewMatches();
-    const interval = setInterval(fetchNewMatches, 30000);
-    return () => clearInterval(interval);
-  }, [roleState, user?.id]);
-
-  useEffect(() => {
-    const fetchApprovedAppetites = async () => {
-      if (roleState !== "bank" || !user?.id) return;
-
-      const { count } = await supabase
-        .from("branch_appetites")
-        .select("*", { count: "exact", head: true })
-        .eq("banker_id", user.id)
-        .eq("is_approved", true)
-        .gt("created_at", lastSeenAppetiteTime);
-
-      setApprovedAppetiteCount(count ?? 0);
-    };
-
-    if (roleState !== "bank") return;
-    fetchApprovedAppetites();
-    const interval = setInterval(fetchApprovedAppetites, 30000);
-    return () => clearInterval(interval);
-  }, [roleState, user?.id, lastSeenAppetiteTime]);
-
-  useEffect(() => {
     const fetchAdvisorAppetites = async () => {
-      if (roleState !== "advisor") return;
-
       const { count } = await supabase
         .from("branch_appetites")
         .select("*", { count: "exact", head: true })
@@ -142,15 +85,18 @@ const Navbar = () => {
       setAdvisorNewAppetiteCount(count ?? 0);
     };
 
-    if (roleState !== "advisor") return;
-    fetchAdvisorAppetites();
-    const interval = setInterval(fetchAdvisorAppetites, 30000);
-    return () => clearInterval(interval);
-  }, [roleState, lastSeenMarketTime]);
+    const fetchApprovedAppetites = async () => {
+      const { count } = await supabase
+        .from("branch_appetites")
+        .select("*", { count: "exact", head: true })
+        .eq("banker_id", user.id)
+        .eq("is_approved", true)
+        .gt("created_at", lastSeenAppetiteTime);
 
-  useEffect(() => {
+      setApprovedAppetiteCount(count ?? 0);
+    };
+
     const fetchBankMatches = async () => {
-      if (roleState !== "bank" || !user?.id) return;
       const lastSeen = localStorage.getItem("last_seen_matches") ?? new Date(0).toISOString();
 
       const { count: newCount } = await supabase
@@ -168,11 +114,31 @@ const Navbar = () => {
 
       setNewBankMatchesCount((newCount ?? 0) + (closedCount ?? 0));
     };
-    if (roleState !== "bank") return;
-    fetchBankMatches();
-    const interval = setInterval(fetchBankMatches, 30000);
-    return () => clearInterval(interval);
-  }, [roleState, user?.id]);
+
+    const refreshBadges = () => {
+      const jobs: Promise<void>[] = [fetchUnread()];
+      if (roleState === "admin") jobs.push(fetchAdminPending());
+      if (roleState === "advisor") jobs.push(fetchNewMatches(), fetchAdvisorAppetites());
+      if (roleState === "bank") jobs.push(fetchApprovedAppetites(), fetchBankMatches());
+      return Promise.all(jobs);
+    };
+
+    refreshBadges();
+    const interval = setInterval(refreshBadges, 30000);
+
+    // Feature B3: Real-time update for the unread badge
+    const channel = supabase
+      .channel('navbar-messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        fetchUnread();
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, roleState, lastSeenMarketTime, lastSeenAppetiteTime]);
 
   const handleAppetiteClick = () => {
     const now = new Date().toISOString();

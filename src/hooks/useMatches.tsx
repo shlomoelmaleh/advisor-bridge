@@ -88,7 +88,7 @@ export const useMatches = (): UseMatchesReturn => {
                         m.case?.is_approved === true
                     );
                 });
-            } else if ((profile.role as any) === 'bank' || (profile.role as any) === 'banker') {
+            } else if (profile.role === 'bank') {
                 filteredData = filteredData.filter(
                     (m) =>
                         (m.banker_id === user.id || m.appetite?.banker_id === user.id) &&
