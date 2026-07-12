@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,20 +10,27 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import AuthPage from "./pages/AuthPage";
-import AdvisorDashboard from './pages/AdvisorDashboard';
-import BankDashboard from './pages/BankDashboard';
-import CaseSubmit from './pages/CaseSubmit';
-import MatchesPage from './pages/Matches';
-import Chat from './pages/Chat';
-import AdminDashboard from './pages/AdminDashboard';
-import BankAppetite from './pages/BankAppetite';
-import BankMarket from './pages/BankMarket';
-import Conversations from './pages/Conversations';
-import AdvisorMarket from './pages/AdvisorMarket';
-import NotFound from "./pages/NotFound";
-import Navbar from "@/components/common/Navbar";
-import Footer from "@/components/common/Footer";
 import AppLayout from "@/components/layout/AppLayout";
+
+// Role-segmented pages are lazy-loaded so each user only downloads their slice
+// of the app (advisor/bank/admin) instead of one 800KB bundle.
+const AdvisorDashboard = lazy(() => import('./pages/AdvisorDashboard'));
+const BankDashboard = lazy(() => import('./pages/BankDashboard'));
+const CaseSubmit = lazy(() => import('./pages/CaseSubmit'));
+const MatchesPage = lazy(() => import('./pages/Matches'));
+const Chat = lazy(() => import('./pages/Chat'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const BankAppetite = lazy(() => import('./pages/BankAppetite'));
+const BankMarket = lazy(() => import('./pages/BankMarket'));
+const Conversations = lazy(() => import('./pages/Conversations'));
+const AdvisorMarket = lazy(() => import('./pages/AdvisorMarket'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+
+const PageLoader = () => (
+  <div dir="rtl" className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -48,6 +55,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<RootRoute />} />
@@ -153,6 +161,7 @@ const App = () => (
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

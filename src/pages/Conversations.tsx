@@ -11,7 +11,7 @@ import { regionLabel } from '@/lib/labels';
 
 const Conversations = () => {
     const { profile } = useAuth();
-    const { matches, loading, getUnreadCount } = useMatches();
+    const { matches, loading, getUnreadCounts } = useMatches();
     const navigate = useNavigate();
 
     const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
@@ -37,14 +37,10 @@ const Conversations = () => {
         const activeMatches = matches.filter(m => m.status === 'closed' || (isAdvisor && !m.case_id));
         if (activeMatches.length === 0) return;
         const fetchCounts = async () => {
-            const counts: Record<string, number> = {};
-            for (const match of activeMatches) {
-                counts[match.id] = await getUnreadCount(match.id);
-            }
-            setUnreadCounts(counts);
+            setUnreadCounts(await getUnreadCounts(activeMatches.map(m => m.id)));
         };
         fetchCounts();
-    }, [matches, getUnreadCount]);
+    }, [matches, getUnreadCounts]);
 
     if (loading) {
         return (

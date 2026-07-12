@@ -24,6 +24,16 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      // TypeScript is intentionally loose in this codebase (see CLAUDE.md);
+      // Supabase results are routinely cast through `any`.
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  {
+    // Generated shadcn/ui components — don't lint their style choices.
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-empty-object-type": "off",
     },
   }
 );

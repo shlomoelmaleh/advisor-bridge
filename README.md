@@ -1,69 +1,53 @@
-# Welcome to your Lovable project
+# BranchMatch (advisor-bridge)
 
-## Project info
+אפליקציית ווב בעברית (RTL) שמחברת בין **יועצי משכנתאות** לבין **בנקאים** — התאמה אוטומטית בין תיקי לקוחות של יועצים לבין "תיאבון האשראי" של סניפי בנקים.
 
-**URL**: https://lovable.dev/projects/01331859-8ad9-4e28-b8ca-f9ebae35e498
+**Stack:** Vite · React 18 · TypeScript · shadcn/ui (Radix) · Tailwind · Supabase (Postgres + RLS, Auth, Edge Functions) · מסונכרן דו-כיוונית עם [Lovable](https://lovable.dev/projects/01331859-8ad9-4e28-b8ca-f9ebae35e498).
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/01331859-8ad9-4e28-b8ca-f9ebae35e498) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## התחלה מהירה
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
 npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+cp .env.example .env     # ולמלא ערכים מה-Dashboard של Supabase
+npm run dev              # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+## פקודות
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| פקודה | תיאור |
+|---|---|
+| `npm run dev` | שרת פיתוח (פורט 8080) |
+| `npm run build` | בניית פרודקשן |
+| `npm run lint` | ESLint על כל הריפו |
+| `npx tsx tests/<suite>.test.ts` | בדיקות אינטגרציה (ראו אזהרה למטה) |
 
-**Use GitHub Codespaces**
+### בדיקות — אזהרה
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+הבדיקות ב-`tests/` הן סקריפטים עצמאיים שרצים **מול פרויקט Supabase חי ומשנים נתונים אמיתיים** (יצירה/מחיקה של תיקים, התאמות והודעות). הן דורשות `.env` מלא כולל `SUPABASE_SERVICE_ROLE_KEY`. הריצו `CI=1` כדי לדלג על בדיקות ויזואליות אינטראקטיביות. אין test runner (vitest/jest) — כל סוויטה מורצת ישירות עם `tsx`.
 
-## What technologies are used for this project?
+## מבנה
 
-This project is built with .
+- `src/pages/` — דפים לפי תפקיד: יועץ (`/advisor/*`), בנקאי (`/bank/*`), אדמין (`/admin/*`).
+- `src/hooks/` — שכבת הדאטה (`useAuth`, `useCases`, `useAppetites`, `useMatches`, `useAdmin`).
+- `supabase/migrations/` — **כל הלוגיקה העסקית הקריטית** (מנוע ההתאמות, RLS, טריגרים) חיה ב-SQL, לא ב-TypeScript.
+- `supabase/functions/` — פונקציות Edge (Deno) לשליחת מיילים טרנזקציוניים דרך Resend.
+- `scripts/` — כלי תחזוקה (למשל `rescore-legacy-matches.ts`, dry-run כברירת מחדל).
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## מודל האבטחה — חובה לקרוא לפני נגיעה בהרשאות
 
-## How can I deploy this project?
+**כל ההרשאות נאכפות בצד השרת** ע"י מדיניות RLS ופונקציות `SECURITY DEFINER` ב-Postgres. בדיקות תפקיד בצד הלקוח הן UX בלבד. פירוט מלא ב-[CLAUDE.md](CLAUDE.md).
 
-Simply open [Lovable](https://lovable.dev/projects/01331859-8ad9-4e28-b8ca-f9ebae35e498) and click on Share -> Publish.
+## פריסה
 
-## I want to use a custom domain - is that possible?
+- **פרונטאנד:** דרך Lovable (Share → Publish) או כל אחסון סטטי.
+- **DB / פונקציות:** דרך Supabase CLI —
+  ```sh
+  npx supabase login
+  npx supabase link --project-ref <project-ref>
+  npx supabase db push               # מיגרציות
+  npx supabase functions deploy      # פונקציות Edge
+  ```
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) מריץ lint + build על כל push/PR ל-main.

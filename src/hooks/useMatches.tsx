@@ -13,6 +13,7 @@ interface UseMatchesReturn {
     rejectMatch: (matchId: string) => Promise<{ error: string | null }>;
     refreshMatches: () => Promise<void>;
     getUnreadCount: (matchId: string) => Promise<number>;
+    getUnreadCounts: (matchIds: string[]) => Promise<Record<string, number>>;
 }
 
 export const useMatches = (): UseMatchesReturn => {
@@ -117,6 +118,22 @@ export const useMatches = (): UseMatchesReturn => {
         return count ?? 0;
     }, [user?.id]);
 
+    // Batched variant — one query for all matches instead of one per match
+    const getUnreadCounts = useCallback(async (matchIds: string[]): Promise<Record<string, number>> => {
+        if (matchIds.length === 0) return {};
+        const { data } = await supabase
+            .from('messages')
+            .select('match_id')
+            .in('match_id', matchIds)
+            .neq('sender_id', user?.id)
+            .is('read_at', null);
+        const counts: Record<string, number> = {};
+        for (const row of (data as { match_id: string }[]) ?? []) {
+            counts[row.match_id] = (counts[row.match_id] || 0) + 1;
+        }
+        return counts;
+    }, [user?.id]);
+
     const runMatching = async (caseId: string): Promise<{ error: string | null }> => {
         try {
             const { error } = await supabase.rpc('run_matching_for_case', {
@@ -160,5 +177,6 @@ export const useMatches = (): UseMatchesReturn => {
         rejectMatch: (id) => updateMatchStatus(id, 'rejected'),
         refreshMatches: fetchMatches,
         getUnreadCount,
+        getUnreadCounts,
     };
 };
