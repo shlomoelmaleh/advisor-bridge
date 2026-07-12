@@ -7,15 +7,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Users, Briefcase, Activity, CheckCircle, Ban, RefreshCw, Trash2, CheckCircle2, ShieldAlert, AlertCircle } from 'lucide-react';
+import { Users, Briefcase, Activity, CheckCircle, Ban, RefreshCw, Trash2, CheckCircle2, ShieldAlert, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { UserRole } from '@/hooks/useAuth';
 import { appetiteLevelLabel, regionLabel } from '@/lib/labels';
+import { ADMIN_PAGE_SIZE } from '@/hooks/useAdmin';
 import AppLayout from '@/components/layout/AppLayout';
 
 const AdminDashboard = () => {
     const {
         pendingUsers,
         allUsers,
+        allUsersTotalCount,
+        allUsersPage,
+        setAllUsersPage,
         pendingCases,
         pendingAppetites,
         stats,
@@ -30,6 +34,8 @@ const AdminDashboard = () => {
         rejectAppetite,
         refreshAll
     } = useAdmin();
+
+    const totalPages = Math.max(1, Math.ceil(allUsersTotalCount / ADMIN_PAGE_SIZE));
 
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -267,6 +273,30 @@ const AdminDashboard = () => {
                                             ))}
                                         </tbody>
                                     </table>
+                                </div>
+                                {/* Pagination controls */}
+                                <div className="flex items-center justify-between mt-4 pt-4 border-t" dir="rtl">
+                                    <span className="text-sm text-muted-foreground">
+                                        {allUsersTotalCount === 0 ? 'אין משתמשים' : `${allUsersPage * ADMIN_PAGE_SIZE + 1}–${Math.min((allUsersPage + 1) * ADMIN_PAGE_SIZE, allUsersTotalCount)} מתוך ${allUsersTotalCount}`}
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setAllUsersPage(p => p - 1)}
+                                            disabled={allUsersPage === 0 || loading}
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setAllUsersPage(p => p + 1)}
+                                            disabled={allUsersPage >= totalPages - 1 || loading}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

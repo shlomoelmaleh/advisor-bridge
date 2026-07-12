@@ -13,11 +13,15 @@ export interface AdminStats {
     closedMatches: number;
 }
 
+export const ADMIN_PAGE_SIZE = 20;
+
 export const useAdmin = () => {
     const { profile } = useAuth();
 
     const [pendingUsers, setPendingUsers] = useState<Profile[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
+    const [allUsersTotalCount, setAllUsersTotalCount] = useState(0);
+    const [allUsersPage, setAllUsersPage] = useState(0);
     const [pendingCases, setPendingCases] = useState<DbCase[]>([]);
     const [pendingAppetites, setPendingAppetites] = useState<BranchAppetite[]>([]);
     const [stats, setStats] = useState<AdminStats>({
@@ -50,17 +54,28 @@ export const useAdmin = () => {
             initialized.current = true;
         }
         try {
-            // 1. Fetch Users
-            const { data: profiles, error: profilesError } = await supabase
+            // 1a. Pending users — separate query (inherently small, no pagination needed)
+            const { data: pendingProfiles, error: pendingProfilesError } = await supabase
                 .from('profiles')
                 .select('user_id, full_name, company, role, is_approved, created_at')
+                .eq('is_approved', false)
                 .order('created_at', { ascending: false });
 
-            if (profilesError) throw profilesError;
+            if (pendingProfilesError) throw pendingProfilesError;
+            setPendingUsers((pendingProfiles ?? []) as unknown as Profile[]);
 
-            const allProfiles = (profiles ?? []) as unknown as Profile[];
-            setAllUsers(allProfiles);
-            setPendingUsers(allProfiles.filter(p => p.is_approved === false));
+            // 1b. All users — paginated
+            const from = allUsersPage * ADMIN_PAGE_SIZE;
+            const to = from + ADMIN_PAGE_SIZE - 1;
+            const { data: profiles, error: profilesError, count } = await supabase
+                .from('profiles')
+                .select('user_id, full_name, company, role, is_approved, created_at', { count: 'exact' })
+                .order('created_at', { ascending: false })
+                .range(from, to);
+
+            if (profilesError) throw profilesError;
+            setAllUsers((profiles ?? []) as unknown as Profile[]);
+            setAllUsersTotalCount(count ?? 0);
 
             // 2. Fetch Pending Cases
             const { data: casesData, error: casesError } = await (supabase
@@ -111,7 +126,7 @@ export const useAdmin = () => {
         } finally {
             setLoading(false);
         }
-    }, [profile]);
+    }, [profile, allUsersPage]);
 
     useEffect(() => {
         fetchAll();
@@ -263,6 +278,9 @@ export const useAdmin = () => {
     return {
         pendingUsers,
         allUsers,
+        allUsersTotalCount,
+        allUsersPage,
+        setAllUsersPage,
         pendingCases,
         pendingAppetites,
         stats,
