@@ -75,6 +75,7 @@ export type Database = {
       }
       cases: {
         Row: {
+          admin_note: string | null
           advisor_id: string | null
           borrower_type: string | null
           created_at: string | null
@@ -88,9 +89,11 @@ export type Database = {
           priorities: Json | null
           property_type: string | null
           region: string | null
+          resubmitted: boolean | null
           status: string | null
         }
         Insert: {
+          admin_note?: string | null
           advisor_id?: string | null
           borrower_type?: string | null
           created_at?: string | null
@@ -104,9 +107,11 @@ export type Database = {
           priorities?: Json | null
           property_type?: string | null
           region?: string | null
+          resubmitted?: boolean | null
           status?: string | null
         }
         Update: {
+          admin_note?: string | null
           advisor_id?: string | null
           borrower_type?: string | null
           created_at?: string | null
@@ -120,6 +125,7 @@ export type Database = {
           priorities?: Json | null
           property_type?: string | null
           region?: string | null
+          resubmitted?: boolean | null
           status?: string | null
         }
         Relationships: [
@@ -134,6 +140,7 @@ export type Database = {
       }
       matches: {
         Row: {
+          advisor_id: string | null
           advisor_status: string | null
           appetite_id: string | null
           banker_id: string | null
@@ -145,6 +152,7 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          advisor_id?: string | null
           advisor_status?: string | null
           appetite_id?: string | null
           banker_id?: string | null
@@ -156,6 +164,7 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          advisor_id?: string | null
           advisor_status?: string | null
           appetite_id?: string | null
           banker_id?: string | null
@@ -180,6 +189,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "matches_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "anonymous_cases"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "matches_case_id_fkey"
@@ -264,12 +280,55 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      anonymous_cases: {
+        Row: {
+          borrower_type: string | null
+          created_at: string | null
+          id: string | null
+          is_approved: boolean | null
+          loan_amount_max: number | null
+          loan_amount_min: number | null
+          ltv: number | null
+          region: string | null
+          status: string | null
+        }
+        Insert: {
+          borrower_type?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_approved?: boolean | null
+          loan_amount_max?: number | null
+          loan_amount_min?: number | null
+          ltv?: number | null
+          region?: string | null
+          status?: string | null
+        }
+        Update: {
+          borrower_type?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_approved?: boolean | null
+          loan_amount_max?: number | null
+          loan_amount_min?: number | null
+          ltv?: number | null
+          region?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       compute_match_score: {
         Args: { p_appetite_id: string; p_case_id: string }
         Returns: number
+      }
+      compute_match_score_test: {
+        Args: { p_appetite_id: string; p_case_id: string }
+        Returns: number
+      }
+      express_interest_in_appetite: {
+        Args: { p_appetite_id: string }
+        Returns: string
       }
       express_interest_in_case: {
         Args: { p_case_id: string }
