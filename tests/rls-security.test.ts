@@ -1,6 +1,6 @@
 /**
  * BranchMatch — RLS Security Test Suite
- * TC-H01 to TC-H08
+ * TC-H01 to TC-H09
  *
  * הרצה: npx tsx tests/rls-security.test.ts
  */
@@ -105,6 +105,7 @@ async function createMatch(caseId: string, appetiteId: string, bankerId: string)
 }
 
 async function cleanup(ids: { caseId?: string; appetiteId?: string; matchId?: string }) {
+  if (ids.matchId) await admin.from('messages').delete().eq('match_id', ids.matchId);
   if (ids.matchId) await admin.from('matches').delete().eq('id', ids.matchId);
   if (ids.caseId) await admin.from('cases').delete().eq('id', ids.caseId);
   if (ids.appetiteId) await admin.from('branch_appetites').delete().eq('id', ids.appetiteId);
@@ -174,6 +175,55 @@ async function testMessageAccess(advisorClient: any, bankerClient: any, matchId:
     .select('*')
     .eq('match_id', '00000000-0000-0000-0000-000000000000');
   assert((msgs?.length ?? 0) === 0, 'TC-H06b', `גישה ל-match לא קיים → 0 הודעות`);
+}
+
+async function testMessageTampering(bankerClient: any, matchId: string, advisorId: string) {
+  console.log('\n🔒 TC-H09 — חסינות תוכן הודעות (רק read_at ניתן לעדכון)');
+
+  // צור הודעה מהיועץ דרך service role
+  const { data: msg, error: createError } = await admin.from('messages').insert({
+    match_id: matchId,
+    sender_id: advisorId,
+    content: 'הודעה מקורית של היועץ',
+  }).select('id').single();
+  if (createError || !msg) {
+    assert(false, 'TC-H09', `יצירת הודעת בדיקה נכשלה: ${createError?.message}`);
+    return;
+  }
+
+  // הבנקאי (משתתף שאינו השולח) מנסה לשנות את תוכן ההודעה — חייב להיחסם
+  await bankerClient
+    .from('messages')
+    .update({ content: 'תוכן מזויף' })
+    .eq('id', msg.id);
+
+  const { data: afterTamper } = await admin
+    .from('messages')
+    .select('content')
+    .eq('id', msg.id)
+    .single();
+  assert(
+    afterTamper?.content === 'הודעה מקורית של היועץ',
+    'TC-H09a',
+    `בנקאי לא יכול לשנות תוכן הודעה של הצד השני — ${afterTamper?.content === 'הודעה מקורית של היועץ' ? 'נחסם ✓' : 'התוכן שונה! ✗'}`
+  );
+
+  // אבל סימון כנקראה (read_at) חייב להמשיך לעבוד
+  const { error: readError } = await bankerClient
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', msg.id);
+
+  const { data: afterRead } = await admin
+    .from('messages')
+    .select('read_at')
+    .eq('id', msg.id)
+    .single();
+  assert(
+    !readError && afterRead?.read_at !== null,
+    'TC-H09b',
+    `בנקאי יכול לסמן הודעה כנקראה (read_at) — ${afterRead?.read_at ? 'עובד ✓' : 'נחסם ✗'}`
+  );
 }
 
 async function testUnapprovedUserBlock() {
@@ -270,6 +320,7 @@ async function main() {
     await testCaseApprovalBlock(advisorClient, caseId);
     await testAnonymousCasesForBanker(bankerClient);
     await testMessageAccess(advisorClient, bankerClient, matchId, advisorId);
+    await testMessageTampering(bankerClient, matchId, advisorId);
     await testUnapprovedUserBlock();
     await testWebhookSecret();
 

@@ -59,7 +59,7 @@ Roles: **advisor**, **bank** (banker), **admin**. The central entities (DB-align
 1. New users, cases, and appetites are created with `is_approved = false` and must be approved by an admin.
 2. Approving a case or appetite fires a Postgres trigger (`auto_match_on_case_approval` / `auto_match_on_appetite_approval`) that runs the matching engine.
 3. The matching engine (`compute_match_score` + `run_matching_for_case`) scores each active, in-date appetite against the case: loan amount (25), LTV fit (25), borrower type (20), region (15), fast SLA (15), then a multiplier for appetite level (high ×1.3 cap 100, low ×0.7). Pairs scoring **≥ 40** become `matches`.
-4. Both sides express interest / reject via their status column; mutual interest opens chat.
+4. Both sides express interest / reject via their status column. Note: the messages RLS policy allows chat as soon as a match exists (one-sided interest is enough) — "mutual interest opens chat" is a UX convention in the client, not a DB-enforced rule.
 
 When changing matching behavior or the approval lifecycle, the logic lives in **SQL migrations**, not TypeScript. The newest migrations supersede older ones (filenames are timestamp-ordered); grep the whole `supabase/migrations/` tree for a function name to find its latest definition before editing.
 

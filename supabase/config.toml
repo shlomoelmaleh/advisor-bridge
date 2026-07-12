@@ -5,3 +5,24 @@ verify_jwt = false
 
 [functions.notify-banker-appetite-approved]
 verify_jwt = false
+
+[functions.notify-advisor-case-rejected]
+verify_jwt = false
+
+[functions.notify-user-approved]
+verify_jwt = false
+
+[functions.notify-banker-appetite-rejected]
+verify_jwt = false
+
+[functions.delete-user]
+verify_jwt = false
+
+[functions.notify-admin-new-user]
+verify_jwt = true
+
+[functions.notify-banker-advisor-interest]
+verify_jwt = true
+
+[functions.notify-advisor-case-approved]
+verify_jwt = true
