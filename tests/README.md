@@ -35,22 +35,26 @@ way to accidentally mutate production through these scripts.
 
 ### One-time setup
 
+> Note: the base tables were created in Studio/Lovable and are NOT in
+> `supabase/migrations`, so `supabase db push` alone will NOT build a fresh
+> project. Use the full baseline instead.
+
 1. Create a **new, free Supabase project** dedicated to testing
    (<https://supabase.com/dashboard> → New project). Keep it separate from the
-   production project.
-2. Apply the schema to it by pushing this repo's migrations:
-   ```sh
-   npx supabase link --project-ref <TEST_PROJECT_REF>
-   npx supabase db push
-   # then re-link back to production when done:
-   # npx supabase link --project-ref oasivruwsvhfmvynpbia
-   ```
-   (Deploy the edge functions too if you run the email-webhook suite:
-   `npx supabase functions deploy`.)
+   production project. No special settings — pick a region close to you and save
+   the database password.
+2. Apply the schema: open the new project's **SQL Editor** and run the entire
+   contents of [`supabase/schema/baseline.sql`](../supabase/schema/baseline.sql)
+   once. It creates every table, function, trigger, RLS policy and index that
+   production has (webhook/email triggers are intentionally omitted).
+   - `baseline.sql` is regenerated from production with
+     `node scripts/generate-baseline.cjs` (needs the CLI linked to prod).
 3. Copy `.env.test.example` → `.env.test` and fill in the **test project's**
    URL, publishable/anon key and service-role key (Project Settings → API).
    `.env.test` is gitignored.
 4. Run any suite: `npx tsx tests/rls-security.test.ts`.
 
 The suites self-provision their test users via the service role, so no manual
-seeding is required.
+seeding is required. (The email-webhook suite additionally needs the edge
+functions deployed to the test project — skip it or run
+`npx supabase functions deploy` against the test project if you need it.)
