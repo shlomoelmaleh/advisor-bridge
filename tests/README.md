@@ -52,9 +52,15 @@ way to accidentally mutate production through these scripts.
 3. Copy `.env.test.example` → `.env.test` and fill in the **test project's**
    URL, publishable/anon key and service-role key (Project Settings → API).
    `.env.test` is gitignored.
-4. Run any suite: `npx tsx tests/rls-security.test.ts`.
+4. Seed the canonical test users (advisor + banker, approved):
+   ```sh
+   npm run seed:test
+   ```
+5. Run any suite: `npx tsx tests/rls-security.test.ts`.
 
-The suites self-provision their test users via the service role, so no manual
-seeding is required. (The email-webhook suite additionally needs the edge
-functions deployed to the test project — skip it or run
-`npx supabase functions deploy` against the test project if you need it.)
+The email-webhook suite (and TC-H08 in rls-security) additionally needs the edge
+functions deployed to the test project — skip those or run
+`npx supabase functions deploy` against the test project if you need them.
+
+Validated end-to-end against a fresh test project: `matching-engine` 15/15,
+`rls-security` 9/10 (the one failure is TC-H08, which needs the edge functions).
