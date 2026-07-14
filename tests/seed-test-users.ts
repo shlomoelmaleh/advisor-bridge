@@ -16,6 +16,10 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: 
 const USERS = [
   { email: 'office@eshel-f.com', password: 'Q1234567', role: 'advisor', full_name: 'יועץ בדיקה', company: 'משרד בדיקה' },
   { email: 'shlomoelmaleh5@gmail.com', password: 'Q1234567', role: 'bank', full_name: 'בנקאי בדיקה', company: 'בנק בדיקה' },
+  // Admin profile — auth-admin TC-A06 checks that a role='admin' profile exists.
+  { email: 'admin@branchmatch.test', password: 'Q1234567', role: 'admin', full_name: 'מנהל בדיקה', company: 'ניהול' },
+  // Pending/temporary user — auth-admin TC-B01–B03 toggle this user's approval.
+  { email: '1002526737@edu-haifa.org.il', password: 'Q1234567', role: 'advisor', full_name: 'משתמש ממתין', company: 'בדיקה' },
 ];
 
 async function findUserByEmail(email: string) {

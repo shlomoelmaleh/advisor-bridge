@@ -59,8 +59,13 @@ way to accidentally mutate production through these scripts.
 5. Run any suite: `npx tsx tests/rls-security.test.ts`.
 
 The email-webhook suite (and TC-H08 in rls-security) additionally needs the edge
-functions deployed to the test project — skip those or run
-`npx supabase functions deploy` against the test project if you need them.
+functions deployed to the test project:
+```sh
+npx supabase functions deploy --project-ref <TEST_PROJECT_REF>
+```
+(`--project-ref` deploys without re-linking away from production.)
 
-Validated end-to-end against a fresh test project: `matching-engine` 15/15,
-`rls-security` 9/10 (the one failure is TC-H08, which needs the edge functions).
+Validated end-to-end against a fresh test project with functions deployed:
+`matching-engine` 15/15, `rls-security` 10/10, `advisor-banker-flows` 23/23,
+`email-webhooks` 31/31, `auth-admin` 15/15 (+1 interactive check skipped under CI=1).
+`npm run seed:test` provisions advisor, bank, admin and a pending user.
