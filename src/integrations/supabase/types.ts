@@ -54,6 +54,7 @@ export type Database = {
           preferred_borrower_types: string[] | null
           preferred_regions: string[] | null
           sla_days: number | null
+          updated_at: string | null
           valid_until: string | null
         }
         Insert: {
@@ -70,6 +71,7 @@ export type Database = {
           preferred_borrower_types?: string[] | null
           preferred_regions?: string[] | null
           sla_days?: number | null
+          updated_at?: string | null
           valid_until?: string | null
         }
         Update: {
@@ -86,6 +88,7 @@ export type Database = {
           preferred_borrower_types?: string[] | null
           preferred_regions?: string[] | null
           sla_days?: number | null
+          updated_at?: string | null
           valid_until?: string | null
         }
         Relationships: [
@@ -116,6 +119,7 @@ export type Database = {
           region: string | null
           resubmitted: boolean | null
           status: string | null
+          updated_at: string | null
         }
         Insert: {
           admin_note?: string | null
@@ -134,6 +138,7 @@ export type Database = {
           region?: string | null
           resubmitted?: boolean | null
           status?: string | null
+          updated_at?: string | null
         }
         Update: {
           admin_note?: string | null
@@ -152,6 +157,7 @@ export type Database = {
           region?: string | null
           resubmitted?: boolean | null
           status?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -175,6 +181,7 @@ export type Database = {
           id: string
           score: number | null
           status: string | null
+          updated_at: string | null
         }
         Insert: {
           advisor_id?: string | null
@@ -187,6 +194,7 @@ export type Database = {
           id?: string
           score?: number | null
           status?: string | null
+          updated_at?: string | null
         }
         Update: {
           advisor_id?: string | null
@@ -199,6 +207,7 @@ export type Database = {
           id?: string
           score?: number | null
           status?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -281,6 +290,7 @@ export type Database = {
           is_approved: boolean | null
           phone: string | null
           role: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -290,6 +300,7 @@ export type Database = {
           is_approved?: boolean | null
           phone?: string | null
           role: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -299,6 +310,7 @@ export type Database = {
           is_approved?: boolean | null
           phone?: string | null
           role?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -343,6 +355,7 @@ export type Database = {
       }
     }
     Functions: {
+      close_expired_matches: { Args: never; Returns: number }
       compute_match_score: {
         Args: { p_appetite_id: string; p_case_id: string }
         Returns: number
