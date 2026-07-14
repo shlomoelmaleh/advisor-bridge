@@ -14,13 +14,18 @@ npm run build      # production build
 npm run build:dev  # build in development mode
 npm run lint       # eslint over the repo
 
-# Integration tests — standalone tsx scripts that hit a LIVE Supabase project.
-# Require a .env with VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY,
-# and SUPABASE_SERVICE_ROLE_KEY. They mutate real data (create/delete users etc.).
+# Unit tests — Vitest, pure logic, no DB. Fast; run in CI. Scoped to tests/unit/**.
+npm test           # run once (vitest run)
+npm run test:watch
+
+# Integration tests — standalone tsx scripts that hit a LIVE Supabase project and
+# mutate real data (create/delete users etc.). They read config from .env.test
+# (NOT .env) via tests/helpers/testEnv.ts, which REFUSES to run against the prod
+# project ref. Point .env.test at a dedicated test project — see tests/README.md.
 npx tsx tests/auth-admin.test.ts          # run a single suite
 npx tsx tests/matching-engine.test.ts
 # Tests are "hybrid": automated assertions + interactive visual prompts (Y/N/S).
-# Set CI=1 to auto-pass visual checks. There is no `npm test` script and no test runner (no vitest/jest).
+# Set CI=1 to auto-pass visual checks.
 ```
 
 There is no local Supabase stack configured for routine work — the app and tests talk to the hosted project (`oasivruwsvhfmvynpbia`). The `supabase/` dir holds migrations + edge functions deployed to that project.

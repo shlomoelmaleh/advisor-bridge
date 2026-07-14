@@ -10,16 +10,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import 'dotenv/config';
-
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
-
-if (!SUPABASE_URL || !SERVICE_KEY || !ANON_KEY) {
-  console.error('❌ חסרים משתני סביבה. ודא שקובץ .env מכיל את VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY ואת SUPABASE_SERVICE_ROLE_KEY');
-  process.exit(1);
-}
+import { SUPABASE_URL, ANON_KEY, SERVICE_KEY } from './helpers/testEnv';
 
 const ADVISOR_EMAIL = 'office@eshel-f.com';
 const BANKER_EMAIL = 'shlomoelmaleh5@gmail.com';
