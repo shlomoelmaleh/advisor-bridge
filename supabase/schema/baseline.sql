@@ -9,6 +9,9 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
 
+-- ── Sequences ───────────────────────────────────────────────────────────────
+CREATE SEQUENCE IF NOT EXISTS public.rate_limit_hits_id_seq;
+
 -- ── Tables ──────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.branch_appetites (
@@ -872,44 +875,44 @@ $function$
 ;
 
 -- ── Constraints ─────────────────────────────────────────────────────────────
-ALTER TABLE branch_appetites ADD CONSTRAINT branch_appetites_appetite_level_check CHECK ((appetite_level = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])));
-ALTER TABLE branch_appetites ADD CONSTRAINT branch_appetites_pkey PRIMARY KEY (id);
-ALTER TABLE cases ADD CONSTRAINT cases_borrower_type_check CHECK ((borrower_type = ANY (ARRAY['employee'::text, 'self_employed'::text])));
-ALTER TABLE cases ADD CONSTRAINT cases_pkey PRIMARY KEY (id);
-ALTER TABLE cases ADD CONSTRAINT cases_status_check CHECK ((status = ANY (ARRAY['open'::text, 'in_progress'::text, 'matched'::text, 'closed'::text, 'rejected'::text])));
-ALTER TABLE matches ADD CONSTRAINT matches_advisor_status_check CHECK ((advisor_status = ANY (ARRAY['pending'::text, 'interested'::text, 'rejected'::text])));
-ALTER TABLE matches ADD CONSTRAINT matches_banker_status_check CHECK ((banker_status = ANY (ARRAY['pending'::text, 'interested'::text, 'rejected'::text])));
-ALTER TABLE matches ADD CONSTRAINT matches_case_id_appetite_id_key UNIQUE (case_id, appetite_id);
-ALTER TABLE matches ADD CONSTRAINT matches_pkey PRIMARY KEY (id);
-ALTER TABLE matches ADD CONSTRAINT matches_score_check CHECK (((score >= 0) AND (score <= 100)));
-ALTER TABLE matches ADD CONSTRAINT matches_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'interested'::text, 'rejected'::text, 'closed'::text])));
-ALTER TABLE messages ADD CONSTRAINT messages_pkey PRIMARY KEY (id);
-ALTER TABLE profiles ADD CONSTRAINT profiles_pkey PRIMARY KEY (user_id);
-ALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK ((role = ANY (ARRAY['advisor'::text, 'bank'::text, 'admin'::text])));
-ALTER TABLE rate_limit_hits ADD CONSTRAINT rate_limit_hits_pkey PRIMARY KEY (id);
-ALTER TABLE branch_appetites ADD CONSTRAINT branch_appetites_banker_id_fkey FOREIGN KEY (banker_id) REFERENCES profiles(user_id) ON DELETE CASCADE;
-ALTER TABLE cases ADD CONSTRAINT cases_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES profiles(user_id) ON DELETE CASCADE;
-ALTER TABLE matches ADD CONSTRAINT matches_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES auth.users(id);
-ALTER TABLE matches ADD CONSTRAINT matches_appetite_id_fkey FOREIGN KEY (appetite_id) REFERENCES branch_appetites(id) ON DELETE CASCADE;
-ALTER TABLE matches ADD CONSTRAINT matches_banker_id_fkey FOREIGN KEY (banker_id) REFERENCES profiles(user_id);
-ALTER TABLE matches ADD CONSTRAINT matches_case_id_fkey FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE;
-ALTER TABLE messages ADD CONSTRAINT messages_match_id_fkey FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE;
-ALTER TABLE messages ADD CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES profiles(user_id);
-ALTER TABLE profiles ADD CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='branch_appetites_appetite_level_check' AND conrelid='branch_appetites'::regclass) THEN ALTER TABLE branch_appetites ADD CONSTRAINT branch_appetites_appetite_level_check CHECK ((appetite_level = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text]))); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='branch_appetites_pkey' AND conrelid='branch_appetites'::regclass) THEN ALTER TABLE branch_appetites ADD CONSTRAINT branch_appetites_pkey PRIMARY KEY (id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='cases_borrower_type_check' AND conrelid='cases'::regclass) THEN ALTER TABLE cases ADD CONSTRAINT cases_borrower_type_check CHECK ((borrower_type = ANY (ARRAY['employee'::text, 'self_employed'::text]))); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='cases_pkey' AND conrelid='cases'::regclass) THEN ALTER TABLE cases ADD CONSTRAINT cases_pkey PRIMARY KEY (id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='cases_status_check' AND conrelid='cases'::regclass) THEN ALTER TABLE cases ADD CONSTRAINT cases_status_check CHECK ((status = ANY (ARRAY['open'::text, 'in_progress'::text, 'matched'::text, 'closed'::text, 'rejected'::text]))); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_advisor_status_check' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_advisor_status_check CHECK ((advisor_status = ANY (ARRAY['pending'::text, 'interested'::text, 'rejected'::text]))); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_banker_status_check' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_banker_status_check CHECK ((banker_status = ANY (ARRAY['pending'::text, 'interested'::text, 'rejected'::text]))); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_case_id_appetite_id_key' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_case_id_appetite_id_key UNIQUE (case_id, appetite_id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_pkey' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_pkey PRIMARY KEY (id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_score_check' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_score_check CHECK (((score >= 0) AND (score <= 100))); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_status_check' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'interested'::text, 'rejected'::text, 'closed'::text]))); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='messages_pkey' AND conrelid='messages'::regclass) THEN ALTER TABLE messages ADD CONSTRAINT messages_pkey PRIMARY KEY (id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='profiles_pkey' AND conrelid='profiles'::regclass) THEN ALTER TABLE profiles ADD CONSTRAINT profiles_pkey PRIMARY KEY (user_id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='profiles_role_check' AND conrelid='profiles'::regclass) THEN ALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK ((role = ANY (ARRAY['advisor'::text, 'bank'::text, 'admin'::text]))); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='rate_limit_hits_pkey' AND conrelid='rate_limit_hits'::regclass) THEN ALTER TABLE rate_limit_hits ADD CONSTRAINT rate_limit_hits_pkey PRIMARY KEY (id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='branch_appetites_banker_id_fkey' AND conrelid='branch_appetites'::regclass) THEN ALTER TABLE branch_appetites ADD CONSTRAINT branch_appetites_banker_id_fkey FOREIGN KEY (banker_id) REFERENCES profiles(user_id) ON DELETE CASCADE; END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='cases_advisor_id_fkey' AND conrelid='cases'::regclass) THEN ALTER TABLE cases ADD CONSTRAINT cases_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES profiles(user_id) ON DELETE CASCADE; END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_advisor_id_fkey' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES auth.users(id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_appetite_id_fkey' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_appetite_id_fkey FOREIGN KEY (appetite_id) REFERENCES branch_appetites(id) ON DELETE CASCADE; END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_banker_id_fkey' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_banker_id_fkey FOREIGN KEY (banker_id) REFERENCES profiles(user_id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_case_id_fkey' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_case_id_fkey FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE; END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='messages_match_id_fkey' AND conrelid='messages'::regclass) THEN ALTER TABLE messages ADD CONSTRAINT messages_match_id_fkey FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE; END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='messages_sender_id_fkey' AND conrelid='messages'::regclass) THEN ALTER TABLE messages ADD CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES profiles(user_id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='profiles_user_id_fkey' AND conrelid='profiles'::regclass) THEN ALTER TABLE profiles ADD CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE; END IF; END $$;
 
 -- ── Indexes ─────────────────────────────────────────────────────────────────
-CREATE INDEX idx_branch_appetites_active_approved ON public.branch_appetites USING btree (valid_until) WHERE ((is_active = true) AND (is_approved = true));
-CREATE INDEX idx_branch_appetites_banker_id ON public.branch_appetites USING btree (banker_id);
-CREATE INDEX idx_cases_advisor_id ON public.cases USING btree (advisor_id);
-CREATE INDEX idx_cases_open_approved ON public.cases USING btree (created_at) WHERE ((status = 'open'::text) AND (is_approved = true));
-CREATE INDEX idx_matches_advisor_id ON public.matches USING btree (advisor_id);
-CREATE INDEX idx_matches_appetite_id ON public.matches USING btree (appetite_id);
-CREATE INDEX idx_matches_banker_id ON public.matches USING btree (banker_id);
-CREATE INDEX idx_matches_case_id ON public.matches USING btree (case_id);
-CREATE INDEX idx_messages_match_id ON public.messages USING btree (match_id);
-CREATE INDEX idx_messages_read_at ON public.messages USING btree (match_id, read_at) WHERE (read_at IS NULL);
-CREATE INDEX idx_messages_unread ON public.messages USING btree (match_id, sender_id) WHERE (read_at IS NULL);
-CREATE INDEX idx_rate_limit_hits_user_time ON public.rate_limit_hits USING btree (user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_branch_appetites_active_approved ON public.branch_appetites USING btree (valid_until) WHERE ((is_active = true) AND (is_approved = true));
+CREATE INDEX IF NOT EXISTS idx_branch_appetites_banker_id ON public.branch_appetites USING btree (banker_id);
+CREATE INDEX IF NOT EXISTS idx_cases_advisor_id ON public.cases USING btree (advisor_id);
+CREATE INDEX IF NOT EXISTS idx_cases_open_approved ON public.cases USING btree (created_at) WHERE ((status = 'open'::text) AND (is_approved = true));
+CREATE INDEX IF NOT EXISTS idx_matches_advisor_id ON public.matches USING btree (advisor_id);
+CREATE INDEX IF NOT EXISTS idx_matches_appetite_id ON public.matches USING btree (appetite_id);
+CREATE INDEX IF NOT EXISTS idx_matches_banker_id ON public.matches USING btree (banker_id);
+CREATE INDEX IF NOT EXISTS idx_matches_case_id ON public.matches USING btree (case_id);
+CREATE INDEX IF NOT EXISTS idx_messages_match_id ON public.messages USING btree (match_id);
+CREATE INDEX IF NOT EXISTS idx_messages_read_at ON public.messages USING btree (match_id, read_at) WHERE (read_at IS NULL);
+CREATE INDEX IF NOT EXISTS idx_messages_unread ON public.messages USING btree (match_id, sender_id) WHERE (read_at IS NULL);
+CREATE INDEX IF NOT EXISTS idx_rate_limit_hits_user_time ON public.rate_limit_hits USING btree (user_id, created_at);
 
 -- ── Views ───────────────────────────────────────────────────────────────────
 
@@ -934,76 +937,117 @@ ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rate_limit_hits ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admin manages all appetites" ON public.branch_appetites;
 CREATE POLICY "Admin manages all appetites" ON public.branch_appetites AS PERMISSIVE FOR ALL TO public USING (is_admin()) WITH CHECK (is_admin());
+DROP POLICY IF EXISTS "Advisors see approved active appetites" ON public.branch_appetites;
 CREATE POLICY "Advisors see approved active appetites" ON public.branch_appetites AS PERMISSIVE FOR ALL TO public USING (((is_active = true) AND (is_approved = true) AND (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'advisor'::text)));
+DROP POLICY IF EXISTS "Bankers manage own appetites" ON public.branch_appetites;
 CREATE POLICY "Bankers manage own appetites" ON public.branch_appetites AS PERMISSIVE FOR ALL TO authenticated USING ((auth.uid() = banker_id));
+DROP POLICY IF EXISTS "Only approved bankers can create appetites" ON public.branch_appetites;
 CREATE POLICY "Only approved bankers can create appetites" ON public.branch_appetites AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
    FROM profiles
   WHERE ((profiles.user_id = auth.uid()) AND (profiles.is_approved = true) AND (profiles.role = 'bank'::text)))));
+DROP POLICY IF EXISTS "Admin manages all cases" ON public.cases;
 CREATE POLICY "Admin manages all cases" ON public.cases AS PERMISSIVE FOR ALL TO public USING (is_admin()) WITH CHECK (is_admin());
+DROP POLICY IF EXISTS "Advisors manage own cases" ON public.cases;
 CREATE POLICY "Advisors manage own cases" ON public.cases AS PERMISSIVE FOR ALL TO public USING ((auth.uid() = advisor_id)) WITH CHECK (((auth.uid() = advisor_id) AND (is_approved = false)));
+DROP POLICY IF EXISTS "Bankers see approved open cases" ON public.cases;
 CREATE POLICY "Bankers see approved open cases" ON public.cases AS PERMISSIVE FOR ALL TO public USING (((status = 'open'::text) AND (is_approved = true) AND (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'bank'::text)));
+DROP POLICY IF EXISTS "Bankers see cases in their matches" ON public.cases;
 CREATE POLICY "Bankers see cases in their matches" ON public.cases AS PERMISSIVE FOR SELECT TO public USING (is_banker_in_case(id, auth.uid()));
+DROP POLICY IF EXISTS "Only approved advisors can create cases" ON public.cases;
 CREATE POLICY "Only approved advisors can create cases" ON public.cases AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
    FROM profiles
   WHERE ((profiles.user_id = auth.uid()) AND (profiles.is_approved = true) AND (profiles.role = 'advisor'::text)))));
+DROP POLICY IF EXISTS "Admin manages all matches" ON public.matches;
 CREATE POLICY "Admin manages all matches" ON public.matches AS PERMISSIVE FOR ALL TO public USING (is_admin()) WITH CHECK (is_admin());
+DROP POLICY IF EXISTS "Deny direct match inserts" ON public.matches;
 CREATE POLICY "Deny direct match inserts" ON public.matches AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (false);
+DROP POLICY IF EXISTS "Match participants see matches" ON public.matches;
 CREATE POLICY "Match participants see matches" ON public.matches AS PERMISSIVE FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
    FROM cases
   WHERE ((cases.id = matches.case_id) AND (cases.advisor_id = auth.uid())))) OR (EXISTS ( SELECT 1
    FROM branch_appetites
   WHERE ((branch_appetites.id = matches.appetite_id) AND (branch_appetites.banker_id = auth.uid())))) OR (banker_id = auth.uid()) OR (advisor_id = auth.uid())));
+DROP POLICY IF EXISTS "Match participants update matches" ON public.matches;
 CREATE POLICY "Match participants update matches" ON public.matches AS PERMISSIVE FOR UPDATE TO authenticated USING (((EXISTS ( SELECT 1
    FROM cases
   WHERE ((cases.id = matches.case_id) AND (cases.advisor_id = auth.uid())))) OR (EXISTS ( SELECT 1
    FROM branch_appetites
   WHERE ((branch_appetites.id = matches.appetite_id) AND (branch_appetites.banker_id = auth.uid())))) OR (banker_id = auth.uid()) OR (advisor_id = auth.uid())));
+DROP POLICY IF EXISTS "Match participants see messages" ON public.messages;
 CREATE POLICY "Match participants see messages" ON public.messages AS PERMISSIVE FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
    FROM ((matches m
      LEFT JOIN cases c ON ((c.id = m.case_id)))
      LEFT JOIN branch_appetites ba ON ((ba.id = m.appetite_id)))
   WHERE ((m.id = messages.match_id) AND ((c.advisor_id = auth.uid()) OR (ba.banker_id = auth.uid()) OR (m.banker_id = auth.uid()) OR (m.advisor_id = auth.uid()))))));
+DROP POLICY IF EXISTS "Users can mark messages as read" ON public.messages;
 CREATE POLICY "Users can mark messages as read" ON public.messages AS PERMISSIVE FOR UPDATE TO authenticated USING (((auth.uid() <> sender_id) AND (EXISTS ( SELECT 1
    FROM ((matches m
      LEFT JOIN cases c ON ((c.id = m.case_id)))
      LEFT JOIN branch_appetites ba ON ((ba.id = m.appetite_id)))
   WHERE ((m.id = messages.match_id) AND ((c.advisor_id = auth.uid()) OR (ba.banker_id = auth.uid()) OR (m.banker_id = auth.uid()) OR (m.advisor_id = auth.uid())))))));
+DROP POLICY IF EXISTS "Users delete own messages" ON public.messages;
 CREATE POLICY "Users delete own messages" ON public.messages AS PERMISSIVE FOR DELETE TO authenticated USING ((auth.uid() = sender_id));
+DROP POLICY IF EXISTS "Users insert own messages" ON public.messages;
 CREATE POLICY "Users insert own messages" ON public.messages AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (((auth.uid() = sender_id) AND (EXISTS ( SELECT 1
    FROM ((matches m
      LEFT JOIN cases c ON ((c.id = m.case_id)))
      LEFT JOIN branch_appetites ba ON ((ba.id = m.appetite_id)))
   WHERE ((m.id = messages.match_id) AND ((c.advisor_id = auth.uid()) OR (ba.banker_id = auth.uid()) OR (m.banker_id = auth.uid()) OR (m.advisor_id = auth.uid())))))));
+DROP POLICY IF EXISTS "Users update own messages" ON public.messages;
 CREATE POLICY "Users update own messages" ON public.messages AS PERMISSIVE FOR UPDATE TO authenticated USING ((auth.uid() = sender_id));
+DROP POLICY IF EXISTS "Admin full access" ON public.profiles;
 CREATE POLICY "Admin full access" ON public.profiles AS PERMISSIVE FOR ALL TO public USING (is_admin()) WITH CHECK (is_admin());
+DROP POLICY IF EXISTS "Match participants see counterpart profiles" ON public.profiles;
 CREATE POLICY "Match participants see counterpart profiles" ON public.profiles AS PERMISSIVE FOR SELECT TO authenticated USING (((auth.uid() = user_id) OR (EXISTS ( SELECT 1
    FROM ((matches m
      LEFT JOIN cases c ON ((c.id = m.case_id)))
      LEFT JOIN branch_appetites ba ON ((ba.id = m.appetite_id)))
   WHERE (((COALESCE(c.advisor_id, m.advisor_id) = auth.uid()) AND ((ba.banker_id = profiles.user_id) OR (m.banker_id = profiles.user_id))) OR ((COALESCE(c.advisor_id, m.advisor_id) = profiles.user_id) AND ((ba.banker_id = auth.uid()) OR (m.banker_id = auth.uid())))))) OR is_admin(auth.uid())));
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile" ON public.profiles AS PERMISSIVE FOR UPDATE TO public USING ((auth.uid() = user_id));
+DROP POLICY IF EXISTS "Users insert own profile" ON public.profiles;
 CREATE POLICY "Users insert own profile" ON public.profiles AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));
+DROP POLICY IF EXISTS "Users see own profile" ON public.profiles;
 CREATE POLICY "Users see own profile" ON public.profiles AS PERMISSIVE FOR SELECT TO authenticated USING ((auth.uid() = user_id));
+DROP POLICY IF EXISTS "Users update own profile" ON public.profiles;
 CREATE POLICY "Users update own profile" ON public.profiles AS PERMISSIVE FOR UPDATE TO authenticated USING ((auth.uid() = user_id));
 
 -- ── Triggers (notify/webhook triggers intentionally omitted) ────────────────
+DROP TRIGGER IF EXISTS enforce_match_rate_limit ON public.matches;
 CREATE TRIGGER enforce_match_rate_limit BEFORE UPDATE ON public.matches FOR EACH ROW EXECUTE FUNCTION enforce_match_rate_limit();
+DROP TRIGGER IF EXISTS guard_message_update ON public.messages;
 CREATE TRIGGER guard_message_update BEFORE UPDATE ON public.messages FOR EACH ROW EXECUTE FUNCTION guard_message_update();
+DROP TRIGGER IF EXISTS guard_profile_sensitive_fields ON public.profiles;
 CREATE TRIGGER guard_profile_sensitive_fields BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION guard_profile_sensitive_fields();
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+DROP TRIGGER IF EXISTS set_match_status ON public.matches;
 CREATE TRIGGER set_match_status BEFORE INSERT OR UPDATE ON public.matches FOR EACH ROW EXECUTE FUNCTION compute_match_status();
+DROP TRIGGER IF EXISTS set_updated_at_branch_appetites ON public.branch_appetites;
 CREATE TRIGGER set_updated_at_branch_appetites BEFORE UPDATE ON public.branch_appetites FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+DROP TRIGGER IF EXISTS set_updated_at_cases ON public.cases;
 CREATE TRIGGER set_updated_at_cases BEFORE UPDATE ON public.cases FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+DROP TRIGGER IF EXISTS set_updated_at_matches ON public.matches;
 CREATE TRIGGER set_updated_at_matches BEFORE UPDATE ON public.matches FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+DROP TRIGGER IF EXISTS set_updated_at_profiles ON public.profiles;
 CREATE TRIGGER set_updated_at_profiles BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+DROP TRIGGER IF EXISTS trigger_auto_match_appetite ON public.branch_appetites;
 CREATE TRIGGER trigger_auto_match_appetite AFTER UPDATE ON public.branch_appetites FOR EACH ROW EXECUTE FUNCTION auto_match_on_appetite_approval();
+DROP TRIGGER IF EXISTS trigger_auto_match_case ON public.cases;
 CREATE TRIGGER trigger_auto_match_case AFTER UPDATE ON public.cases FOR EACH ROW EXECUTE FUNCTION auto_match_on_case_approval();
+DROP TRIGGER IF EXISTS trigger_handle_case_rejection ON public.cases;
 CREATE TRIGGER trigger_handle_case_rejection BEFORE UPDATE ON public.cases FOR EACH ROW EXECUTE FUNCTION handle_case_rejection();
+DROP TRIGGER IF EXISTS validate_appetite_data ON public.branch_appetites;
 CREATE TRIGGER validate_appetite_data BEFORE INSERT OR UPDATE ON public.branch_appetites FOR EACH ROW EXECUTE FUNCTION validate_appetite_insert_update();
+DROP TRIGGER IF EXISTS validate_case_data ON public.cases;
 CREATE TRIGGER validate_case_data BEFORE INSERT OR UPDATE ON public.cases FOR EACH ROW EXECUTE FUNCTION validate_case_insert_update();
+DROP TRIGGER IF EXISTS validate_match_update ON public.matches;
 CREATE TRIGGER validate_match_update BEFORE UPDATE ON public.matches FOR EACH ROW EXECUTE FUNCTION validate_match_update();
+DROP TRIGGER IF EXISTS validate_message_data ON public.messages;
 CREATE TRIGGER validate_message_data BEFORE INSERT OR UPDATE ON public.messages FOR EACH ROW EXECUTE FUNCTION validate_message_insert_update();
+DROP TRIGGER IF EXISTS validate_profile_data ON public.profiles;
 CREATE TRIGGER validate_profile_data BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION validate_profile_insert_update();
 
 -- ── Grants ──────────────────────────────────────────────────────────────────

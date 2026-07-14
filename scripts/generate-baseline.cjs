@@ -36,6 +36,14 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 `);
 
+// ── Sequences (must exist before tables whose defaults call nextval) ─────────
+const seqs = q(`SELECT sequencename FROM pg_sequences WHERE schemaname='public' ORDER BY sequencename`)
+  .map((r) => r.sequencename);
+if (seqs.length) {
+  P(`\n-- ── Sequences ───────────────────────────────────────────────────────────────`);
+  for (const s of seqs) P(`CREATE SEQUENCE IF NOT EXISTS public.${s};`);
+}
+
 // ── Tables (columns only) ─────────────────────────────────────────────────────
 const tables = q(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`)
   .map((r) => r.tablename);
@@ -69,7 +77,8 @@ const cons = q(`SELECT conrelid::regclass::text AS tbl, conname, pg_get_constrai
     contype FROM pg_constraint WHERE connamespace='public'::regnamespace
     AND conrelid <> 0 ORDER BY (contype='f'), conrelid::regclass::text, conname`);
 for (const c of cons) {
-  P(`ALTER TABLE ${c.tbl} ADD CONSTRAINT ${c.conname} ${c.def};`);
+  // idempotent: only add if a constraint of that name isn't already present
+  P(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='${c.conname}' AND conrelid='${c.tbl}'::regclass) THEN ALTER TABLE ${c.tbl} ADD CONSTRAINT ${c.conname} ${c.def}; END IF; END $$;`);
 }
 
 // ── Indexes (skip constraint-backed ones) ────────────────────────────────────
@@ -77,7 +86,7 @@ P(`\n-- ── Indexes ───────────────────
 const idx = q(`SELECT indexdef FROM pg_indexes WHERE schemaname='public'
     AND indexname NOT IN (SELECT conname FROM pg_constraint WHERE contype IN ('p','u'))
     ORDER BY indexname`);
-for (const i of idx) P(`${i.indexdef};`);
+for (const i of idx) P(`${i.indexdef.replace(/^CREATE (UNIQUE )?INDEX /, 'CREATE $1INDEX IF NOT EXISTS ')};`);
 
 // ── View: anonymous_cases ────────────────────────────────────────────────────
 const views = q(`SELECT viewname, pg_get_viewdef(('public.'||viewname)::regclass, true) AS def
@@ -105,18 +114,20 @@ for (const p of pols) {
   s += ` FOR ${p.cmd} TO ${roles}`;
   if (p.qual) s += ` USING (${p.qual})`;
   if (p.with_check) s += ` WITH CHECK (${p.with_check})`;
+  P(`DROP POLICY IF EXISTS ${JSON.stringify(p.policyname)} ON public.${p.tablename};`);
   P(`${s};`);
 }
 
 // ── Triggers (exclude webhook/http_request ones) ──────────────────────────────
 P(`\n-- ── Triggers (notify/webhook triggers intentionally omitted) ────────────────`);
-const trigs = q(`SELECT pg_get_triggerdef(t.oid) AS def
-    FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+const trigs = q(`SELECT t.tgname, (n.nspname||'.'||c.relname) AS tbl, pg_get_triggerdef(t.oid) AS def
+    FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE NOT t.tgisinternal
       AND (c.relnamespace='public'::regnamespace OR t.tgrelid='auth.users'::regclass)
     ORDER BY def`);
 for (const t of trigs) {
   if (t.def.includes('http_request')) continue; // skip prod-pointing webhooks
+  P(`DROP TRIGGER IF EXISTS ${t.tgname} ON ${t.tbl};`);
   P(`${t.def};`);
 }
 
