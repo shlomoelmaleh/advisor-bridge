@@ -22,6 +22,9 @@ export const mapDatabaseError = (error: unknown): string => {
   if (err.message?.includes('Please wait')) {
     return 'נא להמתין לפני הפעלה חוזרת';
   }
+  if (err.message?.includes('Too many')) {
+    return 'בוצעו יותר מדי עדכונים בזמן קצר. נסו שוב עוד דקה.';
+  }
   if (err.message?.includes('Unauthorized')) {
     return 'אין לך הרשאה לבצע פעולה זו';
   }

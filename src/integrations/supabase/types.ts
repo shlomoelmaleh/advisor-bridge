@@ -315,6 +315,30 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_hits: {
+        Row: {
+          action: string
+          created_at: string
+          id: number
+          match_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: number
+          match_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: number
+          match_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       anonymous_cases: {
