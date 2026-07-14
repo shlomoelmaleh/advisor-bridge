@@ -148,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Update role state atomically ──────────────────────────────────────────
   const applyRole = useCallback((role: RoleState, src: RoleSource) => {
     if (role !== roleRef.current || src !== roleSourceRef.current) {
-      console.log(`[Auth] role resolved: ${role} (source=${src})`);
+      if (import.meta.env.DEV) console.log(`[Auth] role resolved: ${role} (source=${src})`);
       roleRef.current = role;
       roleSourceRef.current = src;
       setRoleState(role);
@@ -184,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const prevOptimistic = roleRef.current;
       // Log quietly only if there was an actual correction
       if (isValidRole(prevOptimistic) && prevOptimistic !== dbRole) {
-        console.log(`[Auth] role correction: JWT=${prevOptimistic} DB=${dbRole} → following DB`);
+        if (import.meta.env.DEV) console.log(`[Auth] role correction: JWT=${prevOptimistic} DB=${dbRole} → following DB`);
       }
       applyRole(dbRole, 'db');
       return;
@@ -204,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Same user already in-flight → reuse promise
     if (fetchingUidRef.current === uid && fetchingPromiseRef.current) {
-      console.log(`[Auth] profile fetch already in-flight for ${uid}, skipping`);
+      if (import.meta.env.DEV) console.log(`[Auth] profile fetch already in-flight for ${uid}, skipping`);
       return fetchingPromiseRef.current;
     }
 
@@ -216,7 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setProfileState('loading');
     setIsProfileFetching(true);
-    console.log(`[Auth] profile fetch start (userId=${uid})`);
+    if (import.meta.env.DEV) console.log(`[Auth] profile fetch start (userId=${uid})`);
 
     const promise = (async (): Promise<Profile | null> => {
       try {
@@ -230,18 +230,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!p) {
           setProfileState('missing');
-          console.log('[Auth] profileState=missing');
+          if (import.meta.env.DEV) console.log('[Auth] profileState=missing');
         } else if (p.is_approved === false) {
           setProfileState('pending');
-          console.log('[Auth] profileState=pending');
+          if (import.meta.env.DEV) console.log('[Auth] profileState=pending');
         } else {
           setProfileState('ready');
-          console.log('[Auth] profileState=ready');
+          if (import.meta.env.DEV) console.log('[Auth] profileState=ready');
         }
         return p;
       } catch (e: any) {
         if (e.message === 'Aborted') return null;
-        console.error('[Auth] profile fetch error:', e);
+        if (import.meta.env.DEV) console.error('[Auth] profile fetch error:', e);
         if (mountedRef.current) setProfileState('error');
         return null;
       } finally {
@@ -259,7 +259,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Full reset ─────────────────────────────────────────────────────────────
   const fullReset = useCallback(() => {
-    console.log('[Auth] full reset');
+    if (import.meta.env.DEV) console.log('[Auth] full reset');
     _setUser(null);
     _setSession(null);
     _setProfile(null);
@@ -285,7 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const bootstrapSession = useCallback((u: User, sess: Session) => {
     // Prevent double-bootstrap for same user
     if (sessionUidRef.current === u.id) {
-      console.log('[Auth] bootstrap skipped: same user already active');
+      if (import.meta.env.DEV) console.log('[Auth] bootstrap skipped: same user already active');
       return;
     }
 
@@ -305,13 +305,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Init (runs once) ──────────────────────────────────────────────────────
   const init = useCallback(async () => {
-    console.log('[Auth] init start');
+    if (import.meta.env.DEV) console.log('[Auth] init start');
     try {
       const { data, error } = await supabase.auth.getSession();
       if (!mountedRef.current) return;
 
       if (error) {
-        console.error('[Auth] getSession error:', error.message);
+        if (import.meta.env.DEV) console.error('[Auth] getSession error:', error.message);
         fullReset();
         return;
       }
@@ -320,15 +320,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const u = sess?.user ?? null;
 
       if (!u || !sess) {
-        console.log('[Auth] session=no-session');
+        if (import.meta.env.DEV) console.log('[Auth] session=no-session');
         // transition out of booting
         setSessionState('no-session');
       } else {
-        console.log(`[Auth] session=has-session userId=${u.id}`);
+        if (import.meta.env.DEV) console.log(`[Auth] session=has-session userId=${u.id}`);
         bootstrapSession(u, sess);
       }
     } catch (e) {
-      console.error('[Auth] init exception:', e);
+      if (import.meta.env.DEV) console.error('[Auth] init exception:', e);
       if (mountedRef.current) fullReset();
     }
   }, [fullReset, bootstrapSession]);
@@ -360,7 +360,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        console.log(`[Auth] onAuthStateChange event=${event}`);
+        if (import.meta.env.DEV) console.log(`[Auth] onAuthStateChange event=${event}`);
 
         if (!newUser || event === 'SIGNED_OUT') {
           fullReset();
@@ -386,7 +386,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── signOut ───────────────────────────────────────────────────────────────
   const signOut = useCallback(async () => {
-    console.log('[Auth] signOut requested');
+    if (import.meta.env.DEV) console.log('[Auth] signOut requested');
     await supabase.auth.signOut();
     if (mountedRef.current) fullReset();
 
@@ -394,7 +394,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        console.error('[Auth] session persisted after signOut, retrying');
+        if (import.meta.env.DEV) console.error('[Auth] session persisted after signOut, retrying');
         await supabase.auth.signOut();
         if (mountedRef.current) fullReset();
       }

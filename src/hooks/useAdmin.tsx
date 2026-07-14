@@ -37,7 +37,7 @@ export const useAdmin = () => {
     // UX guard only — actual authorization enforced by RLS policies (is_admin() SECURITY DEFINER function)
     const checkAdmin = () => {
         if (profile?.role !== 'admin') {
-            console.warn('Unauthorized: useAdmin hook requires admin role.');
+            if (import.meta.env.DEV) console.warn('Unauthorized: useAdmin hook requires admin role.');
             return false;
         }
         return true;
@@ -122,7 +122,7 @@ export const useAdmin = () => {
             });
 
         } catch (err: unknown) {
-            console.error(mapDatabaseError(err));
+            if (import.meta.env.DEV) console.error(mapDatabaseError(err));
         } finally {
             setLoading(false);
         }
@@ -203,7 +203,6 @@ export const useAdmin = () => {
 
     const approveAppetite = async (appetiteId: string) => {
         if (!checkAdmin()) return { error: 'Unauthorized' };
-        console.log(`Approving appetite ${appetiteId} and setting is_active=true`);
         try {
             const { error } = await supabase.from('branch_appetites').update({ is_approved: true, is_active: true }).eq('id', appetiteId);
             if (error) throw error;
