@@ -124,8 +124,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
     <Card className="w-full max-w-md mx-auto animated-card">
       <Tabs defaultValue={defaultTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">התחברות</TabsTrigger>
-          <TabsTrigger value="register">הרשמה</TabsTrigger>
+          <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">התחברות</TabsTrigger>
+          <TabsTrigger value="register" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">הרשמה</TabsTrigger>
         </TabsList>
 
         {/* ── LOGIN ──────────────────────────────────────────────────────────── */}

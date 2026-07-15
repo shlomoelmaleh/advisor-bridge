@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, User, LogOut, Home, AlertCircle, Clock, Settings } from "lucide-react";
 import ProfileUpdateDialog from "@/components/auth/ProfileUpdateDialog";
@@ -15,8 +15,26 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Logo from "@/components/common/Logo";
 
+// Small unread-count pip shared by every desktop/mobile nav link.
+const NavBadge: React.FC<{ count: number; className?: string; variant?: "destructive" | "success" }> = ({
+  count,
+  className = "",
+  variant = "destructive",
+}) => {
+  if (count <= 0) return null;
+  const color = variant === "success" ? "bg-success" : "bg-destructive";
+  return (
+    <span
+      className={`${color} text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold ${className}`}
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+};
+
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile, roleState, profileState, sessionState, signOut, reFetchProfile } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isProfileUpdateOpen, setIsProfileUpdateOpen] = React.useState(false);
@@ -166,6 +184,14 @@ const Navbar = () => {
     return "/";
   };
 
+  const isActive = (path: string) => location.pathname === path;
+  const desktopLinkClass = (path: string) =>
+    `relative px-3 py-2 text-sm font-medium transition-colors ${
+      isActive(path)
+        ? "text-primary font-semibold border-b-2 border-primary"
+        : "text-foreground/80 hover:text-foreground"
+    }`;
+
   const renderStatusBanner = () => {
     if (sessionState !== "has-session") return null;
 
@@ -229,49 +255,37 @@ const Navbar = () => {
           <div className="hidden md:flex md:items-center md:space-x-4 md:space-x-reverse md:mr-auto">
             {sessionState === "has-session" ? (
               <>
-                <Link
-                  to={getDashboardPath()}
-                  className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
-                >
+                <Link to={getDashboardPath()} className={desktopLinkClass(getDashboardPath())}>
                   {roleState === "admin" ? "לוח בקרה" : "דאשבורד"}
-                  {roleState === "admin" && adminPendingCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                      {adminPendingCount > 9 ? "9+" : adminPendingCount}
-                    </span>
+                  {roleState === "admin" && (
+                    <NavBadge count={adminPendingCount} className="absolute -top-1 -right-1" />
                   )}
                 </Link>
 
                 {roleState !== "admin" && (
                   <Link
                     to="/matches"
-                    className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                    className={desktopLinkClass("/matches")}
                     onClick={roleState === "bank" ? handleMatchesClick : undefined}
                   >
                     התאמות
-                    {roleState === "advisor" && newMatchesCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                        {newMatchesCount > 9 ? "9+" : newMatchesCount}
-                      </span>
+                    {roleState === "advisor" && (
+                      <NavBadge count={newMatchesCount} className="absolute -top-1 -right-1" />
                     )}
-                    {roleState === "bank" && newBankMatchesCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                        {newBankMatchesCount > 9 ? "9+" : newBankMatchesCount}
-                      </span>
+                    {roleState === "bank" && (
+                      <NavBadge count={newBankMatchesCount} className="absolute -top-1 -right-1" />
                     )}
                   </Link>
                 )}
 
                 {roleState === "advisor" && (
                   <>
-                    <Link
-                      to="/advisor/submit-case"
-                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
-                    >
+                    <Link to="/advisor/submit-case" className={desktopLinkClass("/advisor/submit-case")}>
                       הגש תיק
                     </Link>
                     <Link
                       to="/advisor/market"
-                      className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                      className={desktopLinkClass("/advisor/market")}
                       onClick={() => {
                         const now = new Date().toISOString();
                         localStorage.setItem("last_seen_market", now);
@@ -280,56 +294,35 @@ const Navbar = () => {
                       }}
                     >
                       שוק הביקושים
-                      {advisorNewAppetiteCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                          {advisorNewAppetiteCount > 9 ? "9+" : advisorNewAppetiteCount}
-                        </span>
-                      )}
+                      <NavBadge count={advisorNewAppetiteCount} className="absolute -top-1 -right-1" />
                     </Link>
-                    <Link
-                      to="/conversations"
-                      className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
-                    >
+                    <Link to="/conversations" className={desktopLinkClass("/conversations")}>
                       שיחות
-                      {totalUnread > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                          {totalUnread > 9 ? "9+" : totalUnread}
-                        </span>
-                      )}
+                      <NavBadge count={totalUnread} className="absolute -top-1 -right-1" />
                     </Link>
                   </>
                 )}
 
                 {roleState === "bank" && (
                   <>
-                    <Link
-                      to="/bank/market"
-                      className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
-                    >
+                    <Link to="/bank/market" className={desktopLinkClass("/bank/market")}>
                       שוק פתוח
                     </Link>
                     <Link
                       to="/bank/appetite"
-                      className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
+                      className={desktopLinkClass("/bank/appetite")}
                       onClick={handleAppetiteClick}
                     >
                       ביקושים
-                      {approvedAppetiteCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                          {approvedAppetiteCount}
-                        </span>
-                      )}
+                      <NavBadge
+                        count={approvedAppetiteCount}
+                        variant="success"
+                        className="absolute -top-1 -right-1"
+                      />
                     </Link>
-                    <Link
-                      to="/conversations"
-                      className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
-                    >
+                    <Link to="/conversations" className={desktopLinkClass("/conversations")}>
                       שיחות
-                      {totalUnread > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                          {totalUnread > 9 ? "9+" : totalUnread}
-                        </span>
-                      )}
+                      <NavBadge count={totalUnread} className="absolute -top-1 -right-1" />
                     </Link>
                   </>
                 )}
@@ -400,11 +393,7 @@ const Navbar = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {roleState === "admin" ? "לוח בקרה" : "דאשבורד"}
-                      {roleState === "admin" && adminPendingCount > 0 && (
-                        <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                          {adminPendingCount > 9 ? "9+" : adminPendingCount}
-                        </span>
-                      )}
+                      {roleState === "admin" && <NavBadge count={adminPendingCount} className="mr-2" />}
                       <Home className="ml-2 h-4 w-4" />
                     </Link>
 
@@ -418,16 +407,8 @@ const Navbar = () => {
                         }}
                       >
                         התאמות
-                        {roleState === "advisor" && newMatchesCount > 0 && (
-                          <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                            {newMatchesCount > 9 ? "9+" : newMatchesCount}
-                          </span>
-                        )}
-                        {roleState === "bank" && newBankMatchesCount > 0 && (
-                          <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                            {newBankMatchesCount > 9 ? "9+" : newBankMatchesCount}
-                          </span>
-                        )}
+                        {roleState === "advisor" && <NavBadge count={newMatchesCount} className="mr-2" />}
+                        {roleState === "bank" && <NavBadge count={newBankMatchesCount} className="mr-2" />}
                       </Link>
                     )}
 
@@ -452,11 +433,7 @@ const Navbar = () => {
                           }}
                         >
                           שוק הביקושים
-                          {advisorNewAppetiteCount > 0 && (
-                            <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                              {advisorNewAppetiteCount > 9 ? "9+" : advisorNewAppetiteCount}
-                            </span>
-                          )}
+                          <NavBadge count={advisorNewAppetiteCount} className="mr-2" />
                         </Link>
                         <Link
                           to="/conversations"
@@ -464,11 +441,7 @@ const Navbar = () => {
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           שיחות
-                          {totalUnread > 0 && (
-                            <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                              {totalUnread > 9 ? "9+" : totalUnread}
-                            </span>
-                          )}
+                          <NavBadge count={totalUnread} className="mr-2" />
                         </Link>
                       </>
                     )}
@@ -491,11 +464,7 @@ const Navbar = () => {
                           }}
                         >
                           ביקושים
-                          {approvedAppetiteCount > 0 && (
-                            <span className="mr-2 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                              {approvedAppetiteCount}
-                            </span>
-                          )}
+                          <NavBadge count={approvedAppetiteCount} variant="success" className="mr-2" />
                         </Link>
                         <Link
                           to="/conversations"
@@ -503,11 +472,7 @@ const Navbar = () => {
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           שיחות
-                          {totalUnread > 0 && (
-                            <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                              {totalUnread > 9 ? "9+" : totalUnread}
-                            </span>
-                          )}
+                          <NavBadge count={totalUnread} className="mr-2" />
                         </Link>
                       </>
                     )}

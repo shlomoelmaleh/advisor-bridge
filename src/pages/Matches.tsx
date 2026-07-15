@@ -377,7 +377,7 @@ const BankMatchesView = () => {
                         <CardContent className="pt-4 flex-1">
                             <div className="text-sm text-center py-3 bg-accent/20 rounded-md">
                                 {m.banker_status === 'pending' && m.advisor_status === 'pending' && "ממתין לתגובה שלך"}
-                                {m.banker_status === 'pending' && m.advisor_status === 'interested' && <span className="text-blue-600 font-semibold">יועץ הראה התעניינות! 🔥</span>}
+                                {m.banker_status === 'pending' && m.advisor_status === 'interested' && <span className="text-blue-600 font-semibold">יועץ הראה התעניינות!</span>}
                                 {m.banker_status === 'interested' && m.advisor_status === 'pending' && <span className="text-amber-600 font-semibold">ממתין לאישור היועץ...</span>}
                                 {m.status === 'closed' && <span className="text-green-600 font-semibold">שידוך סגור! זהות נחשפת.</span>}
                                 {(m.banker_status === 'rejected' || m.advisor_status === 'rejected') && "נדחה."}

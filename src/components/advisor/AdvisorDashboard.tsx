@@ -242,18 +242,21 @@ const AdvisorDashboard = () => {
       value: cases.length,
       icon: <FileSpreadsheet className="h-4 w-4" />,
       color: 'text-blue-500',
+      bg: 'bg-blue-500/10',
     },
     {
       title: 'הותאמו',
       value: cases.filter((c) => c.status === 'matched').length,
       icon: <Check className="h-4 w-4" />,
       color: 'text-green-500',
+      bg: 'bg-green-500/10',
     },
     {
       title: 'פתוחים',
       value: cases.filter((c) => c.status === 'open').length,
       icon: <AlertCircle className="h-4 w-4" />,
       color: 'text-amber-500',
+      bg: 'bg-amber-500/10',
     },
   ];
 
@@ -278,7 +281,7 @@ const AdvisorDashboard = () => {
         {stats.map((stat, i) => (
           <Card key={i} className="hover-scale">
             <CardContent className="p-6 flex justify-between items-center">
-              <div className={`rounded-full p-3 ${stat.color} bg-opacity-10`}>{stat.icon}</div>
+              <div className={`rounded-full p-3 ${stat.bg} ${stat.color}`}>{stat.icon}</div>
               <div className="text-left">
                 <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
                 <p className={`text-3xl font-bold ${stat.color}`}>

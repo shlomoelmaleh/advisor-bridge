@@ -100,7 +100,7 @@ const AdminDashboard = () => {
 
                 <Tabs defaultValue="overview" className="w-full">
                     <TabsList className="grid w-full grid-cols-4 mb-8">
-                        <TabsTrigger value="pending-content">
+                        <TabsTrigger value="pending-content" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                             תוכן לאישור
                             {(pendingCases.length + pendingAppetites.length) > 0 && (
                                 <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 inline-flex items-center justify-center font-bold">
@@ -108,8 +108,8 @@ const AdminDashboard = () => {
                                 </span>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="all-users">כל המשתמשים</TabsTrigger>
-                        <TabsTrigger value="pending-users">
+                        <TabsTrigger value="all-users" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">כל המשתמשים</TabsTrigger>
+                        <TabsTrigger value="pending-users" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                             משתמשים ליאשור
                             {pendingUsers.length > 0 && (
                                 <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 inline-flex items-center justify-center font-bold">
@@ -117,7 +117,7 @@ const AdminDashboard = () => {
                                 </span>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="overview">סקירה כללית</TabsTrigger>
+                        <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">סקירה כללית</TabsTrigger>
                     </TabsList>
 
                     {/* TAB 1: Overview */}

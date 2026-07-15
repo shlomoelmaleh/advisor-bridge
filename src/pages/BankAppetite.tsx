@@ -445,7 +445,7 @@ const AppetiteItem = ({ item, onUpdate, onDelete, onEdit, isReadOnly }: {
     const canEdit = !isReadOnly && ((item.is_approved && !item.is_active) || isExpired);
 
     return (
-        <Card className="transition-all duration-300 hover:shadow-md border-l-4 border-l-primary">
+        <Card className="transition-all duration-300 hover:shadow-md border-r-4 border-r-primary">
             <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">

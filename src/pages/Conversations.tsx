@@ -101,7 +101,7 @@ const ConversationCard = ({ match, isAdvisor, unreadCount, onClick }: {
 
     return (
         <Card
-            className={`p-4 sm:p-5 transition-all hover:shadow-md cursor-pointer border-l-4 border-l-primary flex flex-col sm:flex-row gap-4 sm:items-center justify-between ${unreadCount > 0 ? 'bg-blue-50 border-blue-200' : ''}`}
+            className={`p-4 sm:p-5 transition-all hover:shadow-md cursor-pointer border-r-4 border-r-primary flex flex-col sm:flex-row gap-4 sm:items-center justify-between ${unreadCount > 0 ? 'bg-blue-50 border-blue-200' : ''}`}
             onClick={onClick}
         >
             <div className="flex items-start sm:items-center gap-4 flex-1">
