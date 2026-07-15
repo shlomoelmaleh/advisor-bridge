@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>מוקאפ — BranchMatch דף נחיתה (סבב 2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ─── טוקנים — הערכים המדויקים המיועדים ל-src/index.css (שלב B) ─── */
+  :root {
+    --background: 220 23% 97%;
+    --foreground: 222 40% 13%;
+    --card: 0 0% 100%;
+    --primary: 221 47% 20%;            /* נייבי #1B2A4A */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 220 16% 92%;
+    --secondary-foreground: 221 47% 20%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 9% 40%;
+    --accent: 220 20% 94%;
+    --destructive: 0 72% 45%;
+    --border: 220 14% 88%;
+    --ring: 221 47% 33%;
+    --success: 161 94% 26%;            /* טורקיז פעולה/חיובי */
+    --success-foreground: 0 0% 100%;
+    --radius: 0.75rem;
+    /* גוונים ל-hero הכהה בלבד */
+    --navy-deep: 222 47% 12%;
+    --navy-hero: 221 46% 16%;
+    --teal-glow: 161 76% 45%;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Heebo', system-ui, 'Segoe UI', Arial, sans-serif;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+
+  /* ─── כפתורים ─── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font: 500 15px 'Heebo', sans-serif; border-radius: calc(var(--radius) - 2px);
+    padding: 11px 22px; cursor: pointer; border: 1px solid transparent;
+    text-decoration: none; transition: all .18s ease;
+  }
+  .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .btn-primary:hover { background: hsl(221 47% 26%); }
+  .btn-teal { background: hsl(161 94% 30%); color: #fff; box-shadow: 0 6px 22px -8px hsl(161 94% 30% / .8); }
+  .btn-teal:hover { background: hsl(161 94% 34%); }
+  .btn-outline { background: transparent; color: hsl(var(--primary)); border-color: hsl(var(--border)); }
+  .btn-outline:hover { background: hsl(var(--accent)); }
+  .btn-ghost-light { background: transparent; color: hsl(210 40% 98%); border-color: hsl(210 40% 98% / .3); }
+  .btn-ghost-light:hover { background: hsl(210 40% 98% / .1); }
+  .btn-white { background: #fff; color: hsl(var(--primary)); }
+  .btn-white:hover { background: hsl(220 23% 94%); }
+  .btn-lg { padding: 14px 30px; font-size: 16px; font-weight: 600; }
+
+  /* ─── Navbar (כהה, מעל ה-hero) ─── */
+  .navbar {
+    position: sticky; top: 0; z-index: 50;
+    background: hsl(var(--navy-deep) / .85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid hsl(210 40% 98% / .08);
+  }
+  .navbar .container { display: flex; align-items: center; justify-content: space-between; height: 66px; }
+  .nav-links { display: flex; align-items: center; gap: 10px; }
+  .nav-link { color: hsl(210 40% 98% / .7); text-decoration: none; font-size: 15px; font-weight: 500; padding: 8px 12px; border-radius: 8px; }
+  .nav-link:hover { color: #fff; }
+
+  /* ─── לוגו ─── */
+  .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-word { font-weight: 700; font-size: 19px; color: #fff; letter-spacing: -.01em; }
+  .logo-word .lm { color: hsl(var(--teal-glow)); }
+
+  /* ─── Hero כהה ─── */
+  .hero {
+    position: relative; overflow: hidden; padding: 84px 0 100px;
+    background:
+      radial-gradient(ellipse at 15% -20%, hsl(221 55% 32% / .55), transparent 55%),
+      radial-gradient(ellipse at 90% 115%, hsl(161 94% 26% / .22), transparent 55%),
+      linear-gradient(180deg, hsl(var(--navy-deep)), hsl(var(--navy-hero)));
+    color: hsl(210 40% 98%);
+  }
+  .hero::before {   /* מוטיב רשת עדין */
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(hsl(210 40% 98% / .045) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(210 40% 98% / .045) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse at 55% 35%, black 30%, transparent 75%);
+            mask-image: radial-gradient(ellipse at 55% 35%, black 30%, transparent 75%);
+  }
+  .hero .container { position: relative; display: grid; grid-template-columns: 1fr 1.05fr; gap: 56px; align-items: center; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: hsl(210 40% 98% / .06); color: hsl(161 60% 62%);
+    border: 1px solid hsl(210 40% 98% / .14);
+    font-size: 13.5px; font-weight: 600; padding: 6px 14px; border-radius: 999px; margin-bottom: 24px;
+  }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--teal-glow)); box-shadow: 0 0 8px hsl(var(--teal-glow)); }
+  h1 {
+    font-size: clamp(36px, 4.6vw, 56px); font-weight: 800; line-height: 1.15;
+    letter-spacing: -.025em; margin-bottom: 20px; color: #fff;
+  }
+  h1 .hl { color: hsl(var(--teal-glow)); }
+  .hero-sub { font-size: 18px; color: hsl(210 40% 98% / .65); max-width: 30em; margin-bottom: 32px; }
+  .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+  .hero-note { margin-top: 20px; font-size: 13.5px; color: hsl(210 40% 98% / .55); display: flex; align-items: center; gap: 7px; }
+
+  /* ─── ויזואליזציית מנוע ההתאמות (על כהה) ─── */
+  .match-viz { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .viz-card {
+    background: hsl(var(--card)); color: hsl(var(--foreground));
+    border-radius: 16px; padding: 18px 16px; min-width: 0;
+    box-shadow: 0 24px 60px -18px hsl(222 47% 5% / .75);
+  }
+  .viz-card.tilt-a { transform: rotate(1.6deg); }
+  .viz-card.tilt-b { transform: rotate(-1.6deg); }
+  .viz-card-head { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 14.5px; margin-bottom: 12px; }
+  .viz-icon {
+    width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    background: hsl(var(--primary) / .08); color: hsl(var(--primary)); flex-shrink: 0;
+  }
+  .viz-icon.teal { background: hsl(var(--success) / .1); color: hsl(var(--success)); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); background: hsl(var(--card));
+    white-space: nowrap;
+  }
+  .chip.teal { background: hsl(var(--success) / .1); color: hsl(var(--success)); border-color: hsl(var(--success) / .25); font-weight: 600; }
+
+  /* קו מחבר עם אנימציית זרימה */
+  .connector { position: relative; width: 128px; display: flex; align-items: center; justify-content: center; }
+  .connector::before {
+    content: ''; position: absolute; inset-inline: -8px; top: 50%; height: 2px;
+    background-image: repeating-linear-gradient(90deg, hsl(var(--teal-glow)) 0 7px, transparent 7px 15px);
+    animation: flow 1s linear infinite; opacity: .85;
+  }
+  @keyframes flow { to { background-position: -15px 0; } }
+  .score-node {
+    position: relative; z-index: 1; width: 92px; height: 92px; border-radius: 50%;
+    background: hsl(var(--card)); border: 5px solid hsl(var(--teal-glow));
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 0 34px hsl(161 76% 45% / .5), 0 14px 34px -8px hsl(222 47% 5% / .7);
+    animation: pulse-soft 2.4s cubic-bezier(.4, 0, .6, 1) infinite;
+  }
+  .score-node .num { font-size: 30px; font-weight: 800; line-height: 1; color: hsl(var(--primary)); font-variant-numeric: tabular-nums; }
+  .score-node .lbl { font-size: 10px; font-weight: 600; color: hsl(var(--muted-foreground)); margin-top: 3px; }
+  @keyframes pulse-soft {
+    0%, 100% { box-shadow: 0 0 34px hsl(161 76% 45% / .5), 0 14px 34px -8px hsl(222 47% 5% / .7); }
+    50% { box-shadow: 0 0 52px hsl(161 76% 45% / .75), 0 14px 34px -8px hsl(222 47% 5% / .7); }
+  }
+
+  /* ─── סקשנים ─── */
+  section { padding: 80px 0; }
+  .section-eyebrow {
+    display: block; font-size: 13px; font-weight: 700; letter-spacing: .14em;
+    color: hsl(var(--success)); margin-bottom: 10px;
+  }
+  .section-head { text-align: center; max-width: 46em; margin: 0 auto 52px; }
+  .section-head h2 { font-size: clamp(26px, 3vw, 36px); font-weight: 800; letter-spacing: -.02em; margin-bottom: 10px; }
+  .section-head p { color: hsl(var(--muted-foreground)); font-size: 16.5px; }
+
+  /* ─── איך זה עובד — דיאגרמה דו-כיוונית ─── */
+  .hiw { background: hsl(var(--card)); border-block: 1px solid hsl(var(--border)); }
+  .flow { max-width: 860px; margin: 0 auto; }
+  .flow-entries { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .flow-card {
+    background: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: 16px;
+    padding: 22px; position: relative;
+  }
+  .flow-card .tag {
+    position: absolute; top: -11px; inset-inline-start: 18px;
+    font-size: 11.5px; font-weight: 700; padding: 2px 12px; border-radius: 999px;
+  }
+  .flow-card.advisor .tag { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .flow-card.bank .tag { background: hsl(var(--success)); color: hsl(var(--success-foreground)); }
+  .flow-card h3 { display: flex; align-items: center; gap: 9px; font-size: 16.5px; font-weight: 700; margin: 4px 0 8px; }
+  .flow-card p { font-size: 14px; color: hsl(var(--muted-foreground)); }
+  .flow-card .chips { margin-top: 10px; }
+
+  .converge { display: flex; justify-content: center; margin: -2px 0; }
+  .converge svg { display: block; }
+  .converge path {
+    fill: none; stroke: hsl(var(--success) / .55); stroke-width: 2;
+    stroke-dasharray: 7 8; animation: dash 1.1s linear infinite;
+  }
+  @keyframes dash { to { stroke-dashoffset: -15; } }
+
+  .engine-node {
+    max-width: 560px; margin: 0 auto; text-align: center;
+    background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+    border-radius: 18px; padding: 24px 26px;
+    box-shadow: 0 18px 44px -16px hsl(221 47% 20% / .55);
+  }
+  .engine-node h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 9px; }
+  .engine-node p { font-size: 14px; color: hsl(210 40% 98% / .7); margin-bottom: 12px; }
+  .engine-node .chips { justify-content: center; }
+  .engine-node .chip { background: hsl(210 40% 98% / .08); border-color: hsl(210 40% 98% / .18); color: hsl(210 40% 98% / .85); }
+
+  .drop-line { width: 2px; height: 44px; margin: 0 auto;
+    background-image: repeating-linear-gradient(180deg, hsl(var(--success) / .55) 0 7px, transparent 7px 15px);
+    animation: flow-v 1.1s linear infinite;
+  }
+  @keyframes flow-v { to { background-position: 0 15px; } }
+
+  .flow-final {
+    max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 14px;
+    background: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: 16px; padding: 20px 22px;
+  }
+  .flow-final .viz-icon { width: 42px; height: 42px; }
+  .flow-final h3 { font-size: 16px; font-weight: 700; }
+  .flow-final p { font-size: 13.5px; color: hsl(var(--muted-foreground)); }
+
+  /* ─── שני קהלים ─── */
+  .audiences { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .aud-card {
+    background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 18px;
+    padding: 30px 28px; box-shadow: 0 2px 10px -6px hsl(221 47% 20% / .1);
+  }
+  .aud-card h3 { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; margin-bottom: 18px; }
+  .aud-list { list-style: none; display: flex; flex-direction: column; gap: 13px; }
+  .aud-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; color: hsl(222 40% 13% / .85); }
+  .check-dot {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+    background: hsl(var(--success) / .12); color: hsl(var(--success));
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ─── סטריפ פיצ'רים ─── */
+  .features-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .feat { display: flex; align-items: center; gap: 12px; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 14px; padding: 16px 18px; }
+  .feat .viz-icon { width: 38px; height: 38px; }
+  .feat span { font-size: 14.5px; font-weight: 600; }
+
+  /* ─── CTA ─── */
+  .cta-band {
+    position: relative; overflow: hidden; text-align: center;
+    background:
+      radial-gradient(ellipse at 80% -30%, hsl(161 94% 26% / .25), transparent 55%),
+      linear-gradient(180deg, hsl(var(--navy-hero)), hsl(var(--navy-deep)));
+    color: hsl(210 40% 98%);
+  }
+  .cta-band h2 { font-size: clamp(26px, 3vw, 36px); font-weight: 800; margin-bottom: 10px; }
+  .cta-band p { color: hsl(210 40% 98% / .7); font-size: 16.5px; margin-bottom: 28px; }
+  .cta-band .hero-ctas { justify-content: center; }
+
+  /* ─── Footer ─── */
+  footer { background: hsl(var(--navy-deep)); color: hsl(210 40% 98% / .8); padding: 44px 0 28px; border-top: 1px solid hsl(210 40% 98% / .08); }
+  .foot-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
+  .foot-tag { font-size: 14px; color: hsl(210 40% 98% / .55); margin-top: 8px; }
+  .foot-links { display: flex; gap: 22px; }
+  .foot-links a { color: hsl(210 40% 98% / .75); text-decoration: none; font-size: 14.5px; }
+  .foot-links a:hover { color: #fff; }
+  .foot-bottom { border-top: 1px solid hsl(210 40% 98% / .1); margin-top: 30px; padding-top: 18px; font-size: 13px; color: hsl(210 40% 98% / .45); }
+
+  /* ─── רספונסיבי ─── */
+  @media (max-width: 900px) {
+    .hero .container { grid-template-columns: 1fr; gap: 48px; }
+    .match-viz { grid-template-columns: 1fr; justify-items: center; }
+    .viz-card { width: 100%; max-width: 360px; }
+    .viz-card.tilt-a, .viz-card.tilt-b { transform: none; }
+    .connector { width: auto; height: 100px; }
+    .connector::before {
+      inset-inline: auto; inset-block: -8px; top: auto; right: calc(50% - 1px); height: auto; width: 2px;
+      background-image: repeating-linear-gradient(180deg, hsl(var(--teal-glow)) 0 7px, transparent 7px 15px);
+      animation: flow-v 1s linear infinite;
+    }
+    .flow-entries { grid-template-columns: 1fr; }
+    .converge svg { display: none; }
+    .converge { height: 44px; }
+    .converge::before { content: ''; width: 2px; height: 100%; display: block;
+      background-image: repeating-linear-gradient(180deg, hsl(var(--success) / .55) 0 7px, transparent 7px 15px);
+      animation: flow-v 1.1s linear infinite; }
+    .audiences, .features-strip { grid-template-columns: 1fr; }
+    .nav-links .nav-link { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ Navbar (מצב אורח, כהה) ═══ -->
+<header class="navbar">
+  <div class="container">
+    <a class="logo" href="#">
+      <svg width="34" height="34" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+        <rect x="12" y="2" width="22" height="22" rx="7" fill="hsl(161 94% 32%)"/>
+        <rect x="2" y="12" width="22" height="22" rx="7" fill="#fff"/>
+        <path d="M8.5 23.5l4 4 7.5-9" stroke="#1B2A4A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <span class="logo-word">Branch<span class="lm">Match</span></span>
+    </a>
+    <nav class="nav-links">
+      <a class="nav-link" href="#hiw">איך זה עובד</a>
+      <a class="btn btn-ghost-light" href="#">התחברות</a>
+      <a class="btn btn-teal" href="#">הרשמה</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══ Hero כהה ═══ -->
+<section class="hero">
+  <div class="container">
+    <div>
+      <span class="eyebrow"><span class="dot"></span> פלטפורמת השידוך למשכנתאות</span>
+      <h1>התיק הנכון פוגש<br />את <span class="hl">הסניף הנכון</span></h1>
+      <p class="hero-sub">BranchMatch מחברת יועצי משכנתאות עם סניפי בנק על בסיס ביקוש אשראי אמיתי — התאמה מנוקדת, אנונימית ומהירה.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-teal btn-lg" href="#">הרשמה לפלטפורמה</a>
+        <a class="btn btn-ghost-light btn-lg" href="#">התחברות</a>
+      </div>
+      <div class="hero-note">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(161 76% 50%)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        פרטי התיקים נשארים אנונימיים עד להבעת עניין הדדי
+      </div>
+    </div>
+
+    <!-- ויזואליזציית ההתאמה -->
+    <div class="match-viz">
+      <div class="viz-card tilt-a">
+        <div class="viz-card-head">
+          <span class="viz-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          </span>
+          תיק לקוח
+        </div>
+        <div class="chips">
+          <span class="chip">₪1.2M–1.5M</span>
+          <span class="chip">LTV 60%</span>
+          <span class="chip">שכיר</span>
+          <span class="chip">אזור המרכז</span>
+        </div>
+      </div>
+
+      <div class="connector">
+        <div class="score-node">
+          <span class="num">92</span>
+          <span class="lbl">ציון התאמה</span>
+        </div>
+      </div>
+
+      <div class="viz-card tilt-b">
+        <div class="viz-card-head">
+          <span class="viz-icon teal">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M2 22h20"/><path d="M10 6h1M13 6h1M10 10h1M13 10h1M10 14h1M13 14h1"/></svg>
+          </span>
+          ביקוש סניף
+        </div>
+        <div class="chips">
+          <span class="chip">הלוואה מ-₪1M</span>
+          <span class="chip">LTV עד 70%</span>
+          <span class="chip teal">ביקוש גבוה</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ איך זה עובד — שני מסלולים, מנוע אחד ═══ -->
+<section class="hiw" id="hiw">
+  <div class="container">
+    <div class="section-head">
+      <span class="section-eyebrow">איך זה עובד</span>
+      <h2>שני מסלולי פתיחה, מנוע התאמה אחד</h2>
+      <p>לא משנה מי מתחיל — כל תיק חדש נבחן מול כל הביקושים הפעילים, וכל ביקוש חדש נבחן מול כל התיקים הפתוחים</p>
+    </div>
+
+    <div class="flow">
+      <div class="flow-entries">
+        <div class="flow-card advisor">
+          <span class="tag">מסלול היועץ</span>
+          <h3>
+            <span class="viz-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+            היועץ מגיש תיק
+          </h3>
+          <p>פרטי התיק נחשפים לסניפים באופן אנונימי — בלי שם, בלי פרטים מזהים.</p>
+        </div>
+        <div class="flow-card bank">
+          <span class="tag">מסלול הסניף</span>
+          <h3>
+            <span class="viz-icon teal"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M2 22h20"/><path d="M10 6h1M13 6h1M10 10h1M13 10h1M10 14h1M13 14h1"/></svg></span>
+            הסניף מפרסם ביקוש
+          </h3>
+          <p>הסניף מגדיר מה הוא מחפש עכשיו — טווח הלוואה, LTV, סוג לווה, אזור ו-SLA — ויכול גם ליזום עניין בתיקים מהשוק הפתוח.</p>
+        </div>
+      </div>
+
+      <div class="converge">
+        <svg width="420" height="64" viewBox="0 0 420 64" aria-hidden="true">
+          <path d="M105 0 C105 40 210 26 210 64" />
+          <path d="M315 0 C315 40 210 26 210 64" />
+        </svg>
+      </div>
+
+      <div class="engine-node">
+        <h3>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          מנוע ההתאמה מדרג
+        </h3>
+        <p>כל צמד תיק–ביקוש מקבל ציון התאמה שקוף; ציון 40 ומעלה יוצר התאמה אוטומטית.</p>
+        <div class="chips">
+          <span class="chip">סכום</span><span class="chip">LTV</span><span class="chip">סוג לווה</span><span class="chip">אזור</span><span class="chip">SLA</span>
+        </div>
+      </div>
+
+      <div class="drop-line"></div>
+
+      <div class="flow-final">
+        <span class="viz-icon teal"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+        <div>
+          <h3>עניין הדדי פותח שיחה</h3>
+          <p>כששני הצדדים מביעים עניין נפתח צ'אט ישיר, והזהויות נחשפות לקראת סגירה.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ שני קהלים ═══ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <span class="section-eyebrow">למי זה מתאים</span>
+      <h2>בנוי לשני צידי העסקה</h2>
+    </div>
+    <div class="audiences">
+      <div class="aud-card">
+        <h3>
+          <span class="viz-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+          ליועצי משכנתאות
+        </h3>
+        <ul class="aud-list">
+          <li><span class="check-dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> חשיפה לביקוש האשראי האמיתי של סניפים פעילים</li>
+          <li><span class="check-dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> בלי טלפונים קרים — ההתאמות המדורגות מגיעות אליך</li>
+          <li><span class="check-dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> שוק ביקושים פתוח — רואים מה הסניפים מחפשים עכשיו</li>
+        </ul>
+      </div>
+      <div class="aud-card">
+        <h3>
+          <span class="viz-icon teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M2 22h20"/><path d="M10 6h1M13 6h1M10 10h1M13 10h1M10 14h1M13 14h1"/></svg></span>
+          לסניפי בנק
+        </h3>
+        <ul class="aud-list">
+          <li><span class="check-dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> לידים מנוקדים שתואמים בדיוק את הביקוש שהגדרתם</li>
+          <li><span class="check-dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> שוק תיקים אנונימי — אפשר ליזום עניין בלי לחכות</li>
+          <li><span class="check-dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> שליטה מלאה בתנאי הסף וב-SLA של הסניף</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ סטריפ פיצ'רים ═══ -->
+<section style="padding-top: 0;">
+  <div class="container">
+    <div class="features-strip">
+      <div class="feat">
+        <span class="viz-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+        <span>אנונימיות עד להתאמה</span>
+      </div>
+      <div class="feat">
+        <span class="viz-icon teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></span>
+        <span>ציון התאמה שקוף</span>
+      </div>
+      <div class="feat">
+        <span class="viz-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+        <span>צ'אט מאובטח</span>
+      </div>
+      <div class="feat">
+        <span class="viz-icon teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+        <span>עדכונים בזמן אמת</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="cta-band">
+  <div class="container">
+    <h2>מוכנים להתאמה הראשונה?</h2>
+    <p>הצטרפו לפלטפורמה שמחברת בין הצדדים הנכונים בשוק המשכנתאות.</p>
+    <div class="hero-ctas">
+      <a class="btn btn-teal btn-lg" href="#">הרשמה לפלטפורמה</a>
+      <a class="btn btn-ghost-light btn-lg" href="#">התחברות</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Footer ═══ -->
+<footer>
+  <div class="container">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <a class="logo" href="#">
+          <svg width="30" height="30" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <rect x="12" y="2" width="22" height="22" rx="7" fill="hsl(161 94% 32%)"/>
+            <rect x="2" y="12" width="22" height="22" rx="7" fill="#fff" fill-opacity="0.95"/>
+            <path d="M8.5 23.5l4 4 7.5-9" stroke="#1B2A4A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+          <span class="logo-word">Branch<span class="lm">Match</span></span>
+        </a>
+        <p class="foot-tag">מחברים יועצי משכנתאות עם סניפי בנקים</p>
+      </div>
+      <nav class="foot-links">
+        <a href="#hiw">איך זה עובד</a>
+        <a href="#">הרשמה</a>
+        <a href="#">התחברות</a>
+      </nav>
+    </div>
+    <div class="foot-bottom">© 2026 BranchMatch. כל הזכויות שמורות.</div>
+  </div>
+</footer>
+
+</body>
+</html>

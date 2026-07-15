@@ -190,7 +190,7 @@ const AdvisorMatchesView = () => {
                                                                     <Button
                                                                         onClick={() => handleInterestAndChat(m.id)}
                                                                         disabled={actingOn === m.id}
-                                                                        className="bg-green-600 hover:bg-green-700"
+                                                                        className="bg-success hover:bg-success/90 text-success-foreground"
                                                                     >
                                                                         אשר ועבור לצ'אט ←
                                                                     </Button>
@@ -215,7 +215,7 @@ const AdvisorMatchesView = () => {
                                                         {/* Both interested — match closed */}
                                                         {m.status === 'closed' && (
                                                             <div className="flex flex-col items-end gap-2">
-                                                                <Badge className="bg-green-600 hover:bg-green-700 p-2">
+                                                                <Badge className="bg-success hover:bg-success/90 text-success-foreground p-2">
                                                                     🎉 שידוך הושלם!
                                                                 </Badge>
                                                                 <Button
@@ -419,7 +419,7 @@ const BankMatchesView = () => {
                             )}
                             {m.status === 'closed' && (
                                 <Button
-                                    className="w-full bg-green-600 hover:bg-green-700"
+                                    className="w-full bg-success hover:bg-success/90 text-success-foreground"
                                     onClick={() => navigate(`/chat/${m.id}`)}
                                 >
                                     מעבר לצ'אט עם המגיש

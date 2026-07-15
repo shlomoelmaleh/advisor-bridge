@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm run build)",
+      "PowerShell(npx tsx scripts/rescore-legacy-matches.ts)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://oasivruwsvhfmvynpbia.supabase.co/rest/v1/\" -Method Head -TimeoutSec 15 -UseBasicParsing } catch { Write-Output \"ERR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(try { \\(Invoke-WebRequest -Uri \"https://supabase.com\" -Method Head -TimeoutSec 15 -UseBasicParsing\\).StatusCode } catch { Write-Output \"ERR supabase.com: $\\($_.Exception.Message\\)\" }; try { Resolve-DnsName oasivruwsvhfmvynpbia.supabase.co -ErrorAction Stop | Select-Object -First 2 } catch { Write-Output \"DNS ERR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(npx tsx \"C:\\\\Users\\\\SHLOMO~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--projects-advisor-bridge\\\\a636f1a4-eaad-4040-a116-53534f7a93a5\\\\scratchpad\\\\check-appetites.ts\")",
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\SHLOMO~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--projects-advisor-bridge\\\\a636f1a4-eaad-4040-a116-53534f7a93a5\\\\scratchpad\\\\check-appetites.ts\" \"c:\\\\projects\\\\advisor-bridge\\\\scripts\\\\_tmp-check-appetites.ts\")",
+      "PowerShell(npx tsx scripts/_tmp-check-appetites.ts)",
+      "PowerShell(npx tsx scripts/rescore-legacy-matches.ts --apply)",
+      "PowerShell(npx tsx scripts/_tmp-check-matches.ts)",
+      "PowerShell($env:CI = '1'; npx tsx tests/rls-security.test.ts)",
+      "PowerShell(npx supabase link --project-ref oasivruwsvhfmvynpbia)",
+      "PowerShell(npx supabase migration repair --status applied 20240304000000 20260227111846 20260227111917 20260227122352 20260227123222 20260227124106 20260227124121 20260228220532 20260301150500 20260301150516 20260301151751 20260304132534 20260304135222 20260304160500 20260305204742 20260305213018 20260308171245 20260316214800 20260317001000 20260318000500 20260602120000)",
+      "PowerShell(npx supabase db push --dry-run)",
+      "PowerShell(npx supabase migration repair --status reverted 20260227111844 20260227111915 20260227122351 20260227123220 20260227124104 20260227124120 20260228220530 20260301150459 20260301150514 20260301151749 20260304132533 20260304135221 20260305204740 20260305213016 20260308171243)",
+      "PowerShell(npx supabase functions list)",
+      "PowerShell(foreach \\($fn in @\\('delete-user','notify-banker-appetite-rejected','notify-admin-new-user','notify-banker-advisor-interest','notify-advisor-case-approved','notify-user-approved'\\)\\) { Write-Output \"--- $fn ---\"; npx supabase functions download $fn })",
+      "PowerShell(npx supabase functions deploy delete-user)",
+      "PowerShell(npx tsx scripts/_tmp-test-delete-user.ts)",
+      "PowerShell(Remove-Item c:\\\\projects\\\\advisor-bridge\\\\scripts\\\\_tmp-test-delete-user.ts -Confirm:$false)",
+      "PowerShell(npx supabase db pull)",
+      "PowerShell(if \\(Test-Path \"$env:USERPROFILE\\\\.supabase\\\\access-token\"\\) { Write-Output \"token file exists\" } else { Write-Output \"no token file\"; Get-ChildItem \"$env:USERPROFILE\\\\.supabase\" -ErrorAction SilentlyContinue | Select-Object Name })",
+      "PowerShell(npx supabase db --help)",
+      "PowerShell(npx supabase db query \"select pg_get_viewdef\\('public.anonymous_cases'::regclass, true\\) as def\" --output json)",
+      "PowerShell(npx supabase db query --help)",
+      "PowerShell(npx supabase db query --linked \"select pg_get_viewdef\\('public.anonymous_cases'::regclass, true\\) as def, \\(select relkind from pg_class where relname='anonymous_cases'\\) as kind\")",
+      "PowerShell(npx supabase db query --linked \"select c.relname, c.reloptions, pg_get_userbyid\\(c.relowner\\) as owner, \\(select array_agg\\(privilege_type || ':' || grantee\\) from information_schema.role_table_grants g where g.table_name='anonymous_cases'\\) as grants from pg_class c where c.relname='anonymous_cases'\")",
+      "PowerShell(npx tsx scripts/_tmp-anon-leak.ts)",
+      "PowerShell(Remove-Item c:\\\\projects\\\\advisor-bridge\\\\scripts\\\\_tmp-anon-leak.ts -Confirm:$false)",
+      "PowerShell(npx tsx scripts/_tmp-banker-cases.ts)",
+      "PowerShell(Remove-Item c:\\\\projects\\\\advisor-bridge\\\\scripts\\\\_tmp-banker-cases.ts -Confirm:$false)"
+    ]
+  }
+}

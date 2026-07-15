@@ -53,6 +53,10 @@ export default {
     			card: {
     				DEFAULT: 'hsl(var(--card))',
     				foreground: 'hsl(var(--card-foreground))'
+    			},
+    			success: {
+    				DEFAULT: 'hsl(var(--success))',
+    				foreground: 'hsl(var(--success-foreground))'
     			}
     		},
     		borderRadius: {
@@ -137,20 +141,13 @@ export default {
     		},
     		fontFamily: {
     			sans: [
-    				'Work Sans',
-    				'ui-sans-serif',
+    				'Heebo',
     				'system-ui',
-    				'-apple-system',
-    				'BlinkMacSystemFont',
     				'Segoe UI',
-    				'Roboto',
-    				'Helvetica Neue',
     				'Arial',
-    				'Noto Sans',
     				'sans-serif'
     			],
     			serif: [
-    				'Lora',
     				'ui-serif',
     				'Georgia',
     				'Cambria',
@@ -159,13 +156,11 @@ export default {
     				'serif'
     			],
     			mono: [
-    				'Inconsolata',
     				'ui-monospace',
     				'SFMono-Regular',
     				'Menlo',
     				'Monaco',
     				'Consolas',
-    				'Liberation Mono',
     				'Courier New',
     				'monospace'
     			]

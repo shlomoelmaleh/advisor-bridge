@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>מוקאפ — BranchMatch מסך פנימי (דשבורד יועץ)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ─── טוקנים — הערכים המדויקים המיועדים ל-src/index.css (שלב B) ─── */
+  :root {
+    --background: 220 23% 97%;
+    --foreground: 222 40% 13%;
+    --card: 0 0% 100%;
+    --primary: 221 47% 20%;            /* נייבי #1B2A4A */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 220 16% 92%;
+    --secondary-foreground: 221 47% 20%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 9% 40%;
+    --accent: 220 20% 94%;
+    --destructive: 0 72% 45%;
+    --border: 220 14% 88%;
+    --ring: 221 47% 33%;
+    --success: 161 94% 26%;
+    --success-foreground: 0 0% 100%;
+    --radius: 0.75rem;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Heebo', system-ui, 'Segoe UI', Arial, sans-serif;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+
+  /* ─── כפתורים ─── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font: 500 14.5px 'Heebo', sans-serif; border-radius: calc(var(--radius) - 2px);
+    padding: 9px 18px; cursor: pointer; border: 1px solid transparent; text-decoration: none;
+    transition: all .18s ease;
+  }
+  .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .btn-primary:hover { background: hsl(221 47% 26%); }
+  .btn-secondary { background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); }
+  .btn-secondary:hover { background: hsl(220 16% 88%); }
+  .btn-outline { background: hsl(var(--card)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
+  .btn-outline:hover { background: hsl(var(--accent)); }
+  .btn-destructive { background: hsl(var(--destructive)); color: #fff; }
+  .btn-success { background: hsl(var(--success)); color: hsl(var(--success-foreground)); }
+  .btn-success:hover { background: hsl(161 94% 22%); }
+
+  /* ─── Navbar — גרסה בהירה (ברירת מחדל) ─── */
+  .navbar {
+    position: sticky; top: 0; z-index: 50;
+    background: hsl(var(--card) / .88); backdrop-filter: blur(10px);
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  .navbar .container { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .nav-right { display: flex; align-items: center; gap: 28px; }
+  .nav-links { display: flex; align-items: center; gap: 4px; }
+  .nav-link {
+    position: relative; color: hsl(var(--muted-foreground)); text-decoration: none;
+    font-size: 14.5px; font-weight: 500; padding: 20px 12px;
+  }
+  .nav-link:hover { color: hsl(var(--foreground)); }
+  .nav-link.active { color: hsl(var(--primary)); font-weight: 600; }
+  .nav-link.active::after {
+    content: ''; position: absolute; bottom: 0; right: 12px; left: 12px;
+    height: 2.5px; border-radius: 2px; background: hsl(var(--success));
+  }
+  .nav-badge {
+    position: absolute; top: 10px; left: -2px;
+    min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+    background: hsl(var(--destructive)); color: #fff;
+    font-size: 10.5px; font-weight: 700; line-height: 17px; text-align: center;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-word { font-weight: 700; font-size: 18px; color: hsl(var(--primary)); }
+  .logo-word .lm { color: hsl(var(--success)); }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* ─── Navbar — גרסת נייבי (מופעלת ב-toggle) ─── */
+  body.navy-nav .navbar { background: hsl(var(--primary)); border-bottom-color: hsl(221 47% 28%); }
+  body.navy-nav .nav-link { color: hsl(210 40% 98% / .65); }
+  body.navy-nav .nav-link:hover { color: #fff; }
+  body.navy-nav .nav-link.active { color: #fff; }
+  body.navy-nav .logo-word { color: #fff; }
+  body.navy-nav .avatar { background: hsl(210 40% 98% / .12); color: hsl(210 40% 98% / .8); border-color: transparent; }
+
+  /* ─── תוכן ─── */
+  main { padding: 34px 0 60px; }
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 30px; }
+  .page-head h1 { font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { color: hsl(var(--muted-foreground)); font-size: 15px; }
+
+  .card {
+    background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+    border-radius: var(--radius); box-shadow: 0 1px 3px hsl(221 47% 20% / .05);
+  }
+
+  /* stat cards */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 30px; }
+  .stat { padding: 22px; display: flex; justify-content: space-between; align-items: center; }
+  .stat-chip { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .stat-chip.blue  { background: hsl(217 91% 60% / .1); color: hsl(217 80% 48%); }
+  .stat-chip.green { background: hsl(var(--success) / .1);  color: hsl(var(--success)); }
+  .stat-chip.amber { background: hsl(38 92% 50% / .12);  color: hsl(32 90% 42%); }
+  .stat-meta { text-align: left; }
+  .stat-meta .t { font-size: 13.5px; font-weight: 500; color: hsl(var(--muted-foreground)); }
+  .stat-meta .v { font-size: 30px; font-weight: 700; line-height: 1.2; }
+  .stat-meta .v.blue { color: hsl(217 80% 48%); } .stat-meta .v.green { color: hsl(var(--success)); } .stat-meta .v.amber { color: hsl(32 90% 42%); }
+
+  /* cases card */
+  .card-head { padding: 22px 24px 0; }
+  .card-head h2 { font-size: 19px; font-weight: 700; }
+  .card-head p { font-size: 14px; color: hsl(var(--muted-foreground)); }
+  .card-body { padding: 18px 24px 24px; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .tab {
+    font-size: 13.5px; font-weight: 500; padding: 7px 15px; border-radius: 999px;
+    background: transparent; color: hsl(var(--muted-foreground));
+    border: 1px solid hsl(var(--border)); cursor: pointer;
+  }
+  .tab:hover { background: hsl(var(--accent)); }
+  .tab.active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); font-weight: 600; }
+
+  .case-row {
+    padding: 16px; border: 1px solid hsl(var(--border)); border-radius: 12px;
+    display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .case-row:hover { background: hsl(var(--accent) / .5); border-color: hsl(220 14% 82%); }
+  .case-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .case-amount { font-size: 16.5px; font-weight: 700; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; padding: 3px 11px; border-radius: 999px; border: 1px solid transparent;
+  }
+  .badge.st-open    { background: hsl(217 91% 60% / .1); color: hsl(217 80% 45%); }
+  .badge.st-prog    { background: hsl(38 92% 50% / .12); color: hsl(32 90% 40%); }
+  .badge.st-matched { background: hsl(145 63% 42% / .12); color: hsl(145 63% 32%); }
+  .badge.ap-live    { background: hsl(var(--success) / .1); color: hsl(var(--success)); border-color: hsl(var(--success) / .25); }
+  .badge.ap-pending { background: hsl(38 92% 50% / .1); color: hsl(32 90% 40%); border-color: hsl(38 92% 50% / .3); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 999px;
+    border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground));
+  }
+  .case-date { font-size: 12.5px; color: hsl(var(--muted-foreground)); }
+
+  /* empty state */
+  .empty {
+    text-align: center; padding: 48px 24px;
+    border: 2px dashed hsl(var(--border)); border-radius: 16px; background: hsl(var(--muted) / .35);
+  }
+  .empty-icon {
+    width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 16px;
+    background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .empty h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .empty p { font-size: 14px; color: hsl(var(--muted-foreground)); margin-bottom: 18px; }
+
+  /* באנר ממתין לאישור */
+  .banner {
+    display: flex; align-items: center; gap: 10px;
+    background: hsl(45 93% 95%); border: 1px solid hsl(45 90% 80%); color: hsl(30 80% 30%);
+    border-radius: 12px; padding: 12px 16px; font-size: 14px; font-weight: 500;
+  }
+  .banner .btn { margin-inline-start: auto; padding: 6px 14px; font-size: 13px; }
+
+  /* סטריפ קומפוננטות */
+  .strip { margin-top: 40px; }
+  .strip h2 { font-size: 16px; font-weight: 700; color: hsl(var(--muted-foreground)); margin-bottom: 14px; text-transform: uppercase; letter-spacing: .04em; }
+  .strip-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .badge.score-hi  { background: hsl(145 63% 42% / .13); color: hsl(145 63% 28%); font-size: 13px; padding: 5px 14px; }
+  .badge.score-mid { background: hsl(38 92% 50% / .14);  color: hsl(32 90% 36%);  font-size: 13px; padding: 5px 14px; }
+  .badge.score-lo  { background: hsl(0 72% 45% / .1);    color: hsl(0 72% 40%);   font-size: 13px; padding: 5px 14px; }
+
+  /* toggle גרסת navbar */
+  .variant-toggle {
+    position: fixed; bottom: 18px; left: 18px; z-index: 100;
+    background: hsl(var(--foreground)); color: hsl(var(--card));
+    border: none; border-radius: 999px; padding: 10px 18px;
+    font: 600 13px 'Heebo', sans-serif; cursor: pointer; box-shadow: 0 4px 14px hsl(221 47% 20% / .3);
+  }
+
+  .mock-note {
+    background: hsl(var(--foreground)); color: hsl(var(--card));
+    text-align: center; font-size: 12.5px; padding: 6px;
+  }
+
+  @media (max-width: 800px) {
+    .stats { grid-template-columns: 1fr; }
+    .nav-links .nav-link:not(.active) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="mock-note">מוקאפ סטטי — שלב A · הכפתור בפינה מחליף בין גרסת Navbar בהירה (מומלץ) לגרסת נייבי</div>
+
+<!-- ═══ Navbar ═══ -->
+<header class="navbar">
+  <div class="container">
+    <div class="nav-right">
+      <a class="logo" href="#">
+        <svg width="32" height="32" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+          <rect x="12" y="2" width="22" height="22" rx="7" fill="hsl(161 94% 30%)"/>
+          <rect x="2" y="12" width="22" height="22" rx="7" fill="#1B2A4A"/>
+          <path d="M8.5 23.5l4 4 7.5-9" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+        <span class="logo-word">Branch<span class="lm">Match</span></span>
+      </a>
+      <nav class="nav-links">
+        <a class="nav-link active" href="#">דאשבורד</a>
+        <a class="nav-link" href="#" style="position:relative;">התאמות<span class="nav-badge">3</span></a>
+        <a class="nav-link" href="#">הגש תיק</a>
+        <a class="nav-link" href="#">שוק תיאבון</a>
+        <a class="nav-link" href="#" style="position:relative;">שיחות<span class="nav-badge">1</span></a>
+      </nav>
+    </div>
+    <div class="avatar">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <!-- PageHeader -->
+    <div class="page-head">
+      <div>
+        <h1>לוח הבקרה</h1>
+        <p>שלום, שלמה — כאן כל התיקים שלך</p>
+      </div>
+      <a class="btn btn-primary" href="#">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+        תיק חדש
+      </a>
+    </div>
+
+    <!-- Stat cards (עם תיקון באג הצ'יפים) -->
+    <div class="stats">
+      <div class="card stat">
+        <span class="stat-chip blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        </span>
+        <div class="stat-meta"><p class="t">סה"כ תיקים</p><p class="v blue">4</p></div>
+      </div>
+      <div class="card stat">
+        <span class="stat-chip green">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>
+        <div class="stat-meta"><p class="t">הותאמו</p><p class="v green">1</p></div>
+      </div>
+      <div class="card stat">
+        <span class="stat-chip amber">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        </span>
+        <div class="stat-meta"><p class="t">פתוחים</p><p class="v amber">2</p></div>
+      </div>
+    </div>
+
+    <!-- כרטיס התיקים -->
+    <div class="card">
+      <div class="card-head">
+        <h2>התיקים שלי</h2>
+        <p>ניהול ומעקב אחר כל התיקים שהגשת</p>
+      </div>
+      <div class="card-body">
+        <div class="tabs">
+          <button class="tab active">הכל (4)</button>
+          <button class="tab">פתוח (2)</button>
+          <button class="tab">בטיפול (1)</button>
+          <button class="tab">הותאם (1)</button>
+          <button class="tab">סגור (0)</button>
+          <button class="tab">ארכיון נדחים (0)</button>
+        </div>
+
+        <div class="case-row">
+          <div class="case-top">
+            <span class="case-amount">₪1,200K–₪1,500K</span>
+            <span class="badge st-open">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              פתוח
+            </span>
+            <span class="badge ap-live">פעיל - חשוף לבנקאים</span>
+          </div>
+          <div class="chips">
+            <span class="chip">LTV 60%</span><span class="chip">שכיר</span><span class="chip">דירה</span><span class="chip">אזור המרכז</span>
+          </div>
+          <span class="case-date">הוגש 12 ביולי 2026</span>
+        </div>
+
+        <div class="case-row">
+          <div class="case-top">
+            <span class="case-amount">₪800K–₪950K</span>
+            <span class="badge st-prog">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              בטיפול
+            </span>
+            <span class="badge ap-pending">ממתין לאישור Admin</span>
+          </div>
+          <div class="chips">
+            <span class="chip">LTV 70%</span><span class="chip">עצמאי</span><span class="chip">דירה ראשונה</span><span class="chip">צפון</span>
+          </div>
+          <span class="case-date">הוגש 10 ביולי 2026</span>
+        </div>
+
+        <div class="case-row">
+          <div class="case-top">
+            <span class="case-amount">₪2,000K–₪2,400K</span>
+            <span class="badge st-matched">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              הותאם
+            </span>
+            <span class="badge ap-live">פעיל - חשוף לבנקאים</span>
+          </div>
+          <div class="chips">
+            <span class="chip">LTV 55%</span><span class="chip">שכיר</span><span class="chip">השקעה</span><span class="chip">ירושלים</span>
+          </div>
+          <span class="case-date">הוגש 2 ביולי 2026 · התאמה אחרונה: אתמול</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state לדוגמה -->
+    <div class="strip">
+      <h2>Empty State (קומפוננטה משותפת חדשה)</h2>
+      <div class="empty">
+        <div class="empty-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        </div>
+        <h3>עוד לא הגשת תיקים</h3>
+        <p>ברגע שתגיש תיק ראשון, מנוע ההתאמה יתחיל לחפש עבורך סניפים מתאימים.</p>
+        <a class="btn btn-primary" href="#">הגש את התיק הראשון</a>
+      </div>
+    </div>
+
+    <!-- באנר ממתין לאישור -->
+    <div class="strip">
+      <h2>באנר סטטוס (ממתין לאישור)</h2>
+      <div class="banner">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        החשבון ממתין לאישור מנהל — הפעולות נעולות עד לאישור.
+        <button class="btn btn-outline">בדוק עכשיו</button>
+      </div>
+    </div>
+
+    <!-- סטריפ קומפוננטות -->
+    <div class="strip">
+      <h2>כפתורים</h2>
+      <div class="strip-row">
+        <button class="btn btn-primary">פעולה ראשית</button>
+        <button class="btn btn-secondary">משני</button>
+        <button class="btn btn-outline">מתאר</button>
+        <button class="btn btn-success">פעולה חיובית (success)</button>
+        <button class="btn btn-destructive">מחיקה</button>
+      </div>
+      <h2>ScoreBadge — שלושת הטווחים</h2>
+      <div class="strip-row">
+        <span class="badge score-hi">ציון התאמה 92</span>
+        <span class="badge score-mid">ציון התאמה 55</span>
+        <span class="badge score-lo">ציון התאמה 38</span>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<button class="variant-toggle" onclick="document.body.classList.toggle('navy-nav'); this.textContent = document.body.classList.contains('navy-nav') ? 'Navbar: נייבי → החלף לבהיר' : 'Navbar: בהיר → החלף לנייבי';">Navbar: בהיר → החלף לנייבי</button>
+
+</body>
+</html>
