@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import Logo from "@/components/common/Logo";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -155,6 +156,7 @@ const Navbar = () => {
   const handleLogout = async () => {
     await signOut();
     navigate("/");
+    window.scrollTo(0, 0);
   };
 
   const getDashboardPath = () => {
@@ -214,11 +216,8 @@ const Navbar = () => {
         dir="rtl"
       >
         <div className="container flex h-16 items-center px-4 sm:px-8">
-          <Link to="/" className="flex items-center space-x-2 space-x-reverse ml-4">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">MB</span>
-            </div>
-            <span className="font-semibold text-lg hidden sm:inline-block">BranchMatch‏</span>
+          <Link to="/" className="flex items-center ml-4">
+            <Logo size={32} withWordmark wordmarkClassName="hidden sm:inline-block" />
           </Link>
 
           {/* Mobile menu button */}
@@ -280,7 +279,7 @@ const Navbar = () => {
                         setAdvisorNewAppetiteCount(0);
                       }}
                     >
-                      שוק תיאבון
+                      שוק הביקושים
                       {advisorNewAppetiteCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                           {advisorNewAppetiteCount > 9 ? "9+" : advisorNewAppetiteCount}
@@ -314,7 +313,7 @@ const Navbar = () => {
                       className="relative text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                       onClick={handleAppetiteClick}
                     >
-                      תיאבון
+                      ביקושים
                       {approvedAppetiteCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                           {approvedAppetiteCount}
@@ -377,12 +376,12 @@ const Navbar = () => {
             ) : (
               <>
                 <Link
-                  to="/"
+                  to="/login"
                   className="text-foreground/80 hover:text-foreground px-3 py-2 text-sm font-medium transition-colors"
                 >
                   התחבר
                 </Link>
-                <Link to="/?tab=register">
+                <Link to="/login?tab=register">
                   <Button>הרשם</Button>
                 </Link>
               </>
@@ -452,7 +451,7 @@ const Navbar = () => {
                             setAdvisorNewAppetiteCount(0);
                           }}
                         >
-                          שוק תיאבון
+                          שוק הביקושים
                           {advisorNewAppetiteCount > 0 && (
                             <span className="mr-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                               {advisorNewAppetiteCount > 9 ? "9+" : advisorNewAppetiteCount}
@@ -491,7 +490,7 @@ const Navbar = () => {
                             handleAppetiteClick();
                           }}
                         >
-                          תיאבון
+                          ביקושים
                           {approvedAppetiteCount > 0 && (
                             <span className="mr-2 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                               {approvedAppetiteCount}
@@ -527,14 +526,14 @@ const Navbar = () => {
                 ) : (
                   <>
                     <Link
-                      to="/"
+                      to="/login"
                       className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       התחבר
                     </Link>
                     <Link
-                      to="/?tab=register"
+                      to="/login?tab=register"
                       className="flex items-center justify-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >

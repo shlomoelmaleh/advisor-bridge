@@ -45,10 +45,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // ── 2. No session → remember path + go to login ──────────────────────────
     if (sessionState === 'no-session') {
         const path = location.pathname + location.search;
-        if (path !== '/') {
+        if (path !== '/login') {
             sessionStorage.setItem(SESSION_REDIRECT_KEY, path);
         }
-        return <Navigate to="/" state={{ from: location }} replace />;
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     // ── 3. Any-authenticated routes ───────────────────────────────────────────

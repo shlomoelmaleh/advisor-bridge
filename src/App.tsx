@@ -6,10 +6,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth, getHomePathByRole } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import AuthPage from "./pages/AuthPage";
+import Index from "./pages/Index";
 import AppLayout from "@/components/layout/AppLayout";
 
 // Role-segmented pages are lazy-loaded so each user only downloads their slice
@@ -39,10 +40,26 @@ document.documentElement.dir = 'rtl';
 document.documentElement.lang = 'he';
 
 // ─── ROOT ROUTE ───────────────────────────────────────────────────────────────
-// Renders the auth/landing page. Handles both no-session (form) and 
-// has-session (shows "already signed in" with Switch Account).
-// Booting state is handled by AuthProvider, so we never see it here.
+// Guests see the marketing landing page; signed-in users with a resolved role
+// skip straight to their dashboard. Old bookmarks like /?tab=register keep
+// working via a redirect to the real /login route.
 const RootRoute = () => {
+  const { sessionState, roleState } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  if (searchParams.get('tab') === 'register') {
+    return <Navigate to="/login?tab=register" replace />;
+  }
+  if (sessionState === 'has-session' && roleState !== 'unknown') {
+    return <Navigate to={getHomePathByRole(roleState)} replace />;
+  }
+  return <Index />;
+};
+
+// ─── LOGIN ROUTE ──────────────────────────────────────────────────────────────
+// The real auth screen. Handles both no-session (form) and has-session (role
+// resolution / switch account) — AuthPage's post-login logic is unchanged.
+const LoginRoute = () => {
   const [searchParams] = useSearchParams();
   const tab = searchParams.get('tab') === 'register' ? 'register' : 'login';
   return <AuthPage defaultTab={tab} />;
@@ -59,8 +76,8 @@ const App = () => (
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<RootRoute />} />
-            <Route path="/login" element={<Navigate to="/" replace />} />
-            <Route path="/register" element={<Navigate to="/?tab=register" replace />} />
+            <Route path="/login" element={<LoginRoute />} />
+            <Route path="/register" element={<Navigate to="/login?tab=register" replace />} />
 
             {/* Advisor-only routes */}
             <Route
