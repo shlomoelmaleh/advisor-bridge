@@ -5,6 +5,7 @@ import { SESSION_REDIRECT_KEY } from "@/components/auth/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
+import { LogoMark } from "@/components/common/Logo";
 
 interface AuthPageProps {
   defaultTab?: "login" | "register";
@@ -58,8 +59,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = "login" }) => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 bg-background" dir="rtl">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-          <div className="w-16 h-16 mx-auto bg-primary rounded-2xl flex items-center justify-center shadow-lg mb-6">
-            <span className="text-primary-foreground font-bold text-2xl">MB</span>
+          <div className="mx-auto w-fit mb-6 drop-shadow-lg">
+            <LogoMark size={64} />
           </div>
 
           <p className="text-muted-foreground mb-2">
@@ -86,9 +87,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ defaultTab = "login" }) => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">MB</span>
-            </div>
+            <LogoMark size={48} />
           </div>
           <h1 className="mt-6 text-3xl font-extrabold text-foreground text-right" dir="rtl">
             BranchMatch‏
