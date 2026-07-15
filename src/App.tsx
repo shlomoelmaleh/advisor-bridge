@@ -118,9 +118,7 @@ const App = () => (
               path="/bank/market"
               element={
                 <ProtectedRoute allowedRoles={['bank']} requireFinalRole>
-                  <AppLayout>
-                    <BankMarket />
-                  </AppLayout>
+                  <BankMarket />
                 </ProtectedRoute>
               }
             />
