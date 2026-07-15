@@ -19,6 +19,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/common/PageHeader';
+import EmptyState from '@/components/common/EmptyState';
 
 interface AppetiteSignal {
   id: string;
@@ -64,7 +66,7 @@ const AdvisorMarket = () => {
         setAppetites(data ?? []);
       } catch (err) {
         console.error('Error fetching appetites:', err);
-        toast.error('שגיאה בטעינת איתותי תיאבון');
+        toast.error('שגיאה בטעינת ביקושים');
       } finally {
         setLoading(false);
       }
@@ -75,23 +77,23 @@ const AdvisorMarket = () => {
   return (
     <AppLayout>
       <div className="container mx-auto p-4 sm:p-8 max-w-5xl text-right animate-in fade-in duration-500" dir="rtl">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">שוק תיאבון</h1>
-          <p className="text-muted-foreground mt-1">צפה באיתותי תיאבון פעילים של בנקים והגש תיק מתאים</p>
-        </header>
+        <PageHeader
+          className="mb-8"
+          title="שוק הביקושים"
+          subtitle="צפה בביקושים פעילים של בנקים והגש תיק מתאים"
+        />
 
         {loading ? (
           <div className="flex items-center justify-center min-h-[40vh]">
             <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
           </div>
         ) : appetites.length === 0 ? (
-          <div className="text-center py-20 bg-muted/30 rounded-2xl border-2 border-dashed">
-            <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-20" />
-            <h3 className="text-lg font-semibold">אין כרגע איתותי תיאבון פעילים</h3>
-            <p className="text-muted-foreground max-w-sm mx-auto mt-2">
-              חזור מאוחר יותר כדי לראות איתותים חדשים מבנקים.
-            </p>
-          </div>
+          <EmptyState
+            className="py-20 bg-muted/30 rounded-2xl border-2 border-dashed"
+            icon={<Search className="h-12 w-12" />}
+            title="אין כרגע ביקושים פעילים"
+            description="חזור מאוחר יותר כדי לראות ביקושים חדשים מבנקים."
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {appetites.map((a) => (
@@ -137,7 +139,7 @@ const AppetiteCard = ({ appetite }: { appetite: AppetiteSignal }) => {
     <Card className="hover:shadow-md transition-shadow border-r-4 border-r-primary overflow-hidden">
       <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
         <Badge variant="outline" className={`text-xs font-medium ${level.class}`}>
-          תיאבון {level.label}
+          ביקוש {level.label}
         </Badge>
         <div className="bg-primary/10 p-2 rounded-lg">
           <Building2 className="h-4 w-4 text-primary" />

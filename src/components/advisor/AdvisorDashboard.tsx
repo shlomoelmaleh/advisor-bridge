@@ -18,43 +18,19 @@ import {
   FileSpreadsheet,
   AlertCircle,
   Check,
-  Clock,
-  HandshakeIcon,
-  LockIcon,
   Trash2,
   Edit,
 } from 'lucide-react';
 import { useCases } from '@/hooks/useCases';
 import { useAuth } from '@/hooks/useAuth';
-import type { DbCase, CaseStatus } from '@/types/cases';
+import type { DbCase } from '@/types/cases';
 import { propertyTypeLabel, regionLabel } from '@/lib/labels';
 import AdvisorActivityLog from './AdvisorActivityLog';
+import { CaseStatusBadge, ApprovalBadge } from '@/components/common/StatusBadge';
+import EmptyState from '@/components/common/EmptyState';
+import PageHeader from '@/components/common/PageHeader';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const STATUS_COLOR: Record<CaseStatus, string> = {
-  open: 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20',
-  in_progress: 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20',
-  matched: 'bg-green-500/10 text-green-500 hover:bg-green-500/20',
-  closed: 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20',
-  rejected: 'bg-red-500/10 text-red-500 hover:bg-red-500/20',
-};
-
-const STATUS_ICON: Record<CaseStatus, React.ReactNode> = {
-  open: <AlertCircle className="h-4 w-4 ml-1" />,
-  in_progress: <Clock className="h-4 w-4 ml-1" />,
-  matched: <HandshakeIcon className="h-4 w-4 ml-1" />,
-  closed: <LockIcon className="h-4 w-4 ml-1" />,
-  rejected: <AlertCircle className="h-4 w-4 ml-1" />,
-};
-
-const STATUS_LABEL: Record<CaseStatus, string> = {
-  open: 'פתוח',
-  in_progress: 'בטיפול',
-  matched: 'הותאם',
-  closed: 'סגור',
-  rejected: 'נדחה',
-};
 
 const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
 
@@ -78,23 +54,6 @@ const CaseSkeleton = () => (
 );
 
 // ─── Single case row ──────────────────────────────────────────────────────────
-
-const getApprovalBadge = (c: DbCase) => {
-  const status = c.status as string;
-  if (status === 'closed') {
-    return <Badge className="bg-blue-500/10 text-blue-600 border-blue-200">עסקה נסגרה</Badge>;
-  }
-  if (status === 'rejected') {
-    return <Badge className="bg-red-500/10 text-red-600 border-red-200">נדחה</Badge>;
-  }
-  if (c.is_approved && status === 'open') {
-    return <Badge className="bg-green-500/10 text-green-600 border-green-200">פעיל - חשוף לבנקאים</Badge>;
-  }
-  if (!c.is_approved && status !== 'rejected') {
-    return <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">ממתין לאישור Admin</Badge>;
-  }
-  return null;
-};
 
 const CaseRow: React.FC<{ c: DbCase; onRefresh: () => Promise<void> }> = ({ c, onRefresh }) => {
   const [showResubmitForm, setShowResubmitForm] = useState(false);
@@ -148,11 +107,8 @@ const CaseRow: React.FC<{ c: DbCase; onRefresh: () => Promise<void> }> = ({ c, o
             <h3 className="font-semibold text-lg">
               {fmt(c.loan_amount_min)} – {fmt(c.loan_amount_max)}
             </h3>
-            <Badge className={`flex items-center ${STATUS_COLOR[c.status]}`}>
-              {STATUS_ICON[c.status]}
-              {STATUS_LABEL[c.status]}
-            </Badge>
-            {getApprovalBadge(c)}
+            <CaseStatusBadge status={c.status} />
+            <ApprovalBadge c={c} />
           </div>
           <div className="flex flex-wrap gap-2 mt-1">
             <Badge variant="outline">LTV {c.ltv}%</Badge>
@@ -232,20 +188,20 @@ const CaseRow: React.FC<{ c: DbCase; onRefresh: () => Promise<void> }> = ({ c, o
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-const EmptyState: React.FC<{ filtered?: boolean; isReadOnly: boolean }> = ({ filtered, isReadOnly }) => (
-  <div className="text-center py-10">
-    <p className="text-muted-foreground mb-4">
-      {filtered ? 'אין תיקים בסטטוס זה' : 'עדיין לא הגשת תיקים'}
-    </p>
-    {!filtered && (
-      <Link to={isReadOnly ? "#" : "/advisor/submit-case"}>
-        <Button disabled={isReadOnly} variant={isReadOnly ? "secondary" : "default"}>
-          <PlusCircle className="ml-2 h-4 w-4" />
-          הגש תיק ראשון
-        </Button>
-      </Link>
-    )}
-  </div>
+const CasesEmptyState: React.FC<{ filtered?: boolean; isReadOnly: boolean }> = ({ filtered, isReadOnly }) => (
+  <EmptyState
+    title={filtered ? 'אין תיקים בסטטוס זה' : 'עדיין לא הגשת תיקים'}
+    action={
+      !filtered && (
+        <Link to={isReadOnly ? "#" : "/advisor/submit-case"}>
+          <Button disabled={isReadOnly} variant={isReadOnly ? "secondary" : "default"}>
+            <PlusCircle className="ml-2 h-4 w-4" />
+            הגש תיק ראשון
+          </Button>
+        </Link>
+      )
+    }
+  />
 );
 
 // ─── Case list for a given filter ─────────────────────────────────────────────
@@ -261,7 +217,7 @@ const CaseList: React.FC<{ cases: DbCase[]; filter: string; isReadOnly: boolean;
       ))}
     </div>
   ) : (
-    <EmptyState filtered={filter !== 'all'} isReadOnly={isReadOnly} />
+    <CasesEmptyState filtered={filter !== 'all'} isReadOnly={isReadOnly} />
   );
 };
 
@@ -304,20 +260,18 @@ const AdvisorDashboard = () => {
   return (
     <div className="space-y-8 animate-fade-in text-right" dir="rtl">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">לוח הבקרה</h1>
-          <p className="text-muted-foreground">
-            שלום, {profile?.full_name ?? 'יועץ'} — כאן כל התיקים שלך
-          </p>
-        </div>
-        <Link to={isReadOnly ? "#" : "/advisor/submit-case"}>
-          <Button disabled={isReadOnly} variant={isReadOnly ? "secondary" : "default"}>
-            <PlusCircle className="ml-2 h-4 w-4" />
-            תיק חדש
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title="לוח הבקרה"
+        subtitle={`שלום, ${profile?.full_name ?? 'יועץ'} — כאן כל התיקים שלך`}
+        action={
+          <Link to={isReadOnly ? "#" : "/advisor/submit-case"}>
+            <Button disabled={isReadOnly} variant={isReadOnly ? "secondary" : "default"}>
+              <PlusCircle className="ml-2 h-4 w-4" />
+              תיק חדש
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

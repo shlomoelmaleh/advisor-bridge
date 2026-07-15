@@ -8,7 +8,7 @@ const BankDashboard = () => {
   const { profile } = useAuth();
 
   if (profile?.is_approved === false) {
-    return <PendingApprovalScreen afterApprovalText="לאחר אישור: גישה מלאה להגדרת תיאבון וקבלת התאמות" />;
+    return <PendingApprovalScreen afterApprovalText="לאחר אישור: גישה מלאה להגדרת ביקוש וקבלת התאמות" />;
   }
 
   return (

@@ -18,6 +18,8 @@ import {
     Activity
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/common/PageHeader';
+import EmptyState from '@/components/common/EmptyState';
 
 interface OpenCase {
     id: string;
@@ -138,23 +140,23 @@ const BankMarket = () => {
     return (
         <AppLayout>
             <div className="container mx-auto p-4 sm:p-8 max-w-5xl text-right animate-in fade-in duration-500" dir="rtl">
-                <header className="mb-8">
-                    <h1 className="text-3xl font-bold tracking-tight">שוק פתוח</h1>
-                    <p className="text-muted-foreground mt-1">צפה בתיקים פתוחים והבע עניין בדיסקרטיות</p>
-                </header>
+                <PageHeader
+                    className="mb-8"
+                    title="שוק פתוח"
+                    subtitle="צפה בתיקים פתוחים והבע עניין בדיסקרטיות"
+                />
 
                 {loading ? (
                     <div className="flex items-center justify-center min-h-[40vh]">
                         <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
                     </div>
                 ) : cases.length === 0 ? (
-                    <div className="text-center py-20 bg-muted/30 rounded-2xl border-2 border-dashed">
-                        <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-20" />
-                        <h3 className="text-lg font-semibold">אין תיקים חדשים בשוק</h3>
-                        <p className="text-muted-foreground max-w-sm mx-auto mt-2">
-                            חזור מאוחר יותר כדי לראות תיקים חדשים שאושרו במערכת.
-                        </p>
-                    </div>
+                    <EmptyState
+                        className="py-20 bg-muted/30 rounded-2xl border-2 border-dashed"
+                        icon={<Search className="h-12 w-12" />}
+                        title="אין תיקים חדשים בשוק"
+                        description="חזור מאוחר יותר כדי לראות תיקים חדשים שאושרו במערכת."
+                    />
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {cases.map((c) => (

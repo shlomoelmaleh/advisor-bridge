@@ -12,21 +12,11 @@ import { useMatches } from '@/hooks/useMatches';
 import { useCases } from '@/hooks/useCases';
 import type { MatchWithDetails } from '@/types/matches';
 import { appetiteLevelLabel, regionLabel } from '@/lib/labels';
+import { ScoreBadge } from '@/components/common/StatusBadge';
+import PageHeader from '@/components/common/PageHeader';
+import EmptyState from '@/components/common/EmptyState';
 
 const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
-
-// ─── Score badge rendering ────────────────────────────────────────────────────
-const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
-    let color = 'bg-red-500/10 text-red-500 border-red-500/20';
-    if (score >= 70) color = 'bg-green-500/10 text-green-500 border-green-500/20';
-    else if (score >= 40) color = 'border-amber-500/20 bg-amber-500/10 text-amber-500';
-
-    return (
-        <Badge variant="outline" className={`font-mono text-sm px-2 py-1 ${color}`}>
-            {score}% התאמה
-        </Badge>
-    );
-};
 
 // ─── Component: Advisor View ──────────────────────────────────────────────────
 const AdvisorMatchesView = () => {
@@ -99,13 +89,13 @@ const AdvisorMatchesView = () => {
 
     return (
         <div className="space-y-8 animate-fade-in">
-            <div>
-                <h1 className="text-3xl font-bold">ההתאמות שלי</h1>
-                <p className="text-muted-foreground">לוח ניהול שידוכים מול סניפים שמתעניינים בתיקים שלך.</p>
-            </div>
+            <PageHeader
+                title="ההתאמות שלי"
+                subtitle="לוח ניהול שידוכים מול סניפים שמתעניינים בתיקים שלך."
+            />
 
             {cases.length === 0 ? (
-                <div className="text-center py-12">אין לך עדיין תיקים. צור תיק כדי לקבל התאמות.</div>
+                <EmptyState className="py-12" title="אין לך עדיין תיקים" description="צור תיק כדי לקבל התאמות." />
             ) : (
                 <Tabs defaultValue="active" className="w-full">
                     <TabsList className="mb-6 h-auto p-1 bg-muted/50 border">
@@ -158,7 +148,7 @@ const AdvisorMatchesView = () => {
                                                                     ? `${m.appetite.bank_name} - ${m.appetite.branch_name}`
                                                                     : m.banker?.company
                                                                         ? `${m.banker.company}`
-                                                                        : 'בנקאי ללא פרופיל appetite'
+                                                                        : 'בנקאי ללא פרופיל ביקוש'
                                                                 }
                                                             </h4>
                                                             {!m.appetite && m.banker && (
@@ -170,7 +160,7 @@ const AdvisorMatchesView = () => {
                                                         <div className="flex gap-2 text-sm text-muted-foreground">
                                                             {m.appetite ? (
                                                                 <>
-                                                                    <Badge variant="secondary">רמת תיאבון בסניף: {appetiteLevelLabel(m.appetite.appetite_level)}</Badge>
+                                                                    <Badge variant="secondary">רמת ביקוש בסניף: {appetiteLevelLabel(m.appetite.appetite_level)}</Badge>
                                                                     <span>•</span>
                                                                     <span>זמני טיפול: <strong>{m.appetite.sla_days} ימים</strong></span>
                                                                 </>
@@ -352,9 +342,10 @@ const BankMatchesView = () => {
     const renderMatchesGrid = (matchesList: typeof bestMatchPerCase) => {
         if (matchesList.length === 0) {
             return (
-                <div className="text-center py-12 border-2 border-dashed rounded-lg bg-background">
-                    <h3 className="text-lg text-muted-foreground">אין התאמות בקטגוריה זו</h3>
-                </div>
+                <EmptyState
+                    className="py-12 border-2 border-dashed rounded-lg bg-background"
+                    title="אין התאמות בקטגוריה זו"
+                />
             );
         }
 
@@ -434,10 +425,10 @@ const BankMatchesView = () => {
 
     return (
         <div className="space-y-8 animate-fade-in" dir="rtl">
-            <div>
-                <h1 className="text-3xl font-bold">תיקים בהתאמה (Leads)</h1>
-                <p className="text-muted-foreground">תיקים אנונימיים שעלתה בהם התאמה לאות התיאבון שפרסמת.</p>
-            </div>
+            <PageHeader
+                title="תיקים בהתאמה (Leads)"
+                subtitle="תיקים אנונימיים שעלתה בהם התאמה לביקוש שפרסמת."
+            />
 
             <Tabs defaultValue="active" className="w-full">
                 <TabsList className="mb-6 h-auto p-1 bg-muted/50 border">

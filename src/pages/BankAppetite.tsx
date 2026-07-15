@@ -27,6 +27,7 @@ import {
     regionsLabel,
 } from '@/lib/labels';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/common/PageHeader';
 
 /** ISO yyyy-mm-dd for "today + N days" (used for appetite validity). */
 const isoDatePlusDays = (days: number) =>
@@ -175,7 +176,7 @@ const BankAppetite = () => {
                     <div className="bg-muted/50 rounded-lg p-4 text-sm text-right space-y-1">
                         <p>✅ נרשמת בהצלחה</p>
                         <p>⏳ ממתין לאישור מנהל</p>
-                        <p className="text-muted-foreground mt-1">לאחר אישור: גישה מלאה להגדרת תיאבון וקבלת התאמות</p>
+                        <p className="text-muted-foreground mt-1">לאחר אישור: גישה מלאה להגדרת ביקוש וקבלת התאמות</p>
                     </div>
                     <Button variant="outline" onClick={() => signOut()} className="w-full">
                         התנתק
@@ -188,27 +189,28 @@ const BankAppetite = () => {
     return (
         <AppLayout>
             <div className="container mx-auto p-4 sm:p-8 max-w-5xl text-right animate-in fade-in duration-500" dir="rtl">
-                <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">אותות תיאבון</h1>
-                        <p className="text-muted-foreground mt-1">נהל את קריטריוני המימון שלך ואת החשיפה לתיקים חדשים</p>
-                    </div>
-                    <Button
-                        disabled={profileState === 'pending' || profileState === 'missing'}
-                        onClick={() => {
-                            setEditingAppetite(null);
-                            setAppetiteLevel('medium');
-                            setBorrowerTypes([]);
-                            setRegions([]);
-                            setValidUntil(isoDatePlusDays(90));
-                            setIsAdding(true);
-                        }}
-                        className="w-full sm:w-auto gap-2"
-                    >
-                        <Plus className="h-4 w-4" />
-                        הוסף הגדרת תיאבון
-                    </Button>
-                </header>
+                <PageHeader
+                    className="mb-8"
+                    title="ביקושים"
+                    subtitle="נהל את קריטריוני המימון שלך ואת החשיפה לתיקים חדשים"
+                    action={
+                        <Button
+                            disabled={profileState === 'pending' || profileState === 'missing'}
+                            onClick={() => {
+                                setEditingAppetite(null);
+                                setAppetiteLevel('medium');
+                                setBorrowerTypes([]);
+                                setRegions([]);
+                                setValidUntil(isoDatePlusDays(90));
+                                setIsAdding(true);
+                            }}
+                            className="w-full sm:w-auto gap-2"
+                        >
+                            <Plus className="h-4 w-4" />
+                            הוסף הגדרת ביקוש
+                        </Button>
+                    }
+                />
 
                 {(isAdding || editingAppetite) && (
                     <Card className="mb-8 border-primary/30 shadow-lg bg-primary/5">
@@ -348,7 +350,7 @@ const BankAppetite = () => {
                                 </div>
 
                                 <div className="space-y-4 md:col-span-2 lg:col-span-4">
-                                    <label className="text-sm font-medium">רמת תיאבון (כמה אתה מחפש עסקאות כרגע?)</label>
+                                    <label className="text-sm font-medium">רמת ביקוש (כמה אתה מחפש עסקאות כרגע?)</label>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         {[
                                             { id: 'low', label: 'נמוך', color: 'border-red-500 bg-red-50', icon: '🔴', desc: 'הסניף עמוס, פחות עסקאות' },

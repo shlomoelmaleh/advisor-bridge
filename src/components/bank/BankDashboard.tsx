@@ -28,6 +28,8 @@ import BankActivityLog from '@/components/bank/BankActivityLog';
 import { toast } from 'sonner';
 import type { DbCase } from '@/types/cases';
 import { regionLabel } from '@/lib/labels';
+import PageHeader from '@/components/common/PageHeader';
+import EmptyState from '@/components/common/EmptyState';
 
 const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
 
@@ -126,12 +128,10 @@ const BankDashboard = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-right" dir="rtl">
-      <header>
-        <h1 className="text-3xl font-bold tracking-tight">דאשבורד בנקאי</h1>
-        <p className="text-muted-foreground mt-1">
-          שלום {profile?.full_name ?? 'בנקאי'} — ניהול הצעות ומעקב אחר פניות
-        </p>
-      </header>
+      <PageHeader
+        title="דאשבורד בנקאי"
+        subtitle={`שלום ${profile?.full_name ?? 'בנקאי'} — ניהול הצעות ומעקב אחר פניות`}
+      />
 
       <div className="grid grid-cols-1 gap-6">
         {/* Quick Appetite Status */}
@@ -148,10 +148,10 @@ const BankDashboard = () => {
                   <Badge variant="destructive">נדחה</Badge>
                 )
               ) : (
-                <Badge variant="secondary">אין אות פעיל</Badge>
+                <Badge variant="secondary">אין ביקוש פעיל</Badge>
               )}
             </div>
-            <CardTitle className="text-xl mt-2">הגדרות תיאבון</CardTitle>
+            <CardTitle className="text-xl mt-2">הגדרות ביקוש</CardTitle>
             <CardDescription>נהל את סוגי התיקים שמעניינים אותך</CardDescription>
           </CardHeader>
           <CardContent>
@@ -160,7 +160,7 @@ const BankDashboard = () => {
                 {myAppetite.is_approved && !myAppetite.is_active && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm font-medium flex items-center gap-2">
                     <AlertCircle className="h-4 w-4" />
-                    אות התיאבון שלך נדחה — ניתן להגדיר איתות חדש
+                    הביקוש שלך נדחה — ניתן להגדיר ביקוש חדש
                   </div>
                 )}
                 
@@ -180,13 +180,13 @@ const BankDashboard = () => {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground mt-2">טרם הגדרת אות תיאבון. הגדר עכשיו כדי להתחיל לקבל הצעות.</p>
+              <p className="text-sm text-muted-foreground mt-2">טרם הגדרת ביקוש. הגדר עכשיו כדי להתחיל לקבל הצעות.</p>
             )}
           </CardContent>
           <CardFooter>
             <Link to="/bank/appetite" className="w-full">
               <Button variant="outline" className="w-full gap-2">
-                לניהול תיאבון
+                לניהול ביקוש
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </Link>
@@ -212,15 +212,12 @@ const BankDashboard = () => {
         {error ? (
           <div className="p-6 text-red-500 bg-red-50 rounded-lg">שגיאה בטעינת תיקים: {error}</div>
         ) : openCases?.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed rounded-2xl bg-muted/20">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-20" />
-            <h3 className="text-lg font-medium text-muted-foreground mb-1">
-              אין תיקים פתוחים כרגע
-            </h3>
-            <p className="text-sm text-muted-foreground opacity-80">
-              יועצי משכנתאות עדיין לא העלו תיקים חדשים
-            </p>
-          </div>
+          <EmptyState
+            className="py-12 border-2 border-dashed rounded-2xl bg-muted/20"
+            icon={<Users className="h-12 w-12" />}
+            title="אין תיקים פתוחים כרגע"
+            description="יועצי משכנתאות עדיין לא העלו תיקים חדשים"
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3">
             {openCases?.slice(0, 5).map(c => (

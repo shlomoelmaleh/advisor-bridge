@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { MessageCircle, Clock, ChevronLeft } from 'lucide-react';
 import type { MatchWithDetails } from '@/types/matches';
 import { regionLabel } from '@/lib/labels';
+import PageHeader from '@/components/common/PageHeader';
+import EmptyState from '@/components/common/EmptyState';
 
 const Conversations = () => {
     const { profile } = useAuth();
@@ -52,19 +54,19 @@ const Conversations = () => {
 
     return (
         <div className="container mx-auto p-4 sm:p-8 max-w-5xl text-right animate-in fade-in duration-500" dir="rtl">
-            <header className="mb-8">
-                <h1 className="text-3xl font-bold tracking-tight">שיחות</h1>
-                <p className="text-muted-foreground mt-1">נהל את התקשורת מול {isAdvisor ? 'הבנקאים' : 'יועצי המשכנתאות'}</p>
-            </header>
+            <PageHeader
+                className="mb-8"
+                title="שיחות"
+                subtitle={`נהל את התקשורת מול ${isAdvisor ? 'הבנקאים' : 'יועצי המשכנתאות'}`}
+            />
 
             {closedMatches.length === 0 ? (
-                <div className="text-center py-20 bg-muted/30 rounded-2xl border-2 border-dashed">
-                    <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-20" />
-                    <h3 className="text-lg font-semibold">אין שיחות פעילות עדיין</h3>
-                    <p className="text-muted-foreground max-w-sm mx-auto mt-2">
-                        כאשר התאמות יאושרו על ידי שני הצדדים (סטטוס סגור), הם יופיעו כאן ותוכלו להתחיל לשוחח.
-                    </p>
-                </div>
+                <EmptyState
+                    className="py-20 bg-muted/30 rounded-2xl border-2 border-dashed"
+                    icon={<MessageCircle className="h-12 w-12" />}
+                    title="אין שיחות פעילות עדיין"
+                    description="כאשר התאמות יאושרו על ידי שני הצדדים (סטטוס סגור), הם יופיעו כאן ותוכלו להתחיל לשוחח."
+                />
             ) : (
                 <div className="grid grid-cols-1 gap-4">
                     {closedMatches.map((match) => (

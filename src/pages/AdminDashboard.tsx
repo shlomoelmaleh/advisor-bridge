@@ -12,6 +12,8 @@ import type { UserRole } from '@/hooks/useAuth';
 import { appetiteLevelLabel, regionLabel } from '@/lib/labels';
 import { ADMIN_PAGE_SIZE } from '@/hooks/useAdmin';
 import AppLayout from '@/components/layout/AppLayout';
+import PageHeader from '@/components/common/PageHeader';
+import EmptyState from '@/components/common/EmptyState';
 
 const AdminDashboard = () => {
     const {
@@ -67,7 +69,7 @@ const AdminDashboard = () => {
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'advisor': return <Badge className="bg-blue-500 hover:bg-blue-600">יועץ</Badge>;
-            case 'bank': return <Badge className="bg-green-500 hover:bg-green-600">בנקאי</Badge>;
+            case 'bank': return <Badge className="bg-success hover:bg-success/90 text-success-foreground">בנקאי</Badge>;
             case 'admin': return <Badge className="bg-red-500 hover:bg-red-600">מנהל</Badge>;
             default: return <Badge variant="outline">{role}</Badge>;
         }
@@ -76,23 +78,25 @@ const AdminDashboard = () => {
     return (
         <AppLayout>
             <div className="container max-w-7xl py-8 space-y-8 animate-fade-in text-right" dir="rtl">
-                <div className="flex justify-between items-end flex-row-reverse">
-                    <div>
-                        <h1 className="text-3xl font-bold flex items-center justify-end gap-2">
-                            לוח בקרה - ניהול מערכת
+                <PageHeader
+                    title={
+                        <span className="flex items-center gap-2">
                             <ShieldAlert className="h-8 w-8 text-primary" />
-                        </h1>
-                        <p className="text-muted-foreground mt-2 text-right">פיקוח על משתמשים, תיקים ופעילות המערכת.</p>
-                    </div>
-                    <Button
-                        variant="outline"
-                        onClick={refreshAll}
-                        className="gap-2 active:scale-95 transition-all"
-                        disabled={loading}
-                    >
-                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> רענן נתונים
-                    </Button>
-                </div>
+                            לוח בקרה - ניהול מערכת
+                        </span>
+                    }
+                    subtitle="פיקוח על משתמשים, תיקים ופעילות המערכת."
+                    action={
+                        <Button
+                            variant="outline"
+                            onClick={refreshAll}
+                            className="gap-2 active:scale-95 transition-all"
+                            disabled={loading}
+                        >
+                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> רענן נתונים
+                        </Button>
+                    }
+                />
 
                 <Tabs defaultValue="overview" className="w-full">
                     <TabsList className="grid w-full grid-cols-4 mb-8">
@@ -169,7 +173,7 @@ const AdminDashboard = () => {
                             </CardHeader>
                             <CardContent>
                                 {pendingUsers.length === 0 ? (
-                                    <div className="text-center py-8 text-muted-foreground">אין משתמשים ממתינים.</div>
+                                    <EmptyState className="py-8" title="אין משתמשים ממתינים" />
                                 ) : (
                                     <div className="space-y-4">
                                         {pendingUsers.map(u => (
@@ -313,7 +317,7 @@ const AdminDashboard = () => {
                                 </CardHeader>
                                 <CardContent>
                                     {pendingCases.length === 0 ? (
-                                        <div className="text-center py-6 text-muted-foreground bg-accent/20 rounded-lg">אין תיקים ממתינים.</div>
+                                        <EmptyState className="py-6 bg-accent/20 rounded-lg" title="אין תיקים ממתינים" />
                                     ) : (
                                         <div className="space-y-4">
                                             {pendingCases.map(c => (
@@ -364,12 +368,12 @@ const AdminDashboard = () => {
                             {/* Pending Appetites */}
                             <Card>
                                 <CardHeader className="text-right">
-                                    <CardTitle className="text-xl">אותות תיאבון ממתינים</CardTitle>
+                                    <CardTitle className="text-xl">ביקושים ממתינים</CardTitle>
                                     <CardDescription>הגדרות בנקים חדשות שדורשות אישור.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     {pendingAppetites.length === 0 ? (
-                                        <div className="text-center py-6 text-muted-foreground bg-accent/20 rounded-lg">אין אותות רעבים.</div>
+                                        <EmptyState className="py-6 bg-accent/20 rounded-lg" title="אין ביקושים ממתינים" />
                                     ) : (
                                         <div className="space-y-4">
                                             {pendingAppetites.map(a => (
@@ -378,7 +382,7 @@ const AdminDashboard = () => {
                                                         {a.bank_name} - {a.branch_name}
                                                     </div>
                                                     <div className="text-muted-foreground mb-4 space-y-1">
-                                                        <p>רמת תיאבון: <Badge variant="outline">{appetiteLevelLabel(a.appetite_level)}</Badge></p>
+                                                        <p>רמת ביקוש: <Badge variant="outline">{appetiteLevelLabel(a.appetite_level)}</Badge></p>
                                                         <p>SLA לימים: {a.sla_days}</p>
                                                         <p>עודכן ב: {new Date(a.created_at).toLocaleDateString()}</p>
                                                     </div>
@@ -386,14 +390,14 @@ const AdminDashboard = () => {
                                                         <Button
                                                             variant="outline"
                                                             className="flex-1 text-destructive hover:bg-destructive/10 border-destructive"
-                                                            onClick={() => handleAction(a.id, () => rejectAppetite(a.id), 'איתות התיאבון נדחה')}
+                                                            onClick={() => handleAction(a.id, () => rejectAppetite(a.id), 'הביקוש נדחה')}
                                                             disabled={actionLoading === a.id}
                                                         >
                                                             <Ban className="h-4 w-4 mr-2" /> דחה
                                                         </Button>
                                                         <Button
                                                             className="flex-1 bg-green-600 hover:bg-green-700"
-                                                            onClick={() => handleAction(a.id, () => approveAppetite(a.id), 'אות תיאבון נכנס לתוקף')}
+                                                            onClick={() => handleAction(a.id, () => approveAppetite(a.id), 'הביקוש נכנס לתוקף')}
                                                             disabled={actionLoading === a.id}
                                                         >
                                                             <CheckCircle className="h-4 w-4 mr-2" /> אשר

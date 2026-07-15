@@ -2,9 +2,8 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import Navbar from "@/components/common/Navbar";
-import Footer from "@/components/common/Footer";
+import { ArrowRight } from "lucide-react";
+import AppLayout from "@/components/layout/AppLayout";
 
 const NotFound = () => {
   const location = useLocation();
@@ -19,27 +18,25 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-grow flex items-center justify-center">
+    <AppLayout>
+      <div className="flex items-center justify-center min-h-[60vh]" dir="rtl">
         <div className="container px-4 py-16 text-center">
           <div className="mb-8 inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
             <span className="text-4xl text-primary">404</span>
           </div>
-          <h1 className="text-4xl font-bold mb-4">Page Not Found</h1>
+          <h1 className="text-4xl font-bold mb-4">הדף לא נמצא</h1>
           <p className="text-xl text-muted-foreground max-w-md mx-auto mb-8">
-            We couldn't find the page you're looking for. Let's get you back on track.
+            לא הצלחנו למצוא את הדף שחיפשת. בוא נחזיר אותך למסלול.
           </p>
           <Button size="lg" asChild>
             <Link to="/">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Return to Home
+              <ArrowRight className="ml-2 h-4 w-4" />
+              חזרה לדף הבית
             </Link>
           </Button>
         </div>
-      </main>
-      <Footer />
-    </div>
+      </div>
+    </AppLayout>
   );
 };
 

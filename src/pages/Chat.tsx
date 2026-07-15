@@ -252,7 +252,7 @@ const Chat = () => {
                             </>
                         )}
                             {match.appetite ? (
-                                <p>סניף: {match.appetite.branch_name} | תיאבון: {appetiteLevelLabel(match.appetite.appetite_level)}</p>
+                                <p>סניף: {match.appetite.branch_name} | ביקוש: {appetiteLevelLabel(match.appetite.appetite_level)}</p>
                             ) : (
                                 <Badge variant="outline" className="text-blue-600 text-xs">
                                     פנייה ישירה מהשוק הפתוח

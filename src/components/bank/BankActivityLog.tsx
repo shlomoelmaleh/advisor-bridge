@@ -60,7 +60,7 @@ const BankActivityLog: React.FC<{ userId: string }> = ({ userId }) => {
       allEvents.push({
         type: 'appetite_approved',
         time: a.created_at!,
-        text: `איתות התיאבון של ${a.bank_name} אושר`,
+        text: `הביקוש של ${a.bank_name} אושר`,
         action: 'לצפות בהתאמות ←',
         link: '/matches',
         isNew: isRecent(a.created_at!),
