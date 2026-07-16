@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,25 +21,12 @@ const fmt = (n: number) => `₪${(n / 1_000).toLocaleString()}K`;
 const AdvisorMatchesView = () => {
     const navigate = useNavigate();
     const { cases } = useCases();
-    const { matches, loading, error, runMatching, expressInterest, rejectMatch, refreshMatches } = useMatches();
+    const { matches, loading, error, runMatching, expressInterest, rejectMatch } = useMatches();
     const [runningFor, setRunningFor] = useState<string | null>(null);
     const [actingOn, setActingOn] = useState<string | null>(null);
 
-    useEffect(() => {
-        const interval = setInterval(refreshMatches, 15000);
-        return () => clearInterval(interval);
-    }, [refreshMatches]);
-
-    useEffect(() => {
-        const channel = supabase
-            .channel('advisor-matches-realtime')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'matches' },
-                () => { refreshMatches(); }
-            )
-            .subscribe();
-        return () => { supabase.removeChannel(channel); };
-    }, []);
+    // Live updates + refetch are handled inside useMatches (realtime → React Query
+    // invalidation); no per-view polling or subscription needed here.
 
     const handleRunMatch = async (caseId: string) => {
         setRunningFor(caseId);
@@ -280,24 +266,11 @@ const AdvisorMatchesView = () => {
 // ─── Component: Bank View ─────────────────────────────────────────────────────
 const BankMatchesView = () => {
     const navigate = useNavigate();
-    const { matches, loading, error, expressInterest, refreshMatches } = useMatches();
+    const { matches, loading, error, expressInterest } = useMatches();
     const [actingOn, setActingOn] = useState<string | null>(null);
 
-    useEffect(() => {
-        const interval = setInterval(refreshMatches, 15000);
-        return () => clearInterval(interval);
-    }, [refreshMatches]);
-
-    useEffect(() => {
-        const channel = supabase
-            .channel('bank-matches-realtime')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'matches' },
-                () => { refreshMatches(); }
-            )
-            .subscribe();
-        return () => { supabase.removeChannel(channel); };
-    }, []);
+    // Live updates + refetch are handled inside useMatches (realtime → React Query
+    // invalidation); no per-view polling or subscription needed here.
 
     const handleInterest = async (matchId: string) => {
         setActingOn(matchId);
