@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -37,13 +38,19 @@ const ErrorBanner: React.FC<{ message: string }> = ({ message }) => (
 
 // ─── Main component ───────────────────────────────────────────────────────────
 const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
 
   // ── Login state ─────────────────────────────────────────────────────────────
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  // ── Forgot-password state (inline within the login tab) ──────────────────────
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   // ── Register state ──────────────────────────────────────────────────────────
   const [fullName, setFullName] = useState('');
@@ -74,6 +81,17 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
     // RootRoute will see status change to 'ready' and redirect to dashboard.
     // No navigate() needed — we're already on '/' and RootRoute handles it.
     setLoginLoading(false);
+  };
+
+  // ── Forgot password ───────────────────────────────────────────────────────────
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    // Fire-and-forget: always show the same confirmation, regardless of whether
+    // the address exists, so we never reveal which emails are registered.
+    await resetPassword(forgotEmail);
+    setForgotLoading(false);
+    setForgotSent(true);
   };
 
   // ── Sign up ──────────────────────────────────────────────────────────────────
@@ -130,6 +148,60 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
 
         {/* ── LOGIN ──────────────────────────────────────────────────────────── */}
         <TabsContent value="login">
+          {showForgot ? (
+            forgotSent ? (
+              <CardContent className="py-10 text-center space-y-3">
+                <div className="text-4xl">📧</div>
+                <h2 className="text-2xl font-semibold leading-none tracking-tight">בדוק את המייל שלך</h2>
+                <CardDescription>
+                  אם האימייל קיים במערכת, נשלח אליו קישור לאיפוס הסיסמה. הקישור תקף לזמן מוגבל.
+                </CardDescription>
+                <Button
+                  variant="ghost"
+                  className="mt-2"
+                  onClick={() => { setShowForgot(false); setForgotSent(false); setForgotEmail(''); }}
+                >
+                  חזרה להתחברות
+                </Button>
+              </CardContent>
+            ) : (
+              <form onSubmit={handleForgot}>
+                <CardHeader>
+                  <h2 className="text-2xl font-semibold leading-none tracking-tight">איפוס סיסמה</h2>
+                  <CardDescription>הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס</CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="forgot-email">אימייל</Label>
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+                </CardContent>
+
+                <CardFooter className="flex-col gap-2">
+                  <Button type="submit" className="w-full" disabled={forgotLoading}>
+                    {forgotLoading ? 'שולח…' : 'שלח קישור לאיפוס'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setShowForgot(false)}
+                  >
+                    חזרה להתחברות
+                  </Button>
+                </CardFooter>
+              </form>
+            )
+          ) : (
           <form onSubmit={handleLogin}>
             <CardHeader>
               <h2 className="text-2xl font-semibold leading-none tracking-tight">ברוך הבא</h2>
@@ -153,7 +225,16 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="login-password">סיסמה</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="login-password">סיסמה</Label>
+                  <button
+                    type="button"
+                    onClick={() => { setShowForgot(true); setForgotEmail(loginEmail); }}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    שכחת סיסמה?
+                  </button>
+                </div>
                 <Input
                   id="login-password"
                   type="password"
@@ -171,6 +252,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
               </Button>
             </CardFooter>
           </form>
+          )}
         </TabsContent>
 
         {/* ── REGISTER ───────────────────────────────────────────────────────── */}
@@ -193,23 +275,32 @@ const AuthForm: React.FC<AuthFormProps> = ({ defaultTab = 'login' }) => {
               <CardContent className="space-y-5">
                 {registerError && <ErrorBanner message={registerError} />}
 
-                {/* Role selection */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div
-                    className={`flex flex-col items-center justify-center p-4 border rounded-lg cursor-pointer transition-colors ${selectedRole === 'advisor' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-accent'}`}
-                    onClick={() => setSelectedRole('advisor')}
+                {/* Role selection — accessible radio group (keyboard + screen readers) */}
+                <fieldset className="mb-4">
+                  <legend className="text-sm font-medium mb-2">סוג חשבון</legend>
+                  <RadioGroup
+                    value={selectedRole}
+                    onValueChange={(v) => setSelectedRole(v as 'advisor' | 'bank')}
+                    className="grid grid-cols-2 gap-4"
                   >
-                    <Briefcase className="h-8 w-8 mb-2" />
-                    <span className="font-semibold text-sm">יועץ משכנתא</span>
-                  </div>
-                  <div
-                    className={`flex flex-col items-center justify-center p-4 border rounded-lg cursor-pointer transition-colors ${selectedRole === 'bank' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-accent'}`}
-                    onClick={() => setSelectedRole('bank')}
-                  >
-                    <Building2 className="h-8 w-8 mb-2" />
-                    <span className="font-semibold text-sm">בנקאי / סניף</span>
-                  </div>
-                </div>
+                    <Label
+                      htmlFor="role-advisor"
+                      className="flex flex-col items-center justify-center p-4 border rounded-lg cursor-pointer transition-colors border-border bg-card hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:text-primary has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+                    >
+                      <RadioGroupItem id="role-advisor" value="advisor" className="sr-only" />
+                      <Briefcase className="h-8 w-8 mb-2" />
+                      <span className="font-semibold text-sm">יועץ משכנתא</span>
+                    </Label>
+                    <Label
+                      htmlFor="role-bank"
+                      className="flex flex-col items-center justify-center p-4 border rounded-lg cursor-pointer transition-colors border-border bg-card hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10 has-[[data-state=checked]]:text-primary has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+                    >
+                      <RadioGroupItem id="role-bank" value="bank" className="sr-only" />
+                      <Building2 className="h-8 w-8 mb-2" />
+                      <span className="font-semibold text-sm">בנקאי / סניף</span>
+                    </Label>
+                  </RadioGroup>
+                </fieldset>
 
                 {/* Full name */}
                 <div className="space-y-2">

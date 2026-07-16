@@ -70,9 +70,16 @@ interface AuthContextValue {
   profileState: ProfileState;
   profile: Profile | null;
   isProfileFetching: boolean;
+  /** True ONLY after a `PASSWORD_RECOVERY` event (reset-password link). A normal
+   *  logged-in session is NOT recovery. Cleared on sign-out. */
+  isPasswordRecovery: boolean;
   signUp: (email: string, password: string, fullName: string, role: UserRole, company?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  /** Sends a password-reset email with a link back to /reset-password. */
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  /** Sets a new password for the currently-authenticated (recovery) session. */
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   reFetchProfile: () => Promise<void>;
 }
 
@@ -117,6 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profileState, setProfileState] = useState<ProfileState>('idle');
   const [profile, _setProfile] = useState<Profile | null>(null);
   const [isProfileFetching, setIsProfileFetching] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   const mountedRef = useRef(true);
   const initRanRef = useRef(false);
@@ -273,6 +281,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRoleSource('none');
     setProfileState('idle');
     setIsProfileFetching(false);
+    setIsPasswordRecovery(false);
 
     if (abortRef.current) abortRef.current.abort();
     fetchingUidRef.current = null;
@@ -351,6 +360,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const newUser = newSession?.user ?? null;
 
+        // Recovery link: mark recovery mode. This is the ONLY way the flag turns
+        // on — a normal SIGNED_IN or an existing session never counts as recovery.
+        if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
+
         // Token refresh / metadata update for same user → just update session obj
         if (
           (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
@@ -418,6 +431,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error as Error | null };
   }, []);
 
+  // ── resetPassword / updatePassword ────────────────────────────────────────
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error: error as Error | null };
+  }, []);
+
+  const updatePassword = useCallback(async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    return { error: error as Error | null };
+  }, []);
+
   // ── reFetchProfile ────────────────────────────────────────────────────────
   const reFetchProfile = useCallback(async () => {
     if (userRef.current) {
@@ -434,8 +460,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Context value ─────────────────────────────────────────────────────────
   const value: AuthContextValue = {
     user, session, sessionState, roleState, roleSource, roleFinal, loading,
-    profileState, profile, isProfileFetching,
-    signUp, signIn, signOut, reFetchProfile,
+    profileState, profile, isProfileFetching, isPasswordRecovery,
+    signUp, signIn, signOut, resetPassword, updatePassword, reFetchProfile,
   };
 
   return (

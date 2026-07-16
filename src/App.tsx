@@ -25,6 +25,7 @@ const BankAppetite = lazy(() => import('./pages/BankAppetite'));
 const BankMarket = lazy(() => import('./pages/BankMarket'));
 const Conversations = lazy(() => import('./pages/Conversations'));
 const AdvisorMarket = lazy(() => import('./pages/AdvisorMarket'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 const PageLoader = () => (
@@ -78,6 +79,7 @@ const App = () => (
             <Route path="/" element={<RootRoute />} />
             <Route path="/login" element={<LoginRoute />} />
             <Route path="/register" element={<Navigate to="/login?tab=register" replace />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Advisor-only routes */}
             <Route
