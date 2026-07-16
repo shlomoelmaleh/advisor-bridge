@@ -34,6 +34,14 @@ export const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
 export const ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 export const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
+// Test-user credentials — read from .env.test, never hardcoded in the suites.
+// The seeded users (tests/seed-test-users.ts) all share TEST_PASSWORD.
+export const TEST_PASSWORD = process.env.TEST_PASSWORD || '';
+export const TEST_ADVISOR_EMAIL = process.env.TEST_ADVISOR_EMAIL || '';
+export const TEST_BANKER_EMAIL = process.env.TEST_BANKER_EMAIL || '';
+export const TEST_ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL || '';
+export const TEST_PENDING_EMAIL = process.env.TEST_PENDING_EMAIL || '';
+
 if (SUPABASE_URL.includes(PROD_PROJECT_REF)) {
   console.error(
     '❌ סירוב: .env.test מצביע על פרויקט הפרודקשן! בדיקות ה-integration משנות נתונים אמיתיים\n' +
@@ -46,6 +54,15 @@ if (!SUPABASE_URL || !ANON_KEY || !SERVICE_KEY) {
   console.error(
     '❌ חסרים משתני סביבה ב-.env.test:\n' +
     '   VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY',
+  );
+  process.exit(1);
+}
+
+if (!TEST_PASSWORD || !TEST_ADVISOR_EMAIL || !TEST_BANKER_EMAIL || !TEST_ADMIN_EMAIL || !TEST_PENDING_EMAIL) {
+  console.error(
+    '❌ חסרים פרטי משתמשי בדיקה ב-.env.test:\n' +
+    '   TEST_PASSWORD, TEST_ADVISOR_EMAIL, TEST_BANKER_EMAIL, TEST_ADMIN_EMAIL, TEST_PENDING_EMAIL\n' +
+    '   ראה .env.test.example.',
   );
   process.exit(1);
 }

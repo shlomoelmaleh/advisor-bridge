@@ -11,11 +11,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { appetiteId } = await req.json();
+    // Client-invoked (admin rejects an appetite in the dashboard) — require a
+    // valid user JWT and verify admin against the DB (is_admin SECURITY DEFINER),
+    // same pattern as delete-user. verify_jwt stays false only for CORS preflight.
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    if (!appetiteId) {
-      return new Response(JSON.stringify({ error: "Missing appetiteId" }), {
-        status: 400,
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -24,6 +40,25 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    const { data: isAdmin, error: adminError } = await supabaseAdmin
+      .rpc("is_admin", { _user_id: user.id });
+    if (adminError || !isAdmin) {
+      console.error("Not admin:", user.id, adminError?.message);
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { appetiteId } = await req.json();
+
+    if (!appetiteId) {
+      return new Response(JSON.stringify({ error: "Missing appetiteId" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // שלוף פרטי התיאבון + הבנקאי
     const { data: appetite, error: appetiteError } = await supabaseAdmin

@@ -1,19 +1,31 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { requireWebhookSecret } from '../_shared/webhookAuth.ts'
+import { eventKey, alreadySent, sendEmail, recordSent } from '../_shared/idempotency.ts'
 
 serve(async (req) => {
-  const { record } = await req.json()
-  
-  const adminEmail = 'shlomo.elmaleh@gmail.com'
+  const denied = requireWebhookSecret(req)
+  if (denied) return denied
+
+  const rawBody = await req.text();
+  const key = await eventKey('notify-admin-new-user', rawBody);
+  if (await alreadySent(key)) {
+    return new Response(JSON.stringify({ skipped: 'duplicate' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  const { record } = JSON.parse(rawBody)
+
+  const adminEmail = Deno.env.get('ADMIN_NOTIFY_EMAIL')
+  if (!adminEmail) {
+    console.error('ADMIN_NOTIFY_EMAIL is not configured')
+    return new Response(JSON.stringify({ error: 'server misconfigured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
   const userName = record.full_name || 'משתמש חדש'
   const userRole = record.role === 'advisor' ? 'יועץ משכנתא' : 'בנקאי'
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const send = await sendEmail(key, {
       from: "BranchMatch <noreply@eshel-f.com>",
       to: adminEmail,
       subject: `משתמש חדש ממתין לאישור — ${userName}`,
@@ -30,10 +42,14 @@ serve(async (req) => {
           </a>
         </div>
       `,
-    }),
   })
 
-  return new Response(JSON.stringify({ ok: res.ok }), {
+  if (!send.ok) {
+    return new Response(JSON.stringify({ error: 'email send failed', status: send.status }), { status: 502, headers: { 'Content-Type': 'application/json' } })
+  }
+  await recordSent(key, send.id)
+
+  return new Response(JSON.stringify({ ok: true, id: send.id }), {
     headers: { 'Content-Type': 'application/json' },
   })
 })

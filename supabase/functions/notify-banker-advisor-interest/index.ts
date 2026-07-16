@@ -1,8 +1,19 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { requireWebhookSecret } from '../_shared/webhookAuth.ts'
+import { eventKey, alreadySent, sendEmail, recordSent } from '../_shared/idempotency.ts'
 
 serve(async (req) => {
-  const body = await req.json()
+  const denied = requireWebhookSecret(req)
+  if (denied) return denied
+
+  const rawBody = await req.text();
+  const key = await eventKey('notify-banker-advisor-interest', rawBody);
+  if (await alreadySent(key)) {
+    return new Response(JSON.stringify({ skipped: 'duplicate' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  const body = JSON.parse(rawBody)
   const record = body.record
   const oldRecord = body.old_record ?? null
 
@@ -63,13 +74,7 @@ serve(async (req) => {
   const loanMin = (match.case.loan_amount_min / 1_000_000).toFixed(1)
   const loanMax = (match.case.loan_amount_max / 1_000_000).toFixed(1)
 
-  const emailRes = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const send = await sendEmail(key, {
       from: 'BranchMatch <noreply@eshel-f.com>',
       to: user.email,
       subject: `✅ יועץ אישר את ההתאמה — ניתן להתחיל שיחה!`,
@@ -80,7 +85,7 @@ serve(async (req) => {
             יועץ משכנתא אישר את ההתאמה מול <strong>${bankName}${branchName}</strong>.
             ערוץ תקשורת ישיר נפתח — ניתן להתחיל שיחה!
           </p>
-          
+
           <div style="background: #D5E8F0; border-radius: 8px; padding: 16px; margin: 16px 0;">
             <h3 style="margin: 0 0 8px 0; color: #1E3A5F;">פרטי התיק</h3>
             <p style="margin: 4px 0;">💰 סכום: ₪${loanMin}M – ₪${loanMax}M</p>
@@ -105,11 +110,12 @@ serve(async (req) => {
           </p>
         </div>
       `,
-    }),
   })
 
-  const result = await emailRes.json()
-  console.log('Email sent:', result)
+  if (!send.ok) {
+    return new Response(JSON.stringify({ error: 'email send failed', status: send.status }), { status: 502, headers: { 'Content-Type': 'application/json' } })
+  }
+  await recordSent(key, send.id)
 
-  return new Response(JSON.stringify({ ok: true }), { status: 200 })
+  return new Response(JSON.stringify({ ok: true, id: send.id }), { status: 200 })
 })

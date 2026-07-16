@@ -1,9 +1,21 @@
 project_id = "oasivruwsvhfmvynpbia"
 
+# DB-webhook-invoked functions: verify_jwt=false because DB webhooks can't mint
+# user JWTs and gateway JWT verification passes for anyone holding the public anon
+# key anyway. The real gate is the x-webhook-secret header, enforced in-function
+# via functions/_shared/webhookAuth.ts (WEBHOOK_SECRET function secret must be set,
+# and every DB webhook must send the matching x-webhook-secret header).
+
 [functions.notify-advisor-banker-interest]
 verify_jwt = false
 
+[functions.notify-banker-advisor-interest]
+verify_jwt = false
+
 [functions.notify-banker-appetite-approved]
+verify_jwt = false
+
+[functions.notify-advisor-case-approved]
 verify_jwt = false
 
 [functions.notify-advisor-case-rejected]
@@ -12,17 +24,15 @@ verify_jwt = false
 [functions.notify-user-approved]
 verify_jwt = false
 
+[functions.notify-admin-new-user]
+verify_jwt = false
+
+# Client-invoked functions: verify_jwt=false only so CORS preflight (which carries
+# no Authorization header) succeeds; both enforce a user JWT + is_admin() check
+# in-function.
+
 [functions.notify-banker-appetite-rejected]
 verify_jwt = false
 
 [functions.delete-user]
 verify_jwt = false
-
-[functions.notify-admin-new-user]
-verify_jwt = true
-
-[functions.notify-banker-advisor-interest]
-verify_jwt = true
-
-[functions.notify-advisor-case-approved]
-verify_jwt = true

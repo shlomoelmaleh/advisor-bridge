@@ -135,8 +135,33 @@ for (const t of trigs) {
 P(`\n-- ── Grants ──────────────────────────────────────────────────────────────────
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;`);
+
+// Function EXECUTE grants are NOT blanket — they are derived per-function from the
+// live prod ACLs (migrations 20260716121000/122000 hardened these). Internal /
+// trigger / maintenance functions are service_role-only; client RPCs are granted
+// to authenticated; RLS-helper functions keep anon+authenticated (needed during
+// policy evaluation). The default-privileges revoke keeps NEW functions off PUBLIC.
+P(`
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO service_role;
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;`);
+
+const fnGrants = q(`SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args,
+    has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_x,
+    has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth_x
+  FROM pg_proc p WHERE p.pronamespace='public'::regnamespace ORDER BY p.proname, args`);
+for (const f of fnGrants) {
+  const roles = [];
+  if (f.anon_x) roles.push('anon');
+  if (f.auth_x) roles.push('authenticated');
+  if (roles.length) P(`GRANT EXECUTE ON FUNCTION public.${f.proname}(${f.args}) TO ${roles.join(', ')};`);
+}
+
+P(`
+-- Keep NEW functions (created later, e.g. by migrations) off PUBLIC. Must be the
+-- GLOBAL form (no IN SCHEMA): the built-in PUBLIC EXECUTE on functions is a global
+-- default that a schema-scoped revoke does not remove.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 -- anonymous_cases must not be readable by anon (matches prod hardening)
 REVOKE ALL ON public.anonymous_cases FROM anon;

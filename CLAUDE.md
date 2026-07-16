@@ -68,6 +68,8 @@ Roles: **advisor**, **bank** (banker), **admin**. The central entities (DB-align
 
 When changing matching behavior or the approval lifecycle, the logic lives in **SQL migrations**, not TypeScript. The newest migrations supersede older ones (filenames are timestamp-ordered); grep the whole `supabase/migrations/` tree for a function name to find its latest definition before editing.
 
+**Function grants:** default EXECUTE privileges for `anon`/`authenticated` were revoked (migration `20260716121000`). Any new function that clients call via `supabase.rpc()` needs an explicit `GRANT EXECUTE ON FUNCTION public.<fn>(<args>) TO authenticated;` in its migration. Trigger-invoked and internal `SECURITY DEFINER` functions need no grant.
+
 ## Frontend conventions
 
 - **Routing** ([src/App.tsx](src/App.tsx)) is role-segmented: `/advisor/*`, `/bank/*`, `/admin/*` (each wrapped in `ProtectedRoute` with `allowedRoles` + `requireFinalRole`), plus shared `any-authenticated` routes (`/matches`, `/chat/:matchId`, `/conversations`). `getHomePathByRole` decides post-login landing.

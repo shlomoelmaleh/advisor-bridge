@@ -6,12 +6,10 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, ANON_KEY, SERVICE_KEY } from './helpers/testEnv';
-
-// משתמשי בדיקה
-const ADVISOR_EMAIL = 'office@eshel-f.com';
-const BANKER_EMAIL = 'shlomoelmaleh5@gmail.com';
-const TEST_PASSWORD = 'Q1234567';
+import {
+  SUPABASE_URL, ANON_KEY, SERVICE_KEY, TEST_PASSWORD,
+  TEST_ADVISOR_EMAIL as ADVISOR_EMAIL, TEST_BANKER_EMAIL as BANKER_EMAIL,
+} from './helpers/testEnv';
 
 // ─── Results ──────────────────────────────────────────────────────────────────
 let passed = 0;

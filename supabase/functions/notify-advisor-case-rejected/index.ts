@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireWebhookSecret } from "../_shared/webhookAuth.ts";
+import { eventKey, alreadySent, sendEmail, recordSent } from '../_shared/idempotency.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,8 +14,17 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const denied = requireWebhookSecret(req);
+  if (denied) return denied;
+
+  const rawBody = await req.text();
+  const key = await eventKey('notify-advisor-case-rejected', rawBody);
+  if (await alreadySent(key)) {
+    return new Response(JSON.stringify({ skipped: 'duplicate' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+
   try {
-    const payload = await req.json();
+    const payload = JSON.parse(rawBody);
     const newRecord = payload.record;
     const oldRecord = payload.old_record;
 
@@ -64,24 +75,22 @@ Deno.serve(async (req) => {
       </div>
     `;
 
-    const emailRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "BranchMatch <noreply@eshel-f.com>",
-        to: [advisorAuth.user.email],
-        subject,
-        html,
-      }),
+    const send = await sendEmail(key, {
+      from: "BranchMatch <noreply@eshel-f.com>",
+      to: [advisorAuth.user.email],
+      subject,
+      html,
     });
 
-    const emailResult = await emailRes.json();
-    console.log("Rejection email sent:", emailResult);
+    if (!send.ok) {
+      return new Response(JSON.stringify({ error: "email send failed", status: send.status }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    await recordSent(key, send.id);
 
-    return new Response(JSON.stringify({ success: true, email: emailResult }), {
+    return new Response(JSON.stringify({ success: true, id: send.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

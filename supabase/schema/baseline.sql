@@ -94,6 +94,13 @@ CREATE TABLE IF NOT EXISTS public.rate_limit_hits (
   created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS public.webhook_events (
+  key text NOT NULL,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  sent_at timestamp with time zone DEFAULT now() NOT NULL,
+  resend_id text
+);
+
 -- ── Functions ───────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.auto_match_on_appetite_approval()
@@ -538,6 +545,19 @@ END;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.has_approved_role(_role text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE user_id = auth.uid() AND role = _role AND is_approved = true
+  )
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.internal_compute_match_score(p_case_id uuid, p_appetite_id uuid)
  RETURNS integer
  LANGUAGE plpgsql
@@ -890,6 +910,7 @@ DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='messages_p
 DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='profiles_pkey' AND conrelid='profiles'::regclass) THEN ALTER TABLE profiles ADD CONSTRAINT profiles_pkey PRIMARY KEY (user_id); END IF; END $$;
 DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='profiles_role_check' AND conrelid='profiles'::regclass) THEN ALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK ((role = ANY (ARRAY['advisor'::text, 'bank'::text, 'admin'::text]))); END IF; END $$;
 DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='rate_limit_hits_pkey' AND conrelid='rate_limit_hits'::regclass) THEN ALTER TABLE rate_limit_hits ADD CONSTRAINT rate_limit_hits_pkey PRIMARY KEY (id); END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='webhook_events_pkey' AND conrelid='webhook_events'::regclass) THEN ALTER TABLE webhook_events ADD CONSTRAINT webhook_events_pkey PRIMARY KEY (key); END IF; END $$;
 DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='branch_appetites_banker_id_fkey' AND conrelid='branch_appetites'::regclass) THEN ALTER TABLE branch_appetites ADD CONSTRAINT branch_appetites_banker_id_fkey FOREIGN KEY (banker_id) REFERENCES profiles(user_id) ON DELETE CASCADE; END IF; END $$;
 DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='cases_advisor_id_fkey' AND conrelid='cases'::regclass) THEN ALTER TABLE cases ADD CONSTRAINT cases_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES profiles(user_id) ON DELETE CASCADE; END IF; END $$;
 DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='matches_advisor_id_fkey' AND conrelid='matches'::regclass) THEN ALTER TABLE matches ADD CONSTRAINT matches_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES auth.users(id); END IF; END $$;
@@ -936,11 +957,12 @@ ALTER TABLE public.matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rate_limit_hits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.webhook_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Admin manages all appetites" ON public.branch_appetites;
 CREATE POLICY "Admin manages all appetites" ON public.branch_appetites AS PERMISSIVE FOR ALL TO public USING (is_admin()) WITH CHECK (is_admin());
 DROP POLICY IF EXISTS "Advisors see approved active appetites" ON public.branch_appetites;
-CREATE POLICY "Advisors see approved active appetites" ON public.branch_appetites AS PERMISSIVE FOR ALL TO public USING (((is_active = true) AND (is_approved = true) AND (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'advisor'::text)));
+CREATE POLICY "Advisors see approved active appetites" ON public.branch_appetites AS PERMISSIVE FOR SELECT TO authenticated USING (((is_active = true) AND (is_approved = true) AND has_approved_role('advisor'::text)));
 DROP POLICY IF EXISTS "Bankers manage own appetites" ON public.branch_appetites;
 CREATE POLICY "Bankers manage own appetites" ON public.branch_appetites AS PERMISSIVE FOR ALL TO authenticated USING ((auth.uid() = banker_id));
 DROP POLICY IF EXISTS "Only approved bankers can create appetites" ON public.branch_appetites;
@@ -952,7 +974,7 @@ CREATE POLICY "Admin manages all cases" ON public.cases AS PERMISSIVE FOR ALL TO
 DROP POLICY IF EXISTS "Advisors manage own cases" ON public.cases;
 CREATE POLICY "Advisors manage own cases" ON public.cases AS PERMISSIVE FOR ALL TO public USING ((auth.uid() = advisor_id)) WITH CHECK (((auth.uid() = advisor_id) AND (is_approved = false)));
 DROP POLICY IF EXISTS "Bankers see approved open cases" ON public.cases;
-CREATE POLICY "Bankers see approved open cases" ON public.cases AS PERMISSIVE FOR ALL TO public USING (((status = 'open'::text) AND (is_approved = true) AND (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'bank'::text)));
+CREATE POLICY "Bankers see approved open cases" ON public.cases AS PERMISSIVE FOR SELECT TO authenticated USING (((status = 'open'::text) AND (is_approved = true) AND has_approved_role('bank'::text)));
 DROP POLICY IF EXISTS "Bankers see cases in their matches" ON public.cases;
 CREATE POLICY "Bankers see cases in their matches" ON public.cases AS PERMISSIVE FOR SELECT TO public USING (is_banker_in_case(id, auth.uid()));
 DROP POLICY IF EXISTS "Only approved advisors can create cases" ON public.cases;
@@ -1054,7 +1076,29 @@ CREATE TRIGGER validate_profile_data BEFORE INSERT OR UPDATE ON public.profiles 
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
+
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO service_role;
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.auto_match_on_appetite_approval() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.compute_match_status() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.express_interest_in_appetite(p_appetite_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.express_interest_in_case(p_case_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_case_rejection() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.has_approved_role(_role text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin(_user_id uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.is_banker_in_case(p_case_id uuid, p_banker_id uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.is_match_participant(p_viewer uuid, p_profile_owner uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.run_matching_for_case(p_case_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.set_updated_at() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.validate_appetite_insert_update() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.validate_case_insert_update() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.validate_message_insert_update() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.validate_profile_insert_update() TO anon, authenticated;
+
+-- Keep NEW functions (created later, e.g. by migrations) off PUBLIC. Must be the
+-- GLOBAL form (no IN SCHEMA): the built-in PUBLIC EXECUTE on functions is a global
+-- default that a schema-scoped revoke does not remove.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 -- anonymous_cases must not be readable by anon (matches prod hardening)
 REVOKE ALL ON public.anonymous_cases FROM anon;

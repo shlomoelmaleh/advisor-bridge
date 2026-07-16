@@ -9,17 +9,20 @@
  * Uses tests/helpers/testEnv.ts, so it refuses to run against production.
  */
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SERVICE_KEY } from './helpers/testEnv';
+import {
+  SUPABASE_URL, SERVICE_KEY, TEST_PASSWORD,
+  TEST_ADVISOR_EMAIL, TEST_BANKER_EMAIL, TEST_ADMIN_EMAIL, TEST_PENDING_EMAIL,
+} from './helpers/testEnv';
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
 const USERS = [
-  { email: 'office@eshel-f.com', password: 'Q1234567', role: 'advisor', full_name: 'יועץ בדיקה', company: 'משרד בדיקה' },
-  { email: 'shlomoelmaleh5@gmail.com', password: 'Q1234567', role: 'bank', full_name: 'בנקאי בדיקה', company: 'בנק בדיקה' },
+  { email: TEST_ADVISOR_EMAIL, password: TEST_PASSWORD, role: 'advisor', full_name: 'יועץ בדיקה', company: 'משרד בדיקה' },
+  { email: TEST_BANKER_EMAIL, password: TEST_PASSWORD, role: 'bank', full_name: 'בנקאי בדיקה', company: 'בנק בדיקה' },
   // Admin profile — auth-admin TC-A06 checks that a role='admin' profile exists.
-  { email: 'admin@branchmatch.test', password: 'Q1234567', role: 'admin', full_name: 'מנהל בדיקה', company: 'ניהול' },
+  { email: TEST_ADMIN_EMAIL, password: TEST_PASSWORD, role: 'admin', full_name: 'מנהל בדיקה', company: 'ניהול' },
   // Pending/temporary user — auth-admin TC-B01–B03 toggle this user's approval.
-  { email: '1002526737@edu-haifa.org.il', password: 'Q1234567', role: 'advisor', full_name: 'משתמש ממתין', company: 'בדיקה' },
+  { email: TEST_PENDING_EMAIL, password: TEST_PASSWORD, role: 'advisor', full_name: 'משתמש ממתין', company: 'בדיקה' },
 ];
 
 async function findUserByEmail(email: string) {

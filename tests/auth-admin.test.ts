@@ -13,13 +13,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 import * as readline from 'readline';
-import { SUPABASE_URL, ANON_KEY, SERVICE_KEY } from './helpers/testEnv';
-
-// משתמשי בדיקה קיימים במערכת
-const ADVISOR_EMAIL = 'office@eshel-f.com';
-const BANKER_EMAIL = 'shlomoelmaleh5@gmail.com';
-const PENDING_TEST_EMAIL = '1002526737@edu-haifa.org.il';
-const TEST_PASSWORD = 'Q1234567';
+import {
+  SUPABASE_URL, ANON_KEY, SERVICE_KEY, TEST_PASSWORD,
+  TEST_ADVISOR_EMAIL as ADVISOR_EMAIL, TEST_BANKER_EMAIL as BANKER_EMAIL,
+  TEST_PENDING_EMAIL as PENDING_TEST_EMAIL,
+} from './helpers/testEnv';
 
 // ─── Results ──────────────────────────────────────────────────────────────────
 let passed = 0;
