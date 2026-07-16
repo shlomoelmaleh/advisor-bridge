@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -228,11 +228,8 @@ const AdvisorDashboard = () => {
   const { cases, loading, error, refreshCases } = useCases();
   const [activeFilter, setActiveFilter] = useState('all');
 
-  useEffect(() => {
-    // Poll for updates (e.g., Admin approval or Banker interest) every 15 seconds
-    const interval = setInterval(refreshCases, 15000);
-    return () => clearInterval(interval);
-  }, [refreshCases]);
+  // Freshness is handled by React Query (staleTime + refetchOnWindowFocus +
+  // mutation invalidation); no manual polling needed.
 
   const isReadOnly = profileState === 'pending' || profileState === 'missing';
 

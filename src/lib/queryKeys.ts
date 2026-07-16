@@ -20,7 +20,7 @@ export const queryKeys = {
   matches: (userId?: string | null, role?: UserRole | null) => ['matches', uid(userId), r(role)] as const,
   unreadCounts: (userId?: string | null) => ['unreadCounts', uid(userId)] as const,
 
-  navbarUnread: (userId?: string | null) => ['navbarUnread', uid(userId)] as const,
+  navbarBadges: (userId?: string | null, role?: UserRole | null) => ['navbarBadges', uid(userId), r(role)] as const,
   activityLog: (userId?: string | null, role?: UserRole | null) => ['activityLog', uid(userId), r(role)] as const,
 
   admin: {

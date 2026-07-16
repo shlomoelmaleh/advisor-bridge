@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAdmin } from '@/hooks/useAdmin';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -41,11 +40,9 @@ const AdminDashboard = () => {
 
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-    useEffect(() => {
-        refreshAll();
-        const interval = setInterval(refreshAll, 10000);
-        return () => clearInterval(interval);
-    }, [refreshAll]);
+    // React Query fetches on mount and keeps data fresh (staleTime +
+    // refetchOnWindowFocus + invalidation after each admin action). The manual
+    // "רענן נתונים" button still triggers refreshAll. No interval polling.
 
     const handleAction = async (id: string, action: () => Promise<{ error: string | null }>, successMsg: string) => {
         setActionLoading(id);

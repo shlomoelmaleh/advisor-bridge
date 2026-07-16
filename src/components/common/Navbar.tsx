@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { queryKeys } from "@/lib/queryKeys";
+import type { UserRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Menu, User, LogOut, Home, AlertCircle, Clock, Settings } from "lucide-react";
 import ProfileUpdateDialog from "@/components/auth/ProfileUpdateDialog";
@@ -32,144 +35,142 @@ const NavBadge: React.FC<{ count: number; className?: string; variant?: "destruc
   );
 };
 
-const Navbar = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { user, profile, roleState, profileState, sessionState, signOut, reFetchProfile } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [isProfileUpdateOpen, setIsProfileUpdateOpen] = React.useState(false);
-  const [totalUnread, setTotalUnread] = useState(0);
-  const [adminPendingCount, setAdminPendingCount] = useState(0);
-  const [newMatchesCount, setNewMatchesCount] = useState(0);
-  const [newBankMatchesCount, setNewBankMatchesCount] = useState(0);
-  const [approvedAppetiteCount, setApprovedAppetiteCount] = useState(0);
-  const [advisorNewAppetiteCount, setAdvisorNewAppetiteCount] = useState(0);
-  const [lastSeenMarketTime, setLastSeenMarketTime] = useState<string>(
-    () => localStorage.getItem("last_seen_market") ?? new Date(0).toISOString(),
-  );
-  const [lastSeenAppetiteTime, setLastSeenAppetiteTime] = useState<string>(
-    () => localStorage.getItem("last_seen_appetite") ?? new Date(0).toISOString(),
-  );
+interface NavbarBadges {
+  totalUnread: number;
+  adminPending: number;
+  newMatches: number;
+  advisorNewAppetite: number;
+  approvedAppetite: number;
+  newBankMatches: number;
+}
 
-  // All badge counters share a single 30s polling interval; each tick only
-  // runs the queries relevant to the current role.
-  useEffect(() => {
-    if (!user?.id || roleState === "unknown") return;
+const EMPTY_BADGES: NavbarBadges = {
+  totalUnread: 0,
+  adminPending: 0,
+  newMatches: 0,
+  advisorNewAppetite: 0,
+  approvedAppetite: 0,
+  newBankMatches: 0,
+};
 
-    const fetchUnread = async () => {
-      const { count } = await supabase
-        .from("messages")
-        .select("*", { count: "exact", head: true })
-        .neq("sender_id", user.id)
-        .is("read_at", null);
-      setTotalUnread(count ?? 0);
-    };
+// One roundtrip bundle of every nav badge count; only the queries relevant to
+// the current role are run. "New since last seen" counters read their baseline
+// from localStorage so the query key stays role-scoped (not timestamp-scoped).
+const fetchNavbarBadges = async (userId: string, role: UserRole): Promise<NavbarBadges> => {
+  const badges: NavbarBadges = { ...EMPTY_BADGES };
 
-    const fetchAdminPending = async () => {
-      const [{ count: pendingUsers }, { count: pendingCases }, { count: pendingAppetites }] = await Promise.all([
-        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("is_approved", false),
-        supabase.from("cases").select("*", { count: "exact", head: true }).eq("is_approved", false),
-        supabase.from("branch_appetites").select("*", { count: "exact", head: true }).eq("is_approved", false),
-      ]);
+  const { count: unread } = await supabase
+    .from("messages")
+    .select("*", { count: "exact", head: true })
+    .neq("sender_id", userId)
+    .is("read_at", null);
+  badges.totalUnread = unread ?? 0;
 
-      setAdminPendingCount((pendingUsers ?? 0) + (pendingCases ?? 0) + (pendingAppetites ?? 0));
-    };
+  if (role === "admin") {
+    const [{ count: pendingUsers }, { count: pendingCases }, { count: pendingAppetites }] = await Promise.all([
+      supabase.from("profiles").select("*", { count: "exact", head: true }).eq("is_approved", false),
+      supabase.from("cases").select("*", { count: "exact", head: true }).eq("is_approved", false),
+      supabase.from("branch_appetites").select("*", { count: "exact", head: true }).eq("is_approved", false),
+    ]);
+    badges.adminPending = (pendingUsers ?? 0) + (pendingCases ?? 0) + (pendingAppetites ?? 0);
+  }
 
-    const fetchNewMatches = async () => {
-      const { data: advisorCases } = await supabase.from("cases").select("id").eq("advisor_id", user.id);
-      const caseIds = (advisorCases ?? []).map((c) => c.id);
-      if (caseIds.length === 0) {
-        setNewMatchesCount(0);
-        return;
-      }
-
+  if (role === "advisor") {
+    const { data: advisorCases } = await supabase.from("cases").select("id").eq("advisor_id", userId);
+    const caseIds = (advisorCases ?? []).map((c) => c.id);
+    if (caseIds.length > 0) {
       const { count } = await supabase
         .from("matches")
         .select("*", { count: "exact", head: true })
         .in("case_id", caseIds)
         .eq("advisor_status", "pending")
         .eq("banker_status", "interested");
+      badges.newMatches = count ?? 0;
+    }
 
-      setNewMatchesCount(count ?? 0);
-    };
+    const lastSeenMarket = localStorage.getItem("last_seen_market") ?? new Date(0).toISOString();
+    const { count: newAppetites } = await supabase
+      .from("branch_appetites")
+      .select("*", { count: "exact", head: true })
+      .eq("is_approved", true)
+      .eq("is_active", true)
+      .gt("created_at", lastSeenMarket);
+    badges.advisorNewAppetite = newAppetites ?? 0;
+  }
 
-    const fetchAdvisorAppetites = async () => {
-      const { count } = await supabase
-        .from("branch_appetites")
-        .select("*", { count: "exact", head: true })
-        .eq("is_approved", true)
-        .eq("is_active", true)
-        .gt("created_at", lastSeenMarketTime);
+  if (role === "bank") {
+    const lastSeenAppetite = localStorage.getItem("last_seen_appetite") ?? new Date(0).toISOString();
+    const { count: approved } = await supabase
+      .from("branch_appetites")
+      .select("*", { count: "exact", head: true })
+      .eq("banker_id", userId)
+      .eq("is_approved", true)
+      .gt("created_at", lastSeenAppetite);
+    badges.approvedAppetite = approved ?? 0;
 
-      setAdvisorNewAppetiteCount(count ?? 0);
-    };
+    const lastSeenMatches = localStorage.getItem("last_seen_matches") ?? new Date(0).toISOString();
+    const { count: newCount } = await supabase
+      .from("matches")
+      .select("*", { count: "exact", head: true })
+      .eq("banker_id", userId)
+      .gt("created_at", lastSeenMatches);
+    const { count: closedCount } = await supabase
+      .from("matches")
+      .select("*", { count: "exact", head: true })
+      .eq("banker_id", userId)
+      .eq("status", "closed")
+      .gt("created_at", lastSeenMatches);
+    badges.newBankMatches = (newCount ?? 0) + (closedCount ?? 0);
+  }
 
-    const fetchApprovedAppetites = async () => {
-      const { count } = await supabase
-        .from("branch_appetites")
-        .select("*", { count: "exact", head: true })
-        .eq("banker_id", user.id)
-        .eq("is_approved", true)
-        .gt("created_at", lastSeenAppetiteTime);
+  return badges;
+};
 
-      setApprovedAppetiteCount(count ?? 0);
-    };
+const Navbar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
+  const { user, profile, roleState, profileState, sessionState, signOut, reFetchProfile } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isProfileUpdateOpen, setIsProfileUpdateOpen] = React.useState(false);
 
-    const fetchBankMatches = async () => {
-      const lastSeen = localStorage.getItem("last_seen_matches") ?? new Date(0).toISOString();
+  // All badge counters come from one user+role-namespaced React Query. Freshness:
+  // refetch on window-focus, a 60s background refetch, and — for the unread badge
+  // — invalidation driven by the messages realtime channel below.
+  const badgesKey = queryKeys.navbarBadges(user?.id, roleState === "unknown" ? null : roleState);
+  const { data: badges = EMPTY_BADGES } = useQuery({
+    queryKey: badgesKey,
+    queryFn: () => fetchNavbarBadges(user!.id, roleState as UserRole),
+    enabled: !!user?.id && roleState !== "unknown",
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
+  });
 
-      const { count: newCount } = await supabase
-        .from("matches")
-        .select("*", { count: "exact", head: true })
-        .eq("banker_id", user.id)
-        .gt("created_at", lastSeen);
-
-      const { count: closedCount } = await supabase
-        .from("matches")
-        .select("*", { count: "exact", head: true })
-        .eq("banker_id", user.id)
-        .eq("status", "closed")
-        .gt("created_at", lastSeen);
-
-      setNewBankMatchesCount((newCount ?? 0) + (closedCount ?? 0));
-    };
-
-    const refreshBadges = () => {
-      const jobs: Promise<void>[] = [fetchUnread()];
-      if (roleState === "admin") jobs.push(fetchAdminPending());
-      if (roleState === "advisor") jobs.push(fetchNewMatches(), fetchAdvisorAppetites());
-      if (roleState === "bank") jobs.push(fetchApprovedAppetites(), fetchBankMatches());
-      return Promise.all(jobs);
-    };
-
-    refreshBadges();
-    const interval = setInterval(refreshBadges, 30000);
-
-    // Feature B3: Real-time update for the unread badge
+  useEffect(() => {
+    if (!user?.id || roleState === "unknown") return;
+    // Feature B3: realtime unread updates — invalidate the badges query on any
+    // message change so the unread pip refreshes without waiting for the 60s tick.
     const channel = supabase
-      .channel('navbar-messages')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-        fetchUnread();
+      .channel("navbar-messages")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.navbarBadges(user.id, roleState) });
       })
       .subscribe();
-
     return () => {
-      clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [user?.id, roleState, lastSeenMarketTime, lastSeenAppetiteTime]);
+  }, [user?.id, roleState, queryClient]);
 
-  const handleAppetiteClick = () => {
-    const now = new Date().toISOString();
-    localStorage.setItem("last_seen_appetite", now);
-    setLastSeenAppetiteTime(now);
-    setApprovedAppetiteCount(0);
+  // Optimistically zero a "new since last seen" badge on click, then re-sync.
+  const markBadgeSeen = (field: keyof NavbarBadges, storageKey: string) => {
+    localStorage.setItem(storageKey, new Date().toISOString());
+    queryClient.setQueryData<NavbarBadges>(badgesKey, (old) => (old ? { ...old, [field]: 0 } : old));
+    queryClient.invalidateQueries({ queryKey: badgesKey });
   };
 
-  const handleMatchesClick = () => {
-    localStorage.setItem("last_seen_matches", new Date().toISOString());
-    setNewBankMatchesCount(0);
-  };
+  const handleAppetiteClick = () => markBadgeSeen("approvedAppetite", "last_seen_appetite");
+  const handleMatchesClick = () => markBadgeSeen("newBankMatches", "last_seen_matches");
+  const handleMarketClick = () => markBadgeSeen("advisorNewAppetite", "last_seen_market");
 
   const handleLogout = async () => {
     await signOut();
@@ -258,7 +259,7 @@ const Navbar = () => {
                 <Link to={getDashboardPath()} className={desktopLinkClass(getDashboardPath())}>
                   {roleState === "admin" ? "לוח בקרה" : "דאשבורד"}
                   {roleState === "admin" && (
-                    <NavBadge count={adminPendingCount} className="absolute -top-1 -right-1" />
+                    <NavBadge count={badges.adminPending} className="absolute -top-1 -right-1" />
                   )}
                 </Link>
 
@@ -270,10 +271,10 @@ const Navbar = () => {
                   >
                     התאמות
                     {roleState === "advisor" && (
-                      <NavBadge count={newMatchesCount} className="absolute -top-1 -right-1" />
+                      <NavBadge count={badges.newMatches} className="absolute -top-1 -right-1" />
                     )}
                     {roleState === "bank" && (
-                      <NavBadge count={newBankMatchesCount} className="absolute -top-1 -right-1" />
+                      <NavBadge count={badges.newBankMatches} className="absolute -top-1 -right-1" />
                     )}
                   </Link>
                 )}
@@ -286,19 +287,14 @@ const Navbar = () => {
                     <Link
                       to="/advisor/market"
                       className={desktopLinkClass("/advisor/market")}
-                      onClick={() => {
-                        const now = new Date().toISOString();
-                        localStorage.setItem("last_seen_market", now);
-                        setLastSeenMarketTime(now);
-                        setAdvisorNewAppetiteCount(0);
-                      }}
+                      onClick={handleMarketClick}
                     >
                       שוק הביקושים
-                      <NavBadge count={advisorNewAppetiteCount} className="absolute -top-1 -right-1" />
+                      <NavBadge count={badges.advisorNewAppetite} className="absolute -top-1 -right-1" />
                     </Link>
                     <Link to="/conversations" className={desktopLinkClass("/conversations")}>
                       שיחות
-                      <NavBadge count={totalUnread} className="absolute -top-1 -right-1" />
+                      <NavBadge count={badges.totalUnread} className="absolute -top-1 -right-1" />
                     </Link>
                   </>
                 )}
@@ -315,14 +311,14 @@ const Navbar = () => {
                     >
                       ביקושים
                       <NavBadge
-                        count={approvedAppetiteCount}
+                        count={badges.approvedAppetite}
                         variant="success"
                         className="absolute -top-1 -right-1"
                       />
                     </Link>
                     <Link to="/conversations" className={desktopLinkClass("/conversations")}>
                       שיחות
-                      <NavBadge count={totalUnread} className="absolute -top-1 -right-1" />
+                      <NavBadge count={badges.totalUnread} className="absolute -top-1 -right-1" />
                     </Link>
                   </>
                 )}
@@ -393,7 +389,7 @@ const Navbar = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {roleState === "admin" ? "לוח בקרה" : "דאשבורד"}
-                      {roleState === "admin" && <NavBadge count={adminPendingCount} className="mr-2" />}
+                      {roleState === "admin" && <NavBadge count={badges.adminPending} className="mr-2" />}
                       <Home className="ml-2 h-4 w-4" />
                     </Link>
 
@@ -407,8 +403,8 @@ const Navbar = () => {
                         }}
                       >
                         התאמות
-                        {roleState === "advisor" && <NavBadge count={newMatchesCount} className="mr-2" />}
-                        {roleState === "bank" && <NavBadge count={newBankMatchesCount} className="mr-2" />}
+                        {roleState === "advisor" && <NavBadge count={badges.newMatches} className="mr-2" />}
+                        {roleState === "bank" && <NavBadge count={badges.newBankMatches} className="mr-2" />}
                       </Link>
                     )}
 
@@ -426,14 +422,11 @@ const Navbar = () => {
                           className="flex items-center justify-end px-4 py-2 text-foreground rounded-md hover:bg-accent"
                           onClick={() => {
                             setIsMobileMenuOpen(false);
-                            const now = new Date().toISOString();
-                            localStorage.setItem("last_seen_market", now);
-                            setLastSeenMarketTime(now);
-                            setAdvisorNewAppetiteCount(0);
+                            handleMarketClick();
                           }}
                         >
                           שוק הביקושים
-                          <NavBadge count={advisorNewAppetiteCount} className="mr-2" />
+                          <NavBadge count={badges.advisorNewAppetite} className="mr-2" />
                         </Link>
                         <Link
                           to="/conversations"
@@ -441,7 +434,7 @@ const Navbar = () => {
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           שיחות
-                          <NavBadge count={totalUnread} className="mr-2" />
+                          <NavBadge count={badges.totalUnread} className="mr-2" />
                         </Link>
                       </>
                     )}
@@ -464,7 +457,7 @@ const Navbar = () => {
                           }}
                         >
                           ביקושים
-                          <NavBadge count={approvedAppetiteCount} variant="success" className="mr-2" />
+                          <NavBadge count={badges.approvedAppetite} variant="success" className="mr-2" />
                         </Link>
                         <Link
                           to="/conversations"
@@ -472,7 +465,7 @@ const Navbar = () => {
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           שיחות
-                          <NavBadge count={totalUnread} className="mr-2" />
+                          <NavBadge count={badges.totalUnread} className="mr-2" />
                         </Link>
                       </>
                     )}

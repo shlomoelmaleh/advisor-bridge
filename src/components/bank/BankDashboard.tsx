@@ -97,11 +97,8 @@ const BankDashboard = () => {
     loadExpressedCases();
   }, [user]);
 
-  useEffect(() => {
-    // Poll for updates (e.g., Admin approval or new anonymous cases) every 15 seconds
-    const interval = setInterval(refreshData, 15000);
-    return () => clearInterval(interval);
-  }, [refreshData]);
+  // Freshness is handled by React Query (staleTime + refetchOnWindowFocus +
+  // mutation invalidation); no manual polling needed.
 
   const isReadOnly = profileState === 'pending' || profileState === 'missing';
 

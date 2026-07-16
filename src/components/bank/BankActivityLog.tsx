@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { queryKeys } from '@/lib/queryKeys';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,11 +42,7 @@ const EVENT_ICON: Record<ActivityEvent['type'], React.ReactNode> = {
   new_message: <MessageSquare className="h-4 w-4 text-violet-500" />,
 };
 
-const BankActivityLog: React.FC<{ userId: string }> = ({ userId }) => {
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchEvents = useCallback(async () => {
+const fetchBankEvents = async (userId: string): Promise<ActivityEvent[]> => {
     const allEvents: ActivityEvent[] = [];
 
     // 1. Appetite approvals
@@ -150,15 +148,16 @@ const BankActivityLog: React.FC<{ userId: string }> = ({ userId }) => {
     });
 
     allEvents.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-    setEvents(allEvents.slice(0, 15));
-    setLoading(false);
-  }, [userId]);
+    return allEvents.slice(0, 15);
+};
 
-  useEffect(() => {
-    fetchEvents();
-    const interval = setInterval(fetchEvents, 30_000);
-    return () => clearInterval(interval);
-  }, [fetchEvents]);
+const BankActivityLog: React.FC<{ userId: string }> = ({ userId }) => {
+  // React Query keeps the log fresh on window-focus / navigation (no interval poll).
+  const { data: events = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.activityLog(userId, 'bank'),
+    queryFn: () => fetchBankEvents(userId),
+    enabled: !!userId,
+  });
 
   if (loading) {
     return (
