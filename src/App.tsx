@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 
 import { AuthProvider, useAuth, getHomePathByRole } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import AuthPage from "./pages/AuthPage";
@@ -34,7 +35,29 @@ const PageLoader = () => (
   </div>
 );
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 15_000,
+      retry: 1,
+      refetchOnWindowFocus: true,
+    },
+  },
+});
+
+// Independent listener (does not touch useAuth's own subscription) so that a
+// different account signing in on the same tab never sees a stale user's
+// cached rows before their own fetch lands. Compares user id rather than
+// event type because switching accounts can fire SIGNED_IN without an
+// intervening SIGNED_OUT.
+let lastQueryCacheUserId: string | null = null;
+supabase.auth.onAuthStateChange((_event, session) => {
+  const newUserId = session?.user?.id ?? null;
+  if (lastQueryCacheUserId !== null && newUserId !== lastQueryCacheUserId) {
+    queryClient.clear();
+  }
+  lastQueryCacheUserId = newUserId;
+});
 
 // Set Hebrew language and RTL direction
 document.documentElement.dir = 'rtl';
