@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:e2e": "vite --mode test --host 127.0.0.1",
     "build": "vite build",
+    "build:e2e": "vite build --mode test",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",

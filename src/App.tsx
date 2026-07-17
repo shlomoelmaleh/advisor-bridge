@@ -9,6 +9,7 @@ import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-r
 import { AuthProvider, useAuth, getHomePathByRole } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import TestEnvBanner from "@/components/common/TestEnvBanner";
 
 import AuthPage from "./pages/AuthPage";
 import Index from "./pages/Index";
@@ -93,6 +94,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
+        <TestEnvBanner />
         <Toaster />
         <Sonner />
         <BrowserRouter>
