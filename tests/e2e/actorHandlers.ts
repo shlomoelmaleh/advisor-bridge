@@ -28,7 +28,7 @@ export interface ActorDeps {
   loadManifest(runId: string): RunManifest | null;
   saveManifest(manifest: RunManifest): string;
   genId(): string;
-  env: { advisorEmail: string; bankerEmail: string; pendingEmail: string };
+  env: { advisorEmail: string; bankerEmail: string; adminEmail: string; pendingEmail: string };
 }
 
 const nowIso = () => new Date().toISOString();
@@ -58,15 +58,34 @@ const checked = <T extends { data: unknown; error: { message: string } | null }>
   return res.data as any;
 };
 
+interface AuthUser {
+  id: string;
+  email?: string;
+  email_confirmed_at?: string | null;
+  confirmed_at?: string | null;
+  app_metadata?: Record<string, unknown>;
+}
+
+/** Full-pagination read of Auth users. Uniqueness claims ("exactly one account
+ *  with this email") are only valid if EVERY page was seen — a duplicate
+ *  beyond the first page must not go undetected. */
+async function listAllAuthUsers(admin: any): Promise<AuthUser[]> {
+  const perPage = 200;
+  const all: AuthUser[] = [];
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw new ActorError(`listUsers failed: ${error.message}`);
+    const users = (data?.users ?? []) as AuthUser[];
+    all.push(...users);
+    if (users.length < perPage) return all;
+  }
+}
+
 /** Resolve a test account's auth user id by email — the TRUSTED ownership
  *  anchor for privileged verification (comes from env, never the manifest). */
 async function resolveUserId(admin: any, email: string): Promise<string> {
-  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if (error) throw new ActorError(`listUsers failed: ${error.message}`);
   const target = email.toLowerCase();
-  const users = ((data?.users ?? []) as Array<{ id: string; email?: string }>).filter(
-    (u) => (u.email ?? '').toLowerCase() === target,
-  );
+  const users = (await listAllAuthUsers(admin)).filter((u) => (u.email ?? '').toLowerCase() === target);
   if (users.length !== 1) {
     throw new ActorError(`verification ambiguous: expected exactly 1 auth user for the requested test account, got ${users.length}`);
   }
@@ -164,6 +183,87 @@ async function insertWithPendingEntry(opts: {
   entry.after = pick(row, opts.afterKeys);
   const manifestFile = deps.saveManifest(manifest);
   return { row, manifestFile };
+}
+
+/**
+ * verify-test-users — READ-ONLY verification of the canonical test accounts
+ * (seed baseline). service_role is used for reading only: listUsers + profile
+ * selects. It never creates users, resets passwords, signs in, or fixes data —
+ * on any mismatch it fails loudly and running seed:test requires a separate
+ * mutation approval. Output and errors identify accounts by their fixed keys
+ * (advisor/bank/admin/pending), never by email, and expose only 8-char user-id
+ * prefixes.
+ */
+async function cmdVerifyTestUsers(deps: ActorDeps) {
+  const admin = deps.serviceClient();
+  // Full pagination — a duplicate beyond the first page must not go undetected.
+  const users = await listAllAuthUsers(admin);
+
+  // Seed baseline (tests/seed-test-users.ts): every account approved; the
+  // pending account is role=advisor and only P6/A7 temporarily un-approve it.
+  const expected = [
+    { account: 'advisor', email: deps.env.advisorEmail, role: 'advisor', approved: true },
+    { account: 'bank', email: deps.env.bankerEmail, role: 'bank', approved: true },
+    { account: 'admin', email: deps.env.adminEmail, role: 'admin', approved: true },
+    { account: 'pending', email: deps.env.pendingEmail, role: 'advisor', approved: true },
+  ] as const;
+
+  const problems: string[] = [];
+  const accounts: Record<string, unknown> = {};
+  for (const exp of expected) {
+    const target = exp.email.toLowerCase();
+    const matched = users.filter((u) => (u.email ?? '').toLowerCase() === target);
+    if (matched.length === 0) {
+      problems.push(`${exp.account}: auth user missing — seed required (separate mutation approval)`);
+      continue;
+    }
+    if (matched.length > 1) {
+      problems.push(`${exp.account}: found ${matched.length} duplicate auth users, expected exactly 1`);
+      continue;
+    }
+    const authUser = matched[0];
+    const userId = authUser.id;
+    // The seed sets email_confirm: true — an unconfirmed account cannot sign
+    // in and would fail P2/browser flows in confusing ways. (Password validity
+    // cannot be verified read-only; the P2 sign-ins cover advisor/bank.)
+    if (!authUser.email_confirmed_at && !authUser.confirmed_at) {
+      problems.push(`${exp.account}: auth account is not confirmed (seed sets email_confirm: true)`);
+    }
+    const profiles = checked(
+      await admin.from('profiles').select('user_id, role, is_approved').eq('user_id', userId),
+      `verify-test-users profile read (${exp.account})`,
+    ) as any[];
+    if (!profiles || profiles.length !== 1) {
+      problems.push(`${exp.account}: expected exactly 1 profile row, got ${profiles?.length ?? 0}`);
+      continue;
+    }
+    const profile = profiles[0];
+    if (profile.role !== exp.role) problems.push(`${exp.account}: profile role is "${profile.role}", expected "${exp.role}"`);
+    if (profile.is_approved !== exp.approved) problems.push(`${exp.account}: is_approved is ${profile.is_approved}, expected ${exp.approved}`);
+    const account: Record<string, unknown> = {
+      userIdPrefix: userId.slice(0, 8),
+      confirmed: Boolean(authUser.email_confirmed_at || authUser.confirmed_at),
+      role: profile.role,
+      is_approved: profile.is_approved,
+      ok: profile.role === exp.role && profile.is_approved === exp.approved,
+    };
+    if (exp.account === 'admin') {
+      // NON-BLOCKING diagnostic documenting the known is_admin gap: RLS trusts
+      // ONLY auth.jwt()->app_metadata->>'role'. user_metadata is never an
+      // authorization source and is intentionally not consulted here.
+      const appMetadataRole = (authUser.app_metadata as Record<string, unknown> | undefined)?.['role'] ?? null;
+      account['appMetadataRole'] = appMetadataRole;
+      if (appMetadataRole !== 'admin') {
+        account['diagnostic'] =
+          'app_metadata.role is not "admin" — is_admin() will return false for this account (known gap, diagnosed only, not yet fixed)';
+      }
+    }
+    accounts[exp.account] = account;
+  }
+  if (problems.length > 0) {
+    throw new ActorError(`verify-test-users failed (read-only check, nothing was modified): ${problems.join('; ')}`);
+  }
+  return { accounts, note: 'read-only verification — nothing was created or modified' };
 }
 
 // ─── user-level commands (authenticated, RLS applies) ───────────────────────
@@ -770,6 +870,7 @@ async function cmdCleanup(deps: ActorDeps, args: ParsedArgs) {
 
 const HANDLERS: Record<string, (deps: ActorDeps, args: ParsedArgs) => Promise<unknown>> = {
   'list': cmdList,
+  'verify-test-users': cmdVerifyTestUsers,
   'create-case': cmdCreateCase,
   'create-appetite': cmdCreateAppetite,
   'send-message': cmdSendMessage,

@@ -13,6 +13,7 @@ export const TEST_PROJECT_URL = `https://${TEST_PROJECT_REF}.supabase.co`;
 /** Closed command surface — anything else is rejected before any client exists. */
 export const COMMANDS = [
   'list',
+  'verify-test-users',
   'create-case',
   'create-appetite',
   'send-message',
@@ -118,6 +119,7 @@ export interface ParsedArgs {
 /** Flags each command accepts — anything else is rejected. */
 const COMMAND_FLAGS: Record<ActorCommand, readonly string[]> = {
   'list': ['as'],
+  'verify-test-users': [],
   'create-case': ['as', 'run', 'min', 'max', 'ltv', 'borrower', 'property', 'region'],
   'create-appetite': ['as', 'run', 'bank-name', 'branch-name', 'level', 'min-loan', 'max-ltv', 'borrowers', 'regions', 'sla', 'valid-until'],
   'send-message': ['as', 'run', 'match', 'text'],
@@ -204,6 +206,10 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   switch (command) {
     case 'list':
       parsed.as = reqEnum('as', flags['as'], ACTOR_ROLES);
+      break;
+
+    case 'verify-test-users':
+      // No flags: a fixed read-only verification of the canonical test accounts.
       break;
 
     case 'create-case': {

@@ -60,8 +60,8 @@ function fakeClient(route: (op: Op) => { data?: unknown; error?: { message: stri
     },
     auth: {
       admin: {
-        listUsers: async () => {
-          const op: Op = { table: '_auth', action: 'listUsers', filters: {} };
+        listUsers: async (params?: Record<string, unknown>) => {
+          const op: Op = { table: '_auth', action: 'listUsers', filters: params ?? {} };
           calls.push(op);
           return route(op);
         },
@@ -132,7 +132,7 @@ function makeDeps(opts: { admin?: any; user?: any; userId?: string; manifest?: R
     loadManifest: (runId) => manifests[runId] ?? null,
     saveManifest: (m) => ((manifests[m.runId] = m), `mem://${m.runId}`),
     genId: opts.genId ?? (() => MSG_ID),
-    env: { advisorEmail: 'advisor@t.test', bankerEmail: 'banker@t.test', pendingEmail: 'pending@t.test' },
+    env: { advisorEmail: 'advisor@t.test', bankerEmail: 'banker@t.test', adminEmail: 'admin@t.test', pendingEmail: 'pending@t.test' },
   };
   return { deps, manifests, rolesRequested };
 }
@@ -608,6 +608,113 @@ describe('user mutations — gated to the active manifest', () => {
     await expect(
       runCommand(deps, { command: 'set-status', as: 'bank', run: RUN, match: MATCH_1, status: 'interested' }),
     ).rejects.toThrow(/no-op/);
+  });
+});
+
+describe('verify-test-users — read-only account verification', () => {
+  const ADMIN_ID = 'd9999999-9999-4999-8999-999999999999';
+  type SeedState = { users?: Array<{ id: string; email: string }>; profiles?: Record<string, any> };
+
+  const CONFIRMED = '2026-01-01T00:00:00Z';
+  const goodUsers = [
+    { id: ADVISOR_ID, email: 'advisor@t.test', email_confirmed_at: CONFIRMED },
+    { id: BANKER_ID, email: 'banker@t.test', email_confirmed_at: CONFIRMED },
+    { id: ADMIN_ID, email: 'admin@t.test', email_confirmed_at: CONFIRMED },
+    { id: PENDING_ID, email: 'pending@t.test', email_confirmed_at: CONFIRMED },
+  ];
+  const goodProfiles: Record<string, any> = {
+    [ADVISOR_ID]: { user_id: ADVISOR_ID, role: 'advisor', is_approved: true },
+    [BANKER_ID]: { user_id: BANKER_ID, role: 'bank', is_approved: true },
+    [ADMIN_ID]: { user_id: ADMIN_ID, role: 'admin', is_approved: true },
+    [PENDING_ID]: { user_id: PENDING_ID, role: 'advisor', is_approved: true },
+  };
+
+  const verifyAdmin = (state: SeedState = {}) => {
+    const users = state.users ?? goodUsers;
+    const profiles = state.profiles ?? goodProfiles;
+    return fakeClient((op) => {
+      if (op.action === 'listUsers') return { data: { users }, error: null };
+      if (op.table === 'profiles' && op.action === 'select') {
+        const row = profiles[op.filters['user_id'] as string];
+        return { data: row ? [{ ...row }] : [] };
+      }
+      throw new Error(`unexpected op ${op.action} on ${op.table} — verify-test-users must be read-only`);
+    });
+  };
+  const args: ParsedArgs = { command: 'verify-test-users' };
+
+  it('passes on a healthy seed baseline, read-only, without emails or full UUIDs in output', async () => {
+    const admin = verifyAdmin();
+    const { deps } = makeDeps({ admin });
+    const result: any = await runCommand(deps, args);
+    expect(result.accounts.advisor.ok).toBe(true);
+    expect(result.accounts.bank.ok).toBe(true);
+    expect(result.accounts.admin.ok).toBe(true);
+    expect(result.accounts.pending.ok).toBe(true);
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain('@t.test');
+    expect(serialized).not.toContain(ADVISOR_ID); // only 8-char prefixes
+    expect(result.accounts.advisor.userIdPrefix).toBe(ADVISOR_ID.slice(0, 8));
+    expect(admin.calls.every((c: Op) => c.action === 'select' || c.action === 'listUsers')).toBe(true);
+  });
+
+  it('documents the is_admin gap as a NON-blocking diagnostic on the admin account', async () => {
+    const admin = verifyAdmin(); // goodUsers carry no app_metadata.role
+    const { deps } = makeDeps({ admin });
+    const result: any = await runCommand(deps, args); // still succeeds
+    expect(result.accounts.admin.appMetadataRole).toBeNull();
+    expect(result.accounts.admin.diagnostic).toMatch(/is_admin/);
+    expect(result.accounts.admin.ok).toBe(true); // diagnostic, not a failure
+  });
+
+  it('paginates through ALL auth pages — a duplicate beyond page 1 is detected', async () => {
+    const filler = Array.from({ length: 200 }, (_, i) => ({
+      id: `f${i}`.padEnd(8, '0'),
+      email: `filler${i}@x.test`,
+      email_confirmed_at: CONFIRMED,
+    }));
+    const admin = fakeClient((op) => {
+      if (op.action === 'listUsers') {
+        // page 1 is full (forces another fetch); page 2 holds the real users + a duplicate
+        return op.filters['page'] === 1
+          ? { data: { users: filler }, error: null }
+          : { data: { users: [...goodUsers, { id: MATCH_2, email: 'advisor@t.test', email_confirmed_at: CONFIRMED }] }, error: null };
+      }
+      if (op.table === 'profiles' && op.action === 'select') {
+        const row = goodProfiles[op.filters['user_id'] as string];
+        return { data: row ? [{ ...row }] : [] };
+      }
+      throw new Error(`unexpected op ${op.action} on ${op.table}`);
+    });
+    const { deps } = makeDeps({ admin });
+    await expect(runCommand(deps, args)).rejects.toThrow(/advisor: found 2 duplicate/);
+    expect(admin.calls.filter((c: Op) => c.action === 'listUsers')).toHaveLength(2);
+  });
+
+  it.each([
+    ['missing auth user', { users: goodUsers.filter((u) => u.email !== 'admin@t.test') }, /admin: auth user missing/],
+    ['duplicate auth users', { users: [...goodUsers, { id: MATCH_2, email: 'advisor@t.test', email_confirmed_at: CONFIRMED }] }, /advisor: found 2 duplicate/],
+    ['unconfirmed auth account', { users: goodUsers.map((u) => (u.email === 'admin@t.test' ? { id: u.id, email: u.email } : u)) }, /admin: auth account is not confirmed/],
+    ['missing profile', { profiles: { ...goodProfiles, [BANKER_ID]: undefined } }, /bank: expected exactly 1 profile/],
+    ['wrong role', { profiles: { ...goodProfiles, [PENDING_ID]: { user_id: PENDING_ID, role: 'bank', is_approved: true } } }, /pending: profile role/],
+    ['wrong is_approved', { profiles: { ...goodProfiles, [ADVISOR_ID]: { user_id: ADVISOR_ID, role: 'advisor', is_approved: false } } }, /advisor: is_approved/],
+  ])('fails loudly on %s without mutating anything', async (_label, state, pattern) => {
+    const admin = verifyAdmin(state as SeedState);
+    const { deps } = makeDeps({ admin });
+    await expect(runCommand(deps, args)).rejects.toThrow(pattern);
+    expect(admin.calls.every((c: Op) => c.action === 'select' || c.action === 'listUsers')).toBe(true);
+  });
+
+  it('reports the account key, not the email, in error messages', async () => {
+    const admin = verifyAdmin({ users: goodUsers.filter((u) => u.email !== 'pending@t.test') });
+    const { deps } = makeDeps({ admin });
+    await expect(runCommand(deps, args)).rejects.toThrow();
+    try {
+      await runCommand(deps, args);
+    } catch (e: any) {
+      expect(e.message).toContain('pending:');
+      expect(e.message).not.toContain('@t.test');
+    }
   });
 });
 

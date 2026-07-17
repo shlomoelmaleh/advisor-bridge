@@ -27,6 +27,7 @@ import {
   ANON_KEY,
   SERVICE_KEY,
   SUPABASE_URL,
+  TEST_ADMIN_EMAIL,
   TEST_ADVISOR_EMAIL,
   TEST_BANKER_EMAIL,
   TEST_PASSWORD,
@@ -38,6 +39,7 @@ import { DEFAULT_REPORTS_DIR, loadManifest, saveManifest } from './manifest';
 
 const USAGE = `E2E actor CLI — commands (privilege in brackets):
   list            --as advisor|bank                                     [user/RLS]
+  verify-test-users                                                     [service_role READ-ONLY]
   create-case     --as advisor --run <id> --min N --max N --ltv N
                   --borrower T --property T --region R                  [user/RLS]
   create-appetite --as bank --run <id> --bank-name S --branch-name S
@@ -70,6 +72,7 @@ const deps: ActorDeps = {
   env: {
     advisorEmail: TEST_ADVISOR_EMAIL,
     bankerEmail: TEST_BANKER_EMAIL,
+    adminEmail: TEST_ADMIN_EMAIL,
     pendingEmail: TEST_PENDING_EMAIL,
   },
 };
