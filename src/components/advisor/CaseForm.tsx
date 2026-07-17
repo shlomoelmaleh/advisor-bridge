@@ -162,7 +162,7 @@ const CaseForm = () => {
             </div>
             <Slider
               id="ltv"
-              min={10}
+              min={20}
               max={95}
               step={5}
               value={[ltv]}
@@ -170,7 +170,7 @@ const CaseForm = () => {
               className="cursor-pointer"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>10%</span>
+              <span>20%</span>
               <span>95%</span>
             </div>
           </div>
