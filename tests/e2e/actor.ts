@@ -40,6 +40,7 @@ import { DEFAULT_REPORTS_DIR, loadManifest, saveManifest } from './manifest';
 const USAGE = `E2E actor CLI — commands (privilege in brackets):
   list            --as advisor|bank                                     [user/RLS]
   verify-test-users                                                     [service_role READ-ONLY]
+  verify-empty-match-inventory                                          [service_role READ-ONLY, counts only]
   create-case     --as advisor --run <id> --min N --max N --ltv N
                   --borrower T --property T --region R                  [user/RLS]
   create-appetite --as bank --run <id> --bank-name S --branch-name S

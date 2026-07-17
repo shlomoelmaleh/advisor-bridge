@@ -34,13 +34,19 @@ describe('command surface', () => {
   it('is the exact closed set from the approved plan', () => {
     expect([...COMMANDS].sort()).toEqual(
       ['approve', 'check-realtime', 'cleanup', 'create-appetite', 'create-case',
-        'list', 'restore', 'send-message', 'set-approval', 'set-status', 'verify-test-users'].sort(),
+        'list', 'restore', 'send-message', 'set-approval', 'set-status',
+        'verify-empty-match-inventory', 'verify-test-users'].sort(),
     );
   });
 
   it('parses verify-test-users bare and rejects any flag', () => {
     expect(parseArgs(['verify-test-users'])).toMatchObject({ command: 'verify-test-users' });
     expect(() => parseArgs(['verify-test-users', '--as', 'advisor'])).toThrow(/unknown flag/);
+  });
+
+  it('parses verify-empty-match-inventory bare and rejects any flag', () => {
+    expect(parseArgs(['verify-empty-match-inventory'])).toMatchObject({ command: 'verify-empty-match-inventory' });
+    expect(() => parseArgs(['verify-empty-match-inventory', '--run', 'E2E-20260717-00-R1'])).toThrow(/unknown flag/);
   });
 
   it('allows only interested/rejected as match statuses', () => {

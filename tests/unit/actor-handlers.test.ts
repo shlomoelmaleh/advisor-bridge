@@ -29,6 +29,8 @@ interface Op {
   action: string;
   filters: Record<string, unknown>;
   payload?: unknown;
+  count?: string;
+  head?: boolean;
 }
 
 /** Minimal chainable mock of the supabase-js query builder + auth admin. */
@@ -39,18 +41,26 @@ function fakeClient(route: (op: Op) => { data?: unknown; error?: { message: stri
     from(table: string) {
       const op: Op = { table, action: 'select', filters: {} };
       const b: any = {
-        select: () => b,
+        select: (_cols?: string, opts?: { count?: string; head?: boolean }) => {
+          if (opts) {
+            op.count = opts.count;
+            op.head = opts.head;
+          }
+          return b;
+        },
         insert: (rows: unknown) => ((op.action = 'insert'), (op.payload = rows), b),
         update: (patch: unknown) => ((op.action = 'update'), (op.payload = patch), b),
         delete: () => ((op.action = 'delete'), b),
         eq: (k: string, v: unknown) => ((op.filters[k] = v), b),
         in: (k: string, v: unknown) => ((op.filters[k] = v), b),
+        is: (k: string, v: unknown) => ((op.filters[`${k}:is`] = v), b),
+        gte: (k: string, v: unknown) => ((op.filters[`${k}:gte`] = v), b),
         order: () => b,
         then: (res: any, rej: any) => {
           calls.push(op);
           try {
-            const r = route(op);
-            return Promise.resolve({ data: r.data ?? null, error: r.error ?? null }).then(res, rej);
+            const r = route(op) as { data?: unknown; error?: { message: string } | null; count?: number };
+            return Promise.resolve({ data: r.data ?? null, error: r.error ?? null, count: r.count ?? null }).then(res, rej);
           } catch (e) {
             return Promise.reject(e).then(res, rej);
           }
@@ -715,6 +725,58 @@ describe('verify-test-users — read-only account verification', () => {
       expect(e.message).toContain('pending:');
       expect(e.message).not.toContain('@t.test');
     }
+  });
+});
+
+describe('verify-empty-match-inventory — global read-only counts', () => {
+  const args: ParsedArgs = { command: 'verify-empty-match-inventory' };
+  const countsRoute =
+    (caseCount: number, inDateAppetites: number, noExpiryAppetites = 0) =>
+    (op: Op) => {
+      if (op.action !== 'select' || op.head !== true || op.count !== 'exact') {
+        throw new Error('inventory must use head+count selects only — no rows may be fetched');
+      }
+      if (op.table === 'cases') return { count: caseCount };
+      if (op.table === 'branch_appetites') {
+        return { count: 'valid_until:is' in op.filters ? noExpiryAppetites : inDateAppetites };
+      }
+      throw new Error(`unexpected table ${op.table}`);
+    };
+
+  it('passes on 0/0 using GLOBAL head+count selects (no owner filter, no rows)', async () => {
+    const admin = fakeClient(countsRoute(0, 0, 0));
+    const { deps } = makeDeps({ admin });
+    const result: any = await runCommand(deps, args);
+    expect(result.empty).toBe(true);
+    expect(result.openApprovedCases).toBe(0);
+    expect(result.eligibleAppetites).toBe(0);
+    expect(admin.calls.every((c: Op) => c.action === 'select')).toBe(true);
+    const casesOp = admin.calls.find((c: Op) => c.table === 'cases')!;
+    // trigger-equivalent predicates, and NO owner scoping — this is the global claim
+    expect(casesOp.filters).toEqual({ status: 'open', is_approved: true });
+    expect(casesOp.filters).not.toHaveProperty('advisor_id');
+    const appetiteOps = admin.calls.filter((c: Op) => c.table === 'branch_appetites');
+    expect(appetiteOps).toHaveLength(2); // no-expiry + in-date
+    for (const op of appetiteOps) expect(op.filters).not.toHaveProperty('banker_id');
+  });
+
+  it('fails on other-owners cases (positive global count) before any mutation', async () => {
+    const admin = fakeClient(countsRoute(2, 0));
+    const { deps } = makeDeps({ admin });
+    await expect(runCommand(deps, args)).rejects.toThrow(/found 2 open\+approved case/);
+    expect(admin.calls.every((c: Op) => c.action === 'select')).toBe(true);
+  });
+
+  it('fails on eligible appetites, summing no-expiry and in-date', async () => {
+    const admin = fakeClient(countsRoute(0, 1, 1));
+    const { deps } = makeDeps({ admin });
+    await expect(runCommand(deps, args)).rejects.toThrow(/2 matching-eligible appetite/);
+  });
+
+  it('fails loudly when the count is missing from the response', async () => {
+    const admin = fakeClient(() => ({ data: null }));
+    const { deps } = makeDeps({ admin });
+    await expect(runCommand(deps, args)).rejects.toThrow(/count missing/);
   });
 });
 

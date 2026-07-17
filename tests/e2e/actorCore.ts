@@ -14,6 +14,7 @@ export const TEST_PROJECT_URL = `https://${TEST_PROJECT_REF}.supabase.co`;
 export const COMMANDS = [
   'list',
   'verify-test-users',
+  'verify-empty-match-inventory',
   'create-case',
   'create-appetite',
   'send-message',
@@ -120,6 +121,7 @@ export interface ParsedArgs {
 const COMMAND_FLAGS: Record<ActorCommand, readonly string[]> = {
   'list': ['as'],
   'verify-test-users': [],
+  'verify-empty-match-inventory': [],
   'create-case': ['as', 'run', 'min', 'max', 'ltv', 'borrower', 'property', 'region'],
   'create-appetite': ['as', 'run', 'bank-name', 'branch-name', 'level', 'min-loan', 'max-ltv', 'borrowers', 'regions', 'sla', 'valid-until'],
   'send-message': ['as', 'run', 'match', 'text'],
@@ -210,6 +212,10 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
 
     case 'verify-test-users':
       // No flags: a fixed read-only verification of the canonical test accounts.
+      break;
+
+    case 'verify-empty-match-inventory':
+      // No flags: a fixed read-only global count of matching-eligible rows.
       break;
 
     case 'create-case': {

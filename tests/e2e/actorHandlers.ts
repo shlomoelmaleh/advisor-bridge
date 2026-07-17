@@ -266,6 +266,70 @@ async function cmdVerifyTestUsers(deps: ActorDeps) {
   return { accounts, note: 'read-only verification — nothing was created or modified' };
 }
 
+/**
+ * verify-empty-match-inventory — READ-ONLY global count of rows the matching
+ * triggers would scan. `list` is owner-scoped by RLS, but the triggers scan
+ * GLOBALLY (all owners), so proving "approving the smoke fixtures creates a
+ * deterministic number of matches" requires a service_role count over:
+ *   - cases:            status='open' AND is_approved=true
+ *   - branch_appetites: is_active=true AND is_approved=true
+ *                       AND (valid_until IS NULL OR valid_until >= today)
+ * (exactly the predicates of auto_match_on_appetite_approval and
+ * internal_run_matching_for_case). head+count queries only — no rows and no
+ * personal data are ever fetched; the output is a timestamp and counts.
+ * Any result other than 0/0 fails the command BEFORE any mutation.
+ */
+async function cmdVerifyEmptyMatchInventory(deps: ActorDeps) {
+  const admin = deps.serviceClient();
+  const countOf = async (query: any, what: string): Promise<number> => {
+    const { count, error } = await query;
+    if (error) throw new ActorError(`${what} failed: ${error.message}`);
+    if (typeof count !== 'number') throw new ActorError(`${what} failed: count missing from response`);
+    return count;
+  };
+  // Client-side date vs the trigger's CURRENT_DATE (DB clock): a same-day skew
+  // could only over-count (fail-safe direction), never under-count.
+  const today = new Date().toISOString().slice(0, 10);
+
+  const openApprovedCases = await countOf(
+    admin.from('cases').select('id', { count: 'exact', head: true }).eq('status', 'open').eq('is_approved', true),
+    'inventory count of open+approved cases',
+  );
+  const noExpiryAppetites = await countOf(
+    admin
+      .from('branch_appetites')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('is_approved', true)
+      .is('valid_until', null),
+    'inventory count of eligible appetites (no expiry)',
+  );
+  const inDateAppetites = await countOf(
+    admin
+      .from('branch_appetites')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('is_approved', true)
+      .gte('valid_until', today),
+    'inventory count of eligible appetites (in date)',
+  );
+  const eligibleAppetites = noExpiryAppetites + inDateAppetites;
+
+  if (openApprovedCases !== 0 || eligibleAppetites !== 0) {
+    throw new ActorError(
+      `verify-empty-match-inventory failed: expected 0/0, found ${openApprovedCases} open+approved case(s) and ` +
+        `${eligibleAppetites} matching-eligible appetite(s) — refusing before any mutation (read-only global count)`,
+    );
+  }
+  return {
+    asOf: new Date().toISOString(),
+    openApprovedCases,
+    eligibleAppetites,
+    empty: true,
+    note: 'global service_role read-only count — the matching triggers would find zero eligible rows',
+  };
+}
+
 // ─── user-level commands (authenticated, RLS applies) ───────────────────────
 
 async function cmdList(deps: ActorDeps, args: ParsedArgs) {
@@ -888,6 +952,7 @@ async function cmdCleanup(deps: ActorDeps, args: ParsedArgs) {
 const HANDLERS: Record<string, (deps: ActorDeps, args: ParsedArgs) => Promise<unknown>> = {
   'list': cmdList,
   'verify-test-users': cmdVerifyTestUsers,
+  'verify-empty-match-inventory': cmdVerifyEmptyMatchInventory,
   'create-case': cmdCreateCase,
   'create-appetite': cmdCreateAppetite,
   'send-message': cmdSendMessage,
