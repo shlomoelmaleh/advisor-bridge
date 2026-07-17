@@ -287,8 +287,9 @@ async function cmdVerifyEmptyMatchInventory(deps: ActorDeps) {
     if (typeof count !== 'number') throw new ActorError(`${what} failed: count missing from response`);
     return count;
   };
-  // Client-side date vs the trigger's CURRENT_DATE (DB clock): a same-day skew
-  // could only over-count (fail-safe direction), never under-count.
+  // Client-side UTC date vs the trigger's CURRENT_DATE (DB clock): assuming the
+  // DB stays on UTC (Supabase's default — configurable, so revisit if changed),
+  // a same-day skew could only over-count (fail-safe direction), never under-count.
   const today = new Date().toISOString().slice(0, 10);
 
   const openApprovedCases = await countOf(

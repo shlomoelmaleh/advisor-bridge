@@ -163,6 +163,12 @@ describe('parseArgs — safety rejections', () => {
     expect(() => parseArgs(bad)).toThrow(/50,?000|50_000/);
   });
 
+  it('enforces the DB LTV lower bound: 19 rejected, 20 accepted', () => {
+    const withLtv = (v: string) => CASE_ARGS.map((x) => (x === '65' ? v : x));
+    expect(parseArgs(withLtv('20')).caseFields!.ltv).toBe(20);
+    expect(() => parseArgs(withLtv('19'))).toThrow(ActorError);
+  });
+
   it('rejects min >= max', () => {
     const bad = CASE_ARGS.map((v) => (v === '1850000' ? '1550000' : v));
     expect(() => parseArgs(bad)).toThrow(ActorError);

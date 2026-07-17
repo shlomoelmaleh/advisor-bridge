@@ -231,7 +231,9 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       parsed.caseFields = {
         loan_amount_min: min,
         loan_amount_max: max,
-        ltv: reqInt('ltv', flags['ltv'], 1, 95),
+        // Lower bound 20 mirrors both the DB validation trigger
+        // (baseline.sql: "ltv must be between 20 and 95") and caseSchema.
+        ltv: reqInt('ltv', flags['ltv'], 20, 95),
         borrower_type: reqEnum('borrower', flags['borrower'], BORROWER_TYPES),
         property_type: reqEnum('property', flags['property'], PROPERTY_TYPES),
         region: reqEnum('region', flags['region'], REGIONS),

@@ -20,6 +20,10 @@ dist-ssr
 # Supabase CLI local artifacts
 supabase/.temp/
 
+# E2E run artifacts: manifests + raw run evidence (local recovery/audit data,
+# not source). Curated human-readable reports are committed separately.
+tests/e2e/reports/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
