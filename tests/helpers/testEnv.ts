@@ -28,7 +28,9 @@ if (!existsSync(ENV_TEST_PATH)) {
   process.exit(1);
 }
 
-config({ path: ENV_TEST_PATH });
+// quiet: dotenv@17 prints a promotional tip to stdout by default, which would
+// corrupt the actor CLI's machine-readable JSON output contract.
+config({ path: ENV_TEST_PATH, quiet: true });
 
 export const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
 export const ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
