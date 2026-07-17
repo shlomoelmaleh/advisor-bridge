@@ -597,24 +597,41 @@ async function cmdCheckRealtime(deps: ActorDeps, args: ParsedArgs) {
   const { client } = await deps.userClient(args.as!);
   const tables = ['messages', 'matches'] as const;
   const results: Record<string, { status: string; ms: number }> = {};
-  for (const table of tables) {
-    const started = Date.now();
-    const channel = client
-      .channel(`actor-check-${table}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table }, () => {});
-    const status = await new Promise<string>((resolvePromise) => {
-      const timer = setTimeout(() => resolvePromise('ACTOR_TIMEOUT'), args.timeoutMs);
-      channel.subscribe((s: string) => {
-        if (s === 'SUBSCRIBED' || s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') {
-          clearTimeout(timer);
-          resolvePromise(s);
-        }
+  const channels: any[] = [];
+  try {
+    // ONE authenticated Realtime connection holding both channels — like the
+    // app. Both channels are created and subscribed BEFORE any removal:
+    // removing the last channel tears down the shared socket, and a join that
+    // races that teardown times out (observed live in gate 1).
+    const waits = tables.map((table) => {
+      const started = Date.now();
+      const channel = client
+        .channel(`actor-check-${table}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table }, () => {});
+      channels.push(channel);
+      return new Promise<void>((resolvePromise) => {
+        let settled = false;
+        const settle = (status: string) => {
+          if (settled) return;
+          settled = true;
+          results[table] = { status, ms: Date.now() - started };
+          resolvePromise();
+        };
+        const timer = setTimeout(() => settle('ACTOR_TIMEOUT'), args.timeoutMs);
+        channel.subscribe((s: string) => {
+          if (s === 'SUBSCRIBED' || s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') {
+            clearTimeout(timer);
+            settle(s);
+          }
+        });
       });
     });
-    results[table] = { status, ms: Date.now() - started };
-    await client.removeChannel(channel);
+    await Promise.all(waits);
+  } finally {
+    // Both channels are removed even on failure/timeout in either of them.
+    await Promise.allSettled(channels.map((channel) => client.removeChannel(channel)));
   }
-  const allSubscribed = tables.every((t) => results[t].status === 'SUBSCRIBED');
+  const allSubscribed = tables.every((t) => results[t]?.status === 'SUBSCRIBED');
   if (!allSubscribed) {
     throw new ActorError(`check-realtime failed: ${JSON.stringify(results)} (subscription-only check, no data was touched)`);
   }

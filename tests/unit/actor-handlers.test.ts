@@ -730,4 +730,39 @@ describe('check-realtime — authenticated context', () => {
     expect(result.role).toBe('bank');
     expect(user.calls).toHaveLength(0); // no reads/writes, only channels
   });
+
+  it('subscribes BOTH channels before any removeChannel, and cleans both even when one fails', async () => {
+    const events: string[] = [];
+    const makeChannel = (name: string) => {
+      const ch: any = {
+        name,
+        on: () => ch,
+        subscribe: (cb: (s: string) => void) => {
+          events.push(`subscribe:${name}`);
+          // async terminal status: matches errors, messages subscribes
+          setTimeout(() => cb(name.includes('matches') ? 'CHANNEL_ERROR' : 'SUBSCRIBED'), 0);
+          return ch;
+        },
+      };
+      return ch;
+    };
+    const user: any = {
+      channel: (name: string) => makeChannel(name),
+      removeChannel: async (ch: any) => {
+        events.push(`remove:${ch.name}`);
+      },
+    };
+    const { deps } = makeDeps({ user, userId: BANKER_ID });
+    await expect(
+      runCommand(deps, { command: 'check-realtime', as: 'bank', timeoutMs: 2_000 }),
+    ).rejects.toThrow(/check-realtime failed/);
+
+    const subscribes = events.filter((e) => e.startsWith('subscribe:'));
+    const removes = events.filter((e) => e.startsWith('remove:'));
+    expect(subscribes).toHaveLength(2);
+    expect(removes).toHaveLength(2); // one channel failed — BOTH still cleaned
+    const firstRemoveIdx = events.findIndex((e) => e.startsWith('remove:'));
+    // every subscribe happened before the first removal
+    expect(events.slice(0, firstRemoveIdx).filter((e) => e.startsWith('subscribe:'))).toHaveLength(2);
+  });
 });
