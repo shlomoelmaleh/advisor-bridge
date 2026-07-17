@@ -33,9 +33,9 @@ const APPETITE_ARGS = [
 describe('command surface', () => {
   it('is the exact closed set from the approved plan', () => {
     expect([...COMMANDS].sort()).toEqual(
-      ['approve', 'check-realtime', 'cleanup', 'create-appetite', 'create-case',
-        'list', 'restore', 'send-message', 'set-approval', 'set-status',
-        'verify-empty-match-inventory', 'verify-test-users'].sort(),
+      ['adopt-appetite', 'adopt-case', 'approve', 'check-realtime', 'cleanup',
+        'create-appetite', 'create-case', 'list', 'restore', 'send-message',
+        'set-approval', 'set-status', 'verify-empty-match-inventory', 'verify-test-users'].sort(),
     );
   });
 
@@ -101,6 +101,19 @@ describe('parseArgs — valid invocations', () => {
     expect(p.appetiteFields!.preferred_borrower_types).toEqual(['employee', 'self_employed']);
     expect(p.appetiteFields!.preferred_regions).toEqual(['north', 'center']);
     expect(p.appetiteFields!.branch_name.startsWith(RUN)).toBe(true);
+  });
+
+  it('parses adopt-case/adopt-appetite with the full create signatures and enforces roles', () => {
+    const p = parseArgs(['adopt-case', ...CASE_ARGS.slice(1)]);
+    expect(p.command).toBe('adopt-case');
+    expect(p.caseFields).toEqual(parseArgs(CASE_ARGS).caseFields);
+    const q = parseArgs(['adopt-appetite', ...APPETITE_ARGS.slice(1)]);
+    expect(q.command).toBe('adopt-appetite');
+    expect(q.appetiteFields!.branch_name.startsWith(RUN)).toBe(true);
+    expect(() => parseArgs(['adopt-case', ...CASE_ARGS.slice(1)].map((v, i) => (i === 2 ? 'bank' : v))))
+      .toThrow(/adopt-case requires --as advisor/);
+    expect(() => parseArgs(['adopt-appetite', ...APPETITE_ARGS.slice(1)].map((v, i) => (i === 2 ? 'advisor' : v))))
+      .toThrow(/adopt-appetite requires --as bank/);
   });
 
   it('parses send-message when the text carries the run id', () => {

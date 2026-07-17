@@ -106,15 +106,30 @@ function verifyCaseProvenance(row: any, prov: Record<string, unknown>, advisorId
   }
 }
 
+/** Order-insensitive list equality — UI chip order and DB array order are
+ *  not part of the signature, the SET of values is. */
+const sameSet = (a: unknown, b: unknown): boolean =>
+  Array.isArray(a) && Array.isArray(b) && a.length === b.length &&
+  [...a].sort().join(',') === [...b].sort().join(',');
+
+/** EVERY appetite field that influences compute_match_score (plus identity
+ *  fields) is part of the provenance contract: a live-row change to any of
+ *  them between record time and approve/cleanup must abort the operation. */
+const APPETITE_SCALAR_KEYS = ['bank_name', 'branch_name', 'appetite_level', 'min_loan_amount', 'max_ltv', 'sla_days', 'valid_until'] as const;
+const APPETITE_LIST_KEYS = ['preferred_borrower_types', 'preferred_regions'] as const;
+
 function verifyAppetiteProvenance(row: any, prov: Record<string, unknown>, bankerId: string, runId: string): void {
+  const scalarsOk = APPETITE_SCALAR_KEYS.every((k) => prov[k] === row[k]);
+  const listsOk = APPETITE_LIST_KEYS.every((k) => sameSet(prov[k], row[k]));
   if (
     row.banker_id !== bankerId ||
     prov['banker_id'] !== bankerId ||
-    prov['branch_name'] !== row.branch_name ||
+    !scalarsOk ||
+    !listsOk ||
     typeof row.branch_name !== 'string' ||
     !row.branch_name.startsWith(runId)
   ) {
-    throw new ActorError('an appetite row failed provenance verification (owner/run-id mismatch) — refusing before any mutation');
+    throw new ActorError('an appetite row failed provenance verification (owner/signature/run-id mismatch) — refusing before any mutation');
   }
 }
 
@@ -380,15 +395,153 @@ async function cmdCreateAppetite(deps: ActorDeps, args: ParsedArgs) {
     runId: args.run!,
     kind: 'appetite',
     by: 'bank',
-    provenance: { banker_id: userId, branch_name: fields.branch_name },
+    // Same FULL provenance contract as adopt-appetite: every matching-relevant
+    // field participates in approve/cleanup verification.
+    provenance: { banker_id: userId, ...fields },
     insert: (id) => client.from('branch_appetites').insert([{ id, ...fields, banker_id: userId, is_active: true }]).select(),
     verify: (r) => {
-      if (r.branch_name !== fields.branch_name) throw new ActorError('create-appetite verification failed: branch_name mismatch after insert');
+      for (const k of APPETITE_SCALAR_KEYS) {
+        if (r[k] !== (fields as any)[k]) throw new ActorError(`create-appetite verification failed: ${k} mismatch after insert`);
+      }
+      for (const k of APPETITE_LIST_KEYS) {
+        if (!sameSet(r[k], (fields as any)[k])) throw new ActorError(`create-appetite verification failed: ${k} mismatch after insert`);
+      }
       if (r.is_approved !== false) throw new ActorError('create-appetite verification failed: new appetite is not pending approval');
     },
     afterKeys: ['is_approved', 'is_active'],
   });
   return { appetiteId: row.id, is_approved: row.is_approved, createdAt: row.created_at, manifestFile };
+}
+
+// ─── adopt commands: register browser-created entities into the manifest ────
+// The browser phase creates C2 (case) and D2 (appetite) through the real UI,
+// so they never pass through insertWithPendingEntry. Without a manifest entry
+// the actor refuses to approve them and cleanup cannot delete them. adopt-*
+// closes that gap: READ-ONLY against Supabase (the only write is the atomic
+// local manifest save), runs as the real authenticated owner under RLS, and
+// records provenance in the exact shape approve/cleanup already verify.
+
+/** Adoption is only meaningful for a run that is still active: once cleanup
+ *  has started (pending journal) or completed, its plan is frozen/closed and
+ *  a late adoption would be silently ignored by it. */
+function refuseIfCleanupStarted(manifest: RunManifest): void {
+  if (manifest.entries.some((e) => e.kind === 'cleanup')) {
+    throw new ActorError('refusing adopt: cleanup has already started or completed for this run — adopt into a fresh run instead');
+  }
+}
+
+function refuseDuplicateAdoption(manifest: RunManifest, id: string): void {
+  // ANY entry with this id — regardless of kind or status — blocks adoption:
+  // an id colliding with anything already tracked is never re-registered.
+  if (manifest.entries.some((e) => e.id === id)) {
+    throw new ActorError('refusing adopt: this id is already recorded in the manifest');
+  }
+}
+
+/** created_at sanity: an adopted row must have been created after the run
+ *  began — a same-signature leftover from an older run must never be adopted.
+ *  Compared NUMERICALLY via Date.parse: PostgREST may serialize timestamps as
+ *  `+00:00` with microseconds while the manifest uses `Z` with milliseconds,
+ *  so lexicographic string comparison would be wrong. */
+function requireCreatedWithinRun(row: any, manifest: RunManifest, what: string): void {
+  const rowMs = Date.parse(typeof row?.created_at === 'string' ? row.created_at : '');
+  const runMs = Date.parse(manifest.createdAt ?? '');
+  if (Number.isNaN(rowMs) || Number.isNaN(runMs)) {
+    throw new ActorError(`refusing adopt: the ${what} row or the manifest carries an unparseable created_at timestamp`);
+  }
+  if (rowMs < runMs) {
+    throw new ActorError(`refusing adopt: the ${what} row predates this run (created_at is earlier than the manifest)`);
+  }
+}
+
+async function cmdAdoptCase(deps: ActorDeps, args: ParsedArgs) {
+  const manifest = requireManifest(deps, args.run!);
+  refuseIfCleanupStarted(manifest);
+  const { client, userId } = await deps.userClient('advisor');
+  const fields = args.caseFields!;
+
+  // The run-window (created_at >= manifest start) is part of the QUERY, and is
+  // then re-verified on the returned row like every other filter.
+  let query = client.from('cases').select('*').eq('advisor_id', userId).gte('created_at', manifest.createdAt);
+  for (const [k, v] of Object.entries(fields)) query = query.eq(k, v);
+  const rows = checked(await query, 'adopt-case signature read') as any[];
+  if (!rows || rows.length !== 1) {
+    throw new ActorError(`refusing adopt: expected exactly 1 case matching the full signed combination, got ${rows?.length ?? 0} — no blind pick`);
+  }
+  const row = rows[0];
+  // Never trust query filters: re-verify ownership and every signature field
+  // on the returned row itself.
+  if (row.advisor_id !== userId) throw new ActorError('refusing adopt: the case row is not owned by the test advisor');
+  for (const [k, v] of Object.entries(fields)) {
+    if (row[k] !== v) throw new ActorError(`refusing adopt: case signature mismatch on ${k}`);
+  }
+  if (row.is_approved !== false) throw new ActorError('refusing adopt: the case is already approved (adoption must happen before approval)');
+  if (row.status !== 'open') throw new ActorError(`refusing adopt: case status is "${row.status}", expected "open"`);
+  requireCreatedWithinRun(row, manifest, 'case');
+  refuseDuplicateAdoption(manifest, row.id);
+
+  recordEntry(manifest, {
+    kind: 'case',
+    id: row.id,
+    by: 'advisor',
+    status: 'created',
+    provenance: { advisor_id: userId, ...fields },
+    after: pick(row, ['is_approved', 'status']),
+    note: 'adopted-from-ui: row created in the browser, verified read-only and registered for approve/cleanup',
+  });
+  const manifestFile = deps.saveManifest(manifest);
+  return { adopted: true, caseId: row.id, createdAt: row.created_at, manifestFile, note: 'read-only against Supabase — only the local manifest was written' };
+}
+
+async function cmdAdoptAppetite(deps: ActorDeps, args: ParsedArgs) {
+  const manifest = requireManifest(deps, args.run!);
+  refuseIfCleanupStarted(manifest);
+  const { client, userId } = await deps.userClient('bank');
+  const fields = args.appetiteFields!;
+
+  // branch_name (validated at parse time to start with the run id) is the
+  // locator; every matching-relevant field is then verified exactly.
+  const rows = checked(
+    await client
+      .from('branch_appetites')
+      .select('*')
+      .eq('banker_id', userId)
+      .eq('branch_name', fields.branch_name)
+      .gte('created_at', manifest.createdAt),
+    'adopt-appetite signature read',
+  ) as any[];
+  if (!rows || rows.length !== 1) {
+    throw new ActorError(`refusing adopt: expected exactly 1 appetite with this run-scoped branch_name, got ${rows?.length ?? 0} — no blind pick`);
+  }
+  const row = rows[0];
+  if (row.banker_id !== userId) throw new ActorError('refusing adopt: the appetite row is not owned by the test banker');
+  for (const k of APPETITE_SCALAR_KEYS) {
+    if (row[k] !== (fields as any)[k]) throw new ActorError(`refusing adopt: appetite signature mismatch on ${k}`);
+  }
+  if (!sameSet(row.preferred_borrower_types, fields.preferred_borrower_types)) {
+    throw new ActorError('refusing adopt: appetite signature mismatch on preferred_borrower_types');
+  }
+  if (!sameSet(row.preferred_regions, fields.preferred_regions)) {
+    throw new ActorError('refusing adopt: appetite signature mismatch on preferred_regions');
+  }
+  if (row.is_approved !== false) throw new ActorError('refusing adopt: the appetite is already approved (adoption must happen before approval)');
+  if (row.is_active !== true) throw new ActorError('refusing adopt: the appetite is not active');
+  requireCreatedWithinRun(row, manifest, 'appetite');
+  refuseDuplicateAdoption(manifest, row.id);
+
+  recordEntry(manifest, {
+    kind: 'appetite',
+    id: row.id,
+    by: 'bank',
+    status: 'created',
+    // FULL provenance contract: every matching-relevant field, so any live-row
+    // change between adopt and approve/cleanup aborts before mutation.
+    provenance: { banker_id: userId, ...fields },
+    after: pick(row, ['is_approved', 'is_active']),
+    note: 'adopted-from-ui: row created in the browser, verified read-only and registered for approve/cleanup',
+  });
+  const manifestFile = deps.saveManifest(manifest);
+  return { adopted: true, appetiteId: row.id, createdAt: row.created_at, manifestFile, note: 'read-only against Supabase — only the local manifest was written' };
 }
 
 async function cmdSendMessage(deps: ActorDeps, args: ParsedArgs) {
@@ -956,6 +1109,8 @@ const HANDLERS: Record<string, (deps: ActorDeps, args: ParsedArgs) => Promise<un
   'verify-empty-match-inventory': cmdVerifyEmptyMatchInventory,
   'create-case': cmdCreateCase,
   'create-appetite': cmdCreateAppetite,
+  'adopt-case': cmdAdoptCase,
+  'adopt-appetite': cmdAdoptAppetite,
   'send-message': cmdSendMessage,
   'set-status': cmdSetStatus,
   'approve': cmdApprove,

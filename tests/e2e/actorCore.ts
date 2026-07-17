@@ -17,6 +17,8 @@ export const COMMANDS = [
   'verify-empty-match-inventory',
   'create-case',
   'create-appetite',
+  'adopt-case',
+  'adopt-appetite',
   'send-message',
   'set-status',
   'approve',
@@ -124,6 +126,10 @@ const COMMAND_FLAGS: Record<ActorCommand, readonly string[]> = {
   'verify-empty-match-inventory': [],
   'create-case': ['as', 'run', 'min', 'max', 'ltv', 'borrower', 'property', 'region'],
   'create-appetite': ['as', 'run', 'bank-name', 'branch-name', 'level', 'min-loan', 'max-ltv', 'borrowers', 'regions', 'sla', 'valid-until'],
+  // adopt-* take the SAME full signature as their create-* counterparts: the
+  // entity was created in the browser and is located by exact signature match.
+  'adopt-case': ['as', 'run', 'min', 'max', 'ltv', 'borrower', 'property', 'region'],
+  'adopt-appetite': ['as', 'run', 'bank-name', 'branch-name', 'level', 'min-loan', 'max-ltv', 'borrowers', 'regions', 'sla', 'valid-until'],
   'send-message': ['as', 'run', 'match', 'text'],
   'set-status': ['as', 'run', 'match', 'status'],
   'approve': ['run', 'target', 'id', 'expect-new-matches'],
@@ -218,9 +224,10 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       // No flags: a fixed read-only global count of matching-eligible rows.
       break;
 
-    case 'create-case': {
+    case 'create-case':
+    case 'adopt-case': {
       parsed.as = reqEnum('as', flags['as'], ACTOR_ROLES);
-      if (parsed.as !== 'advisor') fail('create-case requires --as advisor');
+      if (parsed.as !== 'advisor') fail(`${command} requires --as advisor`);
       parsed.run = reqRunId(flags['run']);
       const min = reqInt('min', flags['min'], 100_000, 10_000_000);
       const max = reqInt('max', flags['max'], 100_000, 10_000_000);
@@ -241,9 +248,10 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       break;
     }
 
-    case 'create-appetite': {
+    case 'create-appetite':
+    case 'adopt-appetite': {
       parsed.as = reqEnum('as', flags['as'], ACTOR_ROLES);
-      if (parsed.as !== 'bank') fail('create-appetite requires --as bank');
+      if (parsed.as !== 'bank') fail(`${command} requires --as bank`);
       parsed.run = reqRunId(flags['run']);
       const branchName = reqText('branch-name', flags['branch-name'], 100);
       if (!branchName.startsWith(parsed.run)) {

@@ -24,6 +24,20 @@ const CASE_SIGNATURE = {
   region: 'north',
 };
 
+/** Full appetite signature — the provenance contract covers EVERY
+ *  matching-relevant field, for created and adopted appetites alike. */
+const APPETITE_SIGNATURE = {
+  bank_name: 'בנק בדיקה',
+  branch_name: `${RUN} סניף D2`,
+  appetite_level: 'medium',
+  min_loan_amount: 1_500_000,
+  max_ltv: 65,
+  preferred_borrower_types: ['self_employed'],
+  preferred_regions: ['north'],
+  sla_days: 30,
+  valid_until: '2026-12-31',
+};
+
 interface Op {
   table: string;
   action: string;
@@ -151,7 +165,7 @@ function makeDeps(opts: { admin?: any; user?: any; userId?: string; manifest?: R
 function seededManifest(): RunManifest {
   const m = createManifest(RUN);
   recordEntry(m, { kind: 'case', id: CASE_ID, by: 'advisor', status: 'created', provenance: { advisor_id: ADVISOR_ID, ...CASE_SIGNATURE } });
-  recordEntry(m, { kind: 'appetite', id: APPETITE_ID, by: 'bank', status: 'created', provenance: { banker_id: BANKER_ID, branch_name: `${RUN} סניף` } });
+  recordEntry(m, { kind: 'appetite', id: APPETITE_ID, by: 'bank', status: 'created', provenance: { banker_id: BANKER_ID, ...APPETITE_SIGNATURE } });
   recordEntry(m, { kind: 'match', id: MATCH_1, by: 'trigger', status: 'created', provenance: { case_id: CASE_ID, appetite_id: APPETITE_ID } });
   recordEntry(m, { kind: 'message', id: MSG_ID, by: 'bank', status: 'created', provenance: { sender_id: BANKER_ID, match_id: MATCH_1 } });
   return m;
@@ -159,7 +173,7 @@ function seededManifest(): RunManifest {
 
 const LIVE_ROWS: Record<string, any[]> = {
   cases: [{ id: CASE_ID, advisor_id: ADVISOR_ID, ...CASE_SIGNATURE }],
-  branch_appetites: [{ id: APPETITE_ID, banker_id: BANKER_ID, branch_name: `${RUN} סניף` }],
+  branch_appetites: [{ id: APPETITE_ID, banker_id: BANKER_ID, ...APPETITE_SIGNATURE }],
   matches: [{ id: MATCH_1, case_id: CASE_ID, appetite_id: APPETITE_ID }],
   messages: [{ id: MSG_ID, sender_id: BANKER_ID, match_id: MATCH_1, content: `${RUN} שלום` }],
 };
@@ -274,7 +288,7 @@ describe('cleanup — reconciliation of pending/failed entries', () => {
 
   it('recovers a failed entry whose insert actually landed (lost response)', async () => {
     const m = createManifest(RUN);
-    recordEntry(m, { kind: 'appetite', id: APPETITE_ID, by: 'bank', status: 'failed', provenance: { banker_id: BANKER_ID, branch_name: `${RUN} סניף` } });
+    recordEntry(m, { kind: 'appetite', id: APPETITE_ID, by: 'bank', status: 'failed', provenance: { banker_id: BANKER_ID, ...APPETITE_SIGNATURE } });
     const admin = statefulAdmin({ branch_appetites: LIVE_ROWS.branch_appetites });
     const { deps } = makeDeps({ admin, manifest: m });
     const result: any = await runCommand(deps, cleanupArgs);
@@ -826,5 +840,235 @@ describe('check-realtime — authenticated context', () => {
     const firstRemoveIdx = events.findIndex((e) => e.startsWith('remove:'));
     // every subscribe happened before the first removal
     expect(events.slice(0, firstRemoveIdx).filter((e) => e.startsWith('subscribe:'))).toHaveLength(2);
+  });
+});
+
+// ─── adopt-case / adopt-appetite — read-only manifest registration ──────────
+
+const ADOPTED_CASE_ID = 'd2222222-2222-4222-8222-222222222222';
+const ADOPTED_APPETITE_ID = 'e2222222-2222-4222-8222-222222222222';
+
+const adoptCaseArgs: ParsedArgs = { command: 'adopt-case', as: 'advisor', run: RUN, caseFields: { ...CASE_SIGNATURE } as any };
+const adoptAppetiteArgs: ParsedArgs = { command: 'adopt-appetite', as: 'bank', run: RUN, appetiteFields: { ...APPETITE_SIGNATURE } as any };
+
+const liveAdoptableCase = (over: Record<string, unknown> = {}) => ({
+  id: ADOPTED_CASE_ID,
+  advisor_id: ADVISOR_ID,
+  ...CASE_SIGNATURE,
+  is_approved: false,
+  status: 'open',
+  created_at: '2999-01-01T00:00:00.000Z',
+  ...over,
+});
+
+const liveAdoptableAppetite = (over: Record<string, unknown> = {}) => ({
+  id: ADOPTED_APPETITE_ID,
+  banker_id: BANKER_ID,
+  ...APPETITE_SIGNATURE,
+  is_approved: false,
+  is_active: true,
+  created_at: '2999-01-01T00:00:00.000Z',
+  ...over,
+});
+
+describe('adopt-case / adopt-appetite', () => {
+  it('adopts a browser-created case: manifest entry with full provenance, ZERO DB writes', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableCase()] }));
+    const { deps, manifests } = makeDeps({ user, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    const res: any = await runCommand(deps, adoptCaseArgs);
+    expect(res.adopted).toBe(true);
+    expect(res.caseId).toBe(ADOPTED_CASE_ID);
+    // read-only proof: every Supabase call was a select
+    expect(user.calls.length).toBeGreaterThan(0);
+    expect(user.calls.every((c: Op) => c.action === 'select')).toBe(true);
+    const entry = manifests[RUN].entries.find((e) => e.kind === 'case' && e.id === ADOPTED_CASE_ID)!;
+    expect(entry.status).toBe('created');
+    expect(entry.note).toContain('adopted');
+    expect(entry.provenance).toEqual({ advisor_id: ADVISOR_ID, ...CASE_SIGNATURE });
+  });
+
+  it('adopts an appetite comparing list fields as sets (chip order does not matter)', async () => {
+    const fields = { ...APPETITE_SIGNATURE, preferred_borrower_types: ['employee', 'self_employed'] };
+    const row = liveAdoptableAppetite({ preferred_borrower_types: ['self_employed', 'employee'] });
+    const user = fakeClient(() => ({ data: [row] }));
+    const { deps, manifests } = makeDeps({ user, userId: BANKER_ID, manifest: createManifest(RUN) });
+    const res: any = await runCommand(deps, { ...adoptAppetiteArgs, appetiteFields: fields as any });
+    expect(res.adopted).toBe(true);
+    expect(user.calls.every((c: Op) => c.action === 'select')).toBe(true);
+    const entry = manifests[RUN].entries.find((e) => e.kind === 'appetite' && e.id === ADOPTED_APPETITE_ID)!;
+    expect(entry.status).toBe('created');
+    // FULL provenance: every matching-relevant field is recorded, not just identity.
+    expect(entry.provenance).toEqual({ banker_id: BANKER_ID, ...fields });
+  });
+
+  it('accepts PostgREST timestamp style (+00:00, microseconds) and puts the run window in the query', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableCase({ created_at: '2999-01-01T00:00:00.123456+00:00' })] }));
+    const { deps } = makeDeps({ user, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    const res: any = await runCommand(deps, adoptCaseArgs);
+    expect(res.adopted).toBe(true);
+    const selectOp = user.calls.find((c: Op) => c.table === 'cases')!;
+    expect(selectOp.filters).toHaveProperty('created_at:gte');
+  });
+
+  it('refuses an unparseable created_at instead of comparing it as a string', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableCase({ created_at: 'not-a-timestamp' })] }));
+    const { deps, manifests } = makeDeps({ user, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    await expect(runCommand(deps, adoptCaseArgs)).rejects.toThrow(/unparseable/);
+    expect(manifests[RUN].entries).toHaveLength(0);
+  });
+
+  it.each([
+    ['0 rows', [] as any[]],
+    ['2+ rows (ambiguous signature)', [liveAdoptableCase(), liveAdoptableCase({ id: MSG_ID })]],
+  ])('refuses adopt-case on %s — no blind pick, nothing recorded', async (_label, rows) => {
+    const user = fakeClient(() => ({ data: rows }));
+    const { deps, manifests } = makeDeps({ user, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    await expect(runCommand(deps, adoptCaseArgs)).rejects.toThrow(/exactly 1/);
+    expect(manifests[RUN].entries).toHaveLength(0);
+  });
+
+  it('refuses a row owned by someone else even if the query returned it (hostile backend)', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableCase({ advisor_id: 'someone-else' })] }));
+    const { deps, manifests } = makeDeps({ user, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    await expect(runCommand(deps, adoptCaseArgs)).rejects.toThrow(/not owned/);
+    expect(manifests[RUN].entries).toHaveLength(0);
+  });
+
+  it('refuses a signature mismatch on the returned row (hostile backend)', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableCase({ ltv: 70 })] }));
+    const { deps, manifests } = makeDeps({ user, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    await expect(runCommand(deps, adoptCaseArgs)).rejects.toThrow(/signature mismatch on ltv/);
+    expect(manifests[RUN].entries).toHaveLength(0);
+  });
+
+  it('refuses an already-approved case and a non-open case', async () => {
+    const approved = fakeClient(() => ({ data: [liveAdoptableCase({ is_approved: true })] }));
+    const { deps: d1 } = makeDeps({ user: approved, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    await expect(runCommand(d1, adoptCaseArgs)).rejects.toThrow(/already approved/);
+
+    const closed = fakeClient(() => ({ data: [liveAdoptableCase({ status: 'closed' })] }));
+    const { deps: d2 } = makeDeps({ user: closed, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    await expect(runCommand(d2, adoptCaseArgs)).rejects.toThrow(/expected "open"/);
+  });
+
+  it('refuses appetite rows that are inactive, approved, foreign-owned, or off-signature', async () => {
+    const mk = (over: Record<string, unknown>) => {
+      const user = fakeClient(() => ({ data: [liveAdoptableAppetite(over)] }));
+      return makeDeps({ user, userId: BANKER_ID, manifest: createManifest(RUN) }).deps;
+    };
+    await expect(runCommand(mk({ is_active: false }), adoptAppetiteArgs)).rejects.toThrow(/not active/);
+    await expect(runCommand(mk({ is_approved: true }), adoptAppetiteArgs)).rejects.toThrow(/already approved/);
+    await expect(runCommand(mk({ banker_id: 'someone-else' }), adoptAppetiteArgs)).rejects.toThrow(/not owned/);
+    await expect(runCommand(mk({ sla_days: 3 }), adoptAppetiteArgs)).rejects.toThrow(/mismatch on sla_days/);
+    await expect(runCommand(mk({ preferred_regions: ['north', 'south'] }), adoptAppetiteArgs)).rejects.toThrow(/preferred_regions/);
+  });
+
+  it('refuses a same-signature leftover row that predates the run', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableCase({ created_at: '2000-01-01T00:00:00.000Z' })] }));
+    const { deps, manifests } = makeDeps({ user, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    await expect(runCommand(deps, adoptCaseArgs)).rejects.toThrow(/predates this run/);
+    expect(manifests[RUN].entries).toHaveLength(0);
+  });
+
+  it('refuses an id that is already recorded in the manifest (duplicate adoption)', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableCase({ id: CASE_ID })] }));
+    const { deps } = makeDeps({ user, userId: ADVISOR_ID, manifest: seededManifest() });
+    await expect(runCommand(deps, adoptCaseArgs)).rejects.toThrow(/already recorded/);
+  });
+
+  it('refuses an id already recorded under ANY kind, not just the adopted kind', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableCase({ id: MATCH_1 })] }));
+    const { deps } = makeDeps({ user, userId: ADVISOR_ID, manifest: seededManifest() });
+    await expect(runCommand(deps, adoptCaseArgs)).rejects.toThrow(/already recorded/);
+  });
+
+  it('refuses once cleanup started or completed — gated BEFORE any client exists', async () => {
+    for (const status of ['pending', 'created'] as const) {
+      const manifest = createManifest(RUN);
+      recordEntry(manifest, { kind: 'cleanup', id: RUN, by: 'service_role', status });
+      // makeDeps gets NO user client: reaching userClient would throw a
+      // different error, so matching this message proves the gate runs first.
+      const { deps } = makeDeps({ manifest });
+      await expect(runCommand(deps, adoptCaseArgs)).rejects.toThrow(/cleanup has already started or completed/);
+    }
+  });
+
+  it('requires an existing manifest for the run (adoption never opens a run)', async () => {
+    const { deps } = makeDeps({ user: fakeClient(() => ({ data: [liveAdoptableCase()] })), userId: ADVISOR_ID });
+    await expect(runCommand(deps, adoptCaseArgs)).rejects.toThrow(/no manifest for run/);
+  });
+
+  const adoptedAppetiteAdmin = (liveOverride: Record<string, unknown>) => {
+    let approved = false;
+    return fakeClient((op: Op) => {
+      if (op.action === 'listUsers') return TEST_USERS;
+      if (op.table === 'branch_appetites' && op.action === 'select') {
+        return { data: [liveAdoptableAppetite({ is_approved: approved, ...liveOverride })] };
+      }
+      if (op.table === 'branch_appetites' && op.action === 'update') {
+        approved = true;
+        return { data: [liveAdoptableAppetite({ is_approved: true, ...liveOverride })] };
+      }
+      if (op.table === 'matches') return { data: [] };
+      return { data: [] };
+    });
+  };
+  const approveAppetiteArgs: ParsedArgs = {
+    command: 'approve', run: RUN, target: 'appetite', id: ADOPTED_APPETITE_ID, expectNewMatches: 0,
+  };
+
+  it('an adopted appetite is approvable when the live row still matches the FULL provenance', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableAppetite()] }));
+    const admin = adoptedAppetiteAdmin({});
+    const { deps, manifests } = makeDeps({ user, admin, userId: BANKER_ID, manifest: createManifest(RUN) });
+    await runCommand(deps, adoptAppetiteArgs);
+    expect(manifests[RUN].entries[0].provenance).toEqual({ banker_id: BANKER_ID, ...APPETITE_SIGNATURE });
+    const res: any = await runCommand(deps, approveAppetiteArgs);
+    expect(res.newMatchIds).toEqual([]);
+  });
+
+  it.each([
+    ['max_ltv changed', { max_ltv: 90 }],
+    ['preferred_regions changed', { preferred_regions: ['north', 'south'] }],
+    ['preferred_borrower_types changed', { preferred_borrower_types: ['employee'] }],
+  ])('approve refuses an adopted appetite whose %s after adoption — zero updates', async (_label, drift) => {
+    const user = fakeClient(() => ({ data: [liveAdoptableAppetite()] }));
+    const admin = adoptedAppetiteAdmin(drift);
+    const { deps } = makeDeps({ user, admin, userId: BANKER_ID, manifest: createManifest(RUN) });
+    await runCommand(deps, adoptAppetiteArgs);
+    await expect(runCommand(deps, approveAppetiteArgs)).rejects.toThrow(/provenance/);
+    expect(admin.calls.some((c: Op) => c.action === 'update')).toBe(false);
+  });
+
+  it('cleanup aborts before ANY delete when a matching field of a recorded appetite changed', async () => {
+    const admin = statefulAdmin({
+      ...LIVE_ROWS,
+      branch_appetites: [{ ...LIVE_ROWS.branch_appetites[0], sla_days: 3 }],
+    });
+    const { deps } = makeDeps({ admin, manifest: seededManifest() });
+    await expect(runCommand(deps, cleanupArgs)).rejects.toThrow(/provenance/);
+    expect(admin.calls.some((c: Op) => c.action === 'delete')).toBe(false);
+  });
+
+  it('an adopted case is immediately approvable: approve accepts the entry and its provenance', async () => {
+    const user = fakeClient(() => ({ data: [liveAdoptableCase()] }));
+    let approved = false;
+    const admin = fakeClient((op) => {
+      if (op.action === 'listUsers') return TEST_USERS;
+      if (op.table === 'cases' && op.action === 'select') return { data: [liveAdoptableCase({ is_approved: approved })] };
+      if (op.table === 'cases' && op.action === 'update') {
+        approved = true;
+        return { data: [liveAdoptableCase({ is_approved: true })] };
+      }
+      if (op.table === 'matches') return { data: [] };
+      return { data: [] };
+    });
+    const { deps } = makeDeps({ user, admin, userId: ADVISOR_ID, manifest: createManifest(RUN) });
+    await runCommand(deps, adoptCaseArgs);
+    const res: any = await runCommand(deps, {
+      command: 'approve', run: RUN, target: 'case', id: ADOPTED_CASE_ID, expectNewMatches: 0,
+    });
+    expect(res.newMatchIds).toEqual([]);
+    expect(res.matchesAfter).toBe(0);
   });
 });

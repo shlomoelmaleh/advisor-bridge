@@ -46,6 +46,9 @@ const USAGE = `E2E actor CLI — commands (privilege in brackets):
   create-appetite --as bank --run <id> --bank-name S --branch-name S
                   --level L --min-loan N --max-ltv N --borrowers CSV
                   --regions CSV --sla N --valid-until YYYY-MM-DD        [user/RLS]
+  adopt-case      --as advisor --run <id> + full create-case fields     [user/RLS READ-ONLY; registers a
+                                                                         browser-created case in the manifest]
+  adopt-appetite  --as bank --run <id> + full create-appetite fields    [user/RLS READ-ONLY; same, for appetites]
   send-message    --as advisor|bank --run <id> --match <uuid> --text S  [user/RLS, manifest-gated]
   set-status      --as advisor|bank --run <id> --match <uuid>
                   --status interested|rejected                          [user/RLS, manifest-gated]
